@@ -1,0 +1,83 @@
+/* =============================================================================
+   Astra (Multi-physics) — Neuralink-Style Light Theme CSS
+   ============================================================================= */
+
+.root {
+    -fx-font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    -fx-font-size: 13px;
+    -fx-base: #f8fafc;
+    -fx-background-color: #f8fafc;
+
+    /* Neuralink Theme Color Tokens */
+    -color-ribbon-bg: #fff7ed;
+    -color-ribbon-border: #f97316;
+    -color-toolbar-bg: #ffffff;
+    -color-toolbar-border: #e2e8f0;
+    -color-nav-bg: #f8fafc;
+    -color-nav-border: #0ea5e9;
+    -color-dir-bg-top: #f8fafc;
+    -color-dir-bg-bottom: #f1f5f9;
+    -color-dir-border: #cbd5e1;
+    -color-breadcrumb-bg: #f8fafc;
+    -color-breadcrumb-border: #e2e8f0;
+    -color-viewbar-bg: #ffffff;
+    -color-viewbar-border: #e2e8f0;
+    -color-footer-bg: #f1f5f9;
+    -color-footer-border: #e2e8f0;
+    -color-workspace-bg: #f8fafc;
+}
+
+/* Ribbon Bar */
+.ribbon-bar {
+    -fx-background-color: #fff7ed;
+    -fx-border-color: #f97316;
+    -fx-border-width: 0 0 2 0;
+}
+
+/* Toolbar */
+.tools-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* Navigation Bar */
+.navigation-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #0ea5e9;
+    -fx-border-width: 1 1 1 1;
+    -fx-border-radius: 2;
+}
+
+/* Directory Bar */
+.directory-bar {
+    -fx-background-color: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 0 1 0 0;
+}
+
+/* Breadcrumb Bar */
+.breadcrumb-bar {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* View Bar */
+.view-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* Footer Bar */
+.footer-bar {
+    -fx-background-color: #f1f5f9;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* Workspace Viewport Container */
+.workspace-viewport {
+    -fx-background-color: #f8fafc;
+}
