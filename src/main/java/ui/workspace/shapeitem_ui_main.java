@@ -170,6 +170,8 @@ public class shapeitem_ui_main {
 
     public Group getRootGroup() { return rootGroup; }
     public basicshapes_ui_main getType() { return type; }
+    public Point3D getP1() { return p1; }
+    public Point3D getP2() { return p2; }
     public boolean isSelected() { return selected; }
     public void setSelected(boolean sel) { this.selected = sel; rebuild(); }
 }

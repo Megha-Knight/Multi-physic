@@ -26,6 +26,7 @@ public class shortcuts_ui_main {
     public static final KeyCombination REDO_ALT    = new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN);
     public static final KeyCombination SELECT_ALL  = new KeyCodeCombination(KeyCode.A, KeyCombination.CONTROL_DOWN);
     public static final KeyCombination DELETE_ITEM = new KeyCodeCombination(KeyCode.DELETE);
+    public static final KeyCombination BACK_SPACE  = new KeyCodeCombination(KeyCode.BACK_SPACE);
     public static final KeyCombination FIND        = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
 
     // File Management Shortcuts
@@ -48,6 +49,7 @@ public class shortcuts_ui_main {
         register(REDO_ALT,    () -> System.out.println("[Shortcut] Ctrl+Shift+Z: Redo"));
         register(SELECT_ALL,  () -> System.out.println("[Shortcut] Ctrl+A: Select All"));
         register(DELETE_ITEM, () -> System.out.println("[Shortcut] Delete: Remove Item"));
+        register(BACK_SPACE,  () -> System.out.println("[Shortcut] Backspace: Remove Item"));
         register(FIND,        () -> System.out.println("[Shortcut] Ctrl+F: Search / Find"));
 
         register(NEW_FILE,    () -> System.out.println("[Shortcut] Ctrl+N: New Project"));
@@ -69,6 +71,9 @@ public class shortcuts_ui_main {
     }
 
     private void handleKeyEvent(KeyEvent event) {
+        if (event.getTarget() instanceof javafx.scene.control.TextInputControl) {
+            return;
+        }
         for (Map.Entry<KeyCombination, Runnable> entry : shortcutMap.entrySet()) {
             if (entry.getKey().match(event)) {
                 entry.getValue().run();

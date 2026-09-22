@@ -41,6 +41,9 @@ public class filetab_ui_main extends HBox {
         }
         public File getFile() { return file; }
         public void setFile(File file) { this.file = file; }
+        private Object userData;
+        public Object getUserData() { return userData; }
+        public void setUserData(Object userData) { this.userData = userData; }
     }
 
     private final HBox tabsContainer;

@@ -4,11 +4,14 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import ui.breadcrumbbar.breadcrumb_ui_main;
 import ui.footerbar.footer_ui_main;
+import ui.workspace.documentserializer_ui_main;
 import ui.workspace.filetab_ui_main;
+import ui.workspace.shapeitem_ui_main;
+import ui.workspace.workspace_ui_main;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -21,14 +24,17 @@ public class documenthandler_ui_main {
     private final filetab_ui_main documentTabBar;
     private final footer_ui_main footerBar;
     private final breadcrumb_ui_main breadcrumbBar;
+    private final workspace_ui_main workspace;
     private final Supplier<Window> windowSupplier;
     private Runnable onFileChanged;
 
     public documenthandler_ui_main(filetab_ui_main tabBar, footer_ui_main footer,
-                                   breadcrumb_ui_main breadcrumb, Supplier<Window> winSupplier) {
+                                   breadcrumb_ui_main breadcrumb, workspace_ui_main workspace,
+                                   Supplier<Window> winSupplier) {
         this.documentTabBar = tabBar;
         this.footerBar = footer;
         this.breadcrumbBar = breadcrumb;
+        this.workspace = workspace;
         this.windowSupplier = winSupplier;
     }
 
@@ -51,7 +57,10 @@ public class documenthandler_ui_main {
             count++;
         }
 
-        documentTabBar.addTab(name, null, true);
+        filetab_ui_main.TabItem tab = documentTabBar.addTab(name, null, true);
+        tab.setUserData(Collections.emptyList());
+        workspace.getShapeEditor().loadShapes(Collections.emptyList());
+        workspace.getShapeEditor().clearHistory();
         footerBar.setOpenedFilePath(new File(astraDir, name).getAbsolutePath() + " [Unsaved]");
         breadcrumbBar.setFolderPath(astraDir.getAbsolutePath());
         footerBar.setStatusText("New document: " + name + " (Unsaved)");
@@ -64,7 +73,9 @@ public class documenthandler_ui_main {
             onSaveAsFile();
             return;
         }
-        if (writeNdFile(active.getFile())) {
+        List<shapeitem_ui_main> currentShapes = workspace.getShapeEditor().getShapes();
+        if (documentserializer_ui_main.saveToFile(active.getFile(), currentShapes)) {
+            active.setUserData(currentShapes);
             footerBar.setStatusText("Saved: " + active.getName());
             notifyChange();
         } else {
@@ -90,7 +101,9 @@ public class documenthandler_ui_main {
             if (!nameLower.endsWith(".nd") && !nameLower.endsWith(".nc")) {
                 f = new File(f.getParentFile(), f.getName() + ".nd");
             }
-            if (writeNdFile(f)) {
+            List<shapeitem_ui_main> currentShapes = workspace.getShapeEditor().getShapes();
+            if (documentserializer_ui_main.saveToFile(f, currentShapes)) {
+                active.setUserData(currentShapes);
                 documentTabBar.updateActiveTab(f.getName(), f);
                 footerBar.setOpenedFilePath(f.getAbsolutePath());
                 breadcrumbBar.setFolderPath(f.getAbsolutePath());
@@ -100,6 +113,25 @@ public class documenthandler_ui_main {
                 footerBar.setStatusText("Save failed: " + f.getName());
             }
         }
+    }
+
+    public void openFile(File f) {
+        if (f == null || !f.exists()) return;
+        for (filetab_ui_main.TabItem t : documentTabBar.getTabs()) {
+            if (t.getFile() != null && t.getFile().getAbsolutePath().equalsIgnoreCase(f.getAbsolutePath())) {
+                documentTabBar.selectTab(t);
+                return;
+            }
+        }
+        List<shapeitem_ui_main> shapes = documentserializer_ui_main.loadFromFile(f);
+        filetab_ui_main.TabItem tab = documentTabBar.addTab(f.getName(), f, true);
+        tab.setUserData(shapes);
+        workspace.getShapeEditor().loadShapes(shapes);
+        workspace.getShapeEditor().clearHistory();
+        footerBar.setOpenedFilePath(f.getAbsolutePath());
+        breadcrumbBar.setFolderPath(f.getAbsolutePath());
+        footerBar.setStatusText("Opened: " + f.getName());
+        notifyChange();
     }
 
     public void onOpenFile() {
@@ -114,25 +146,11 @@ public class documenthandler_ui_main {
         );
         File f = ch.showOpenDialog(windowSupplier.get());
         if (f != null) {
-            documentTabBar.addTab(f.getName(), f, true);
-            footerBar.setOpenedFilePath(f.getAbsolutePath());
-            breadcrumbBar.setFolderPath(f.getAbsolutePath());
-            footerBar.setStatusText("Opened: " + f.getName());
-            notifyChange();
+            openFile(f);
         }
     }
 
     private void notifyChange() {
         if (onFileChanged != null) onFileChanged.run();
-    }
-
-    private boolean writeNdFile(File f) {
-        try (FileWriter fw = new FileWriter(f)) {
-            fw.write("/* Astra Multi-Physics Model */\n");
-            return true;
-        } catch (IOException e) {
-            System.err.println("[Astra] Error writing to " + f.getAbsolutePath() + ": " + e.getMessage());
-            return false;
-        }
     }
 }
