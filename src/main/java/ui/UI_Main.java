@@ -95,6 +95,8 @@ public class UI_Main extends BorderPane {
         ribbonBar.getOpenButton().setPrimaryAction(docHandler::onOpenFile);
         ribbonBar.setOnSave(docHandler::onSaveFile);
         ribbonBar.setOnSaveAs(docHandler::onSaveAsFile);
+        ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile);
+        ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
 
         ribbonBar.setOnShapeSelected(shape -> {
             workspace3D.getDrafter().setShape(shape);
@@ -173,7 +175,6 @@ public class UI_Main extends BorderPane {
         shortcuts.register(shortcuts_ui_main.OPEN_FILE, docHandler::onOpenFile);
         shortcuts.register(shortcuts_ui_main.SAVE_FILE, docHandler::onSaveFile);
         shortcuts.register(shortcuts_ui_main.SAVE_AS, docHandler::onSaveAsFile);
-
         shortcuts.register(shortcuts_ui_main.DELETE_ITEM, editor::deleteSelected);
         shortcuts.register(shortcuts_ui_main.BACK_SPACE, editor::deleteSelected);
         shortcuts.register(shortcuts_ui_main.COPY, editor::copySelected);

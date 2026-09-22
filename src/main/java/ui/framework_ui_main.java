@@ -133,4 +133,15 @@ public final class framework_ui_main {
         }
         return astra;
     }
+
+    // =========================================================================
+    // 12. DYNAMIC SHAPES PANEL (basicshapespanel_ui_main)
+    // =========================================================================
+    public static double SHAPES_PANEL_HEIGHT        = 48.0;
+    public static String SHAPES_PANEL_BG            = "#FFFFFF";
+    public static String SHAPES_PANEL_BORDER        = "#CBD5E1";
+    public static String SHAPES_CATEGORY_ACTIVE_BG  = "#005A85";
+    public static String SHAPES_CATEGORY_ACTIVE_TXT = "#FFFFFF";
+    public static String SHAPES_CATEGORY_INACTIVE_TXT = "#64748B";
+    public static String SHAPES_ITEM_HOVER_BG       = "rgba(41, 171, 226, 0.15)";
 }

@@ -24,6 +24,7 @@ public class splitbutton_ui_main extends VBox {
     private final HBox bottomHalf;
     private final ContextMenu dropMenu;
     private Runnable primaryAction;
+    private Runnable dropAction;
 
     private static final String STYLE_BASE =
         "-fx-background-color: transparent; -fx-background-radius: 3;";
@@ -99,6 +100,10 @@ public class splitbutton_ui_main extends VBox {
         this.primaryAction = primaryAction;
     }
 
+    public void setDropAction(Runnable dropAction) {
+        this.dropAction = dropAction;
+    }
+
     public ContextMenu getDropMenu() {
         return dropMenu;
     }
@@ -120,7 +125,9 @@ public class splitbutton_ui_main extends VBox {
         bottomHalf.setOnMouseExited(e -> bottomHalf.setStyle(STYLE_BASE));
         bottomHalf.setOnMousePressed(e -> {
             bottomHalf.setStyle(STYLE_BOT_PRESSED);
-            if (!dropMenu.isShowing() && !dropMenu.getItems().isEmpty()) {
+            if (dropAction != null) {
+                dropAction.run();
+            } else if (!dropMenu.isShowing() && !dropMenu.getItems().isEmpty()) {
                 dropMenu.show(bottomHalf, Side.BOTTOM, 0, 0);
             } else {
                 dropMenu.hide();

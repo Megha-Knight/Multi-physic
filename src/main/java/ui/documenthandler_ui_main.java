@@ -67,52 +67,31 @@ public class documenthandler_ui_main {
     }
 
     public void onSaveFile() {
-        filetab_ui_main.TabItem active = documentTabBar.getActiveTab();
-        if (active == null) return;
-        if (active.getFile() == null) {
-            onSaveAsFile();
-            return;
-        }
-        List<shapeitem_ui_main> currentShapes = workspace.getShapeEditor().getShapes();
-        if (documentserializer_ui_main.saveToFile(active.getFile(), currentShapes)) {
-            active.setUserData(currentShapes);
-            footerBar.setStatusText("Saved: " + active.getName());
-            notifyChange();
-        } else {
-            footerBar.setStatusText("Save failed: " + active.getName());
-        }
+        savecommands_ui_main.executeSave(
+            documentTabBar.getActiveTab(), workspace.getShapeEditor().getShapes(),
+            footerBar, this::onSaveAsFile, this::notifyChange
+        );
     }
 
     public void onSaveAsFile() {
-        filetab_ui_main.TabItem active = documentTabBar.getActiveTab();
-        if (active == null) return;
-        FileChooser ch = new FileChooser();
-        ch.setTitle("Save File As (.nd)");
-        File initialDir = active.getFile() != null ? active.getFile().getParentFile() : framework_ui_main.astraDirectory();
-        ch.setInitialDirectory((initialDir != null && initialDir.exists()) ? initialDir : framework_ui_main.astraDirectory());
-        ch.setInitialFileName(active.getName());
-        ch.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Neural Dynamics (*.nd)", "*.nd"),
-            new FileChooser.ExtensionFilter("Legacy Astra (*.nc)", "*.nc")
+        savecommands_ui_main.executeSaveAs(
+            documentTabBar.getActiveTab(), workspace.getShapeEditor().getShapes(),
+            windowSupplier.get(), documentTabBar, footerBar, breadcrumbBar, this::notifyChange
         );
-        File f = ch.showSaveDialog(windowSupplier.get());
-        if (f != null) {
-            String nameLower = f.getName().toLowerCase();
-            if (!nameLower.endsWith(".nd") && !nameLower.endsWith(".nc")) {
-                f = new File(f.getParentFile(), f.getName() + ".nd");
-            }
-            List<shapeitem_ui_main> currentShapes = workspace.getShapeEditor().getShapes();
-            if (documentserializer_ui_main.saveToFile(f, currentShapes)) {
-                active.setUserData(currentShapes);
-                documentTabBar.updateActiveTab(f.getName(), f);
-                footerBar.setOpenedFilePath(f.getAbsolutePath());
-                breadcrumbBar.setFolderPath(f.getAbsolutePath());
-                footerBar.setStatusText("Saved: " + f.getName());
-                notifyChange();
-            } else {
-                footerBar.setStatusText("Save failed: " + f.getName());
-            }
-        }
+    }
+
+    public void onSaveRootFile() {
+        savecommands_ui_main.executeSaveRoot(
+            documentTabBar.getActiveTab(), workspace.getShapeEditor().getShapes(),
+            documentTabBar, footerBar, breadcrumbBar, this::notifyChange
+        );
+    }
+
+    public void onSaveInFile() {
+        savecommands_ui_main.executeSaveIn(
+            documentTabBar.getActiveTab(), workspace.getShapeEditor().getShapes(),
+            windowSupplier.get(), documentTabBar, footerBar, breadcrumbBar, this::notifyChange
+        );
     }
 
     public void openFile(File f) {
