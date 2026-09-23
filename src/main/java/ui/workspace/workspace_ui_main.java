@@ -107,7 +107,7 @@ public class workspace_ui_main extends StackPane {
 
         drafter = new shapedrafting_ui_main(this, camera, controller, hudDimLabel);
         shapeEditor = new shapeeditor_ui_main(drafter.getShapesGroup(), this, subScene, controller,
-            e -> drafter.screenToGround(e.getX(), e.getY()), hudDimLabel, () -> drafter.getActiveShape().isDrawing());
+            drafter, hudDimLabel, () -> drafter.getActiveShape().isDrawing());
         drafter.setEditor(shapeEditor);
         root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup());
 
