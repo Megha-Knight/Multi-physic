@@ -9,7 +9,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -21,8 +20,8 @@ import java.util.function.Consumer;
 
 /**
  * basicshapespanel_ui_main.java
- * Dynamic Ribbon Gallery Panel for Basic2D and Basic3D geometric shapes.
- * Positioned adjacent to the Basic Shapes command within the Home ribbon.
+ * Dynamic Ribbon Gallery Panel for Basic2D and Basic3D geometric designs.
+ * Remains open during interactive drafting until closed by X mark or Basic Shapes button.
  */
 public class basicshapespanel_ui_main extends HBox {
 
@@ -30,7 +29,6 @@ public class basicshapespanel_ui_main extends HBox {
     private final Button btnCat3D = new Button("Basic3D");
     private final HBox pane2D;
     private final HBox pane3D;
-    private Node anchorNode;
     private Consumer<basicshapes_ui_main> onShapeSelected;
 
     public basicshapespanel_ui_main() {
@@ -51,16 +49,16 @@ public class basicshapespanel_ui_main extends HBox {
         VBox catCol = new VBox(2, btnCat2D, btnCat3D);
         catCol.setAlignment(Pos.CENTER);
 
-        // Content Panels
+        // Content Panels for 2D and 3D
         pane2D = build2DShapesPane();
-        pane3D = build3DPlaceholderPane();
+        pane3D = build3DShapesPane();
         pane3D.setVisible(false);
         pane3D.setManaged(false);
 
         StackPane contentStack = new StackPane(pane2D, pane3D);
         contentStack.setAlignment(Pos.CENTER_LEFT);
 
-        // Close Button
+        // Close Button (✕)
         Button closeBtn = new Button("✕");
         closeBtn.setPrefSize(18, 18);
         closeBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 10px; -fx-text-fill: #94A3B8; -fx-padding: 0; -fx-cursor: hand;");
@@ -74,10 +72,9 @@ public class basicshapespanel_ui_main extends HBox {
         getChildren().addAll(catCol, sep, contentStack, closeBtn);
         setVisible(false);
         setManaged(false);
-        setupOutsideClickDismissal();
     }
 
-    public void setAnchorNode(Node node) { this.anchorNode = node; }
+    public void setAnchorNode(Node node) { /* kept for API compatibility */ }
     public void setOnShapeSelected(Consumer<basicshapes_ui_main> cb) { this.onShapeSelected = cb; }
     public void show() { setVisible(true); setManaged(true); }
     public void hide() { setVisible(false); setManaged(false); }
@@ -116,6 +113,15 @@ public class basicshapespanel_ui_main extends HBox {
         );
     }
 
+    private HBox build3DShapesPane() {
+        return new HBox(4,
+            createShapeItem("Cube", "/icons/cube_3d.png", basicshapes_ui_main.CUBE),
+            createShapeItem("Cylinder", "/icons/cylinder_3d.png", basicshapes_ui_main.CYLINDER),
+            createShapeItem("Sphere", "/icons/sphere_3d.png", basicshapes_ui_main.SPHERE),
+            createShapeItem("Cone", "/icons/cone_3d.png", basicshapes_ui_main.CONE)
+        );
+    }
+
     private Button createShapeItem(String label, String iconPath, basicshapes_ui_main shape) {
         Button b = new Button();
         b.setPrefWidth(54); b.setPrefHeight(40);
@@ -135,29 +141,7 @@ public class basicshapespanel_ui_main extends HBox {
         b.setOnMouseExited(e -> b.setStyle(base));
         b.setOnAction(e -> {
             if (onShapeSelected != null) onShapeSelected.accept(shape);
-            hide();
         });
-        return b;
-    }
-
-    private HBox build3DPlaceholderPane() {
-        Label msg = new Label("3D primitives will be added in a future version.");
-        msg.setStyle("-fx-font-size: 9.5px; -fx-text-fill: #94A3B8; -fx-font-style: italic;");
-        HBox placeholders = new HBox(3, createDisabledPrimitive("Cube"),
-                                        createDisabledPrimitive("Cylinder"),
-                                        createDisabledPrimitive("Sphere"));
-        placeholders.setAlignment(Pos.CENTER_LEFT);
-        HBox box = new HBox(6, msg, placeholders);
-        box.setAlignment(Pos.CENTER_LEFT);
-        box.setPadding(new Insets(0, 4, 0, 4));
-        return box;
-    }
-
-    private Button createDisabledPrimitive(String name) {
-        Button b = new Button(name + " (Future)");
-        b.setDisable(true);
-        b.setStyle("-fx-background-color: #F1F5F9; -fx-text-fill: #94A3B8; -fx-font-size: 8.5px; " +
-                   "-fx-background-radius: 2; -fx-opacity: 0.6; -fx-cursor: not-allowed;");
         return b;
     }
 
@@ -171,19 +155,5 @@ public class basicshapespanel_ui_main extends HBox {
             }
         } catch (Exception ignored) {}
         return null;
-    }
-
-    private void setupOutsideClickDismissal() {
-        sceneProperty().addListener((obs, oldScene, sc) -> {
-            if (sc != null) {
-                sc.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
-                    if (!isVisible()) return;
-                    double sx = e.getSceneX(), sy = e.getSceneY();
-                    boolean inPanel = localToScene(getBoundsInLocal()).contains(sx, sy);
-                    boolean inAnchor = anchorNode != null && anchorNode.localToScene(anchorNode.getBoundsInLocal()).contains(sx, sy);
-                    if (!inPanel && !inAnchor) hide();
-                });
-            }
-        });
     }
 }

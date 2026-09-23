@@ -71,7 +71,7 @@ public class ribbon_ui_main extends HBox {
         saveButton.getDropMenu().getItems().addAll(menuSave, menuSaveAs, menuSaveRoot, menuSaveIn);
 
         shapesPanel = new basicshapespanel_ui_main();
-        basicShapesButton = new splitbutton_ui_main("Basic Shapes", loadIcon("/icons/basic_shapes.png"), 68.0,
+        basicShapesButton = new splitbutton_ui_main("Basic Shapes", loadIcon("/icons/basic_shapes.png"), 84.0, true,
             () -> shapesPanel.toggle());
         basicShapesButton.setDropAction(() -> shapesPanel.toggle());
         shapesPanel.setAnchorNode(basicShapesButton);

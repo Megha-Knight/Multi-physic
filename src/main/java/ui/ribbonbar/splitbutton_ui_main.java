@@ -10,42 +10,35 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import ui.framework_ui_main;
 
 /**
  * splitbutton_ui_main.java
- * Compact CAD ribbon split button:
- *   - Top half: action icon button
- *   - Bottom half: text label + dropdown arrow
- * Dimensions: 44px width, 44px height.
+ * Compact CAD ribbon split button supporting both bottom-split and side-split dropdown arrows.
  */
-public class splitbutton_ui_main extends VBox {
+public class splitbutton_ui_main extends HBox {
 
-    private final VBox topHalf;
-    private final HBox bottomHalf;
-    private final ContextMenu dropMenu;
+    private final ContextMenu dropMenu = new ContextMenu();
     private Runnable primaryAction;
     private Runnable dropAction;
 
-    private static final String STYLE_BASE =
-        "-fx-background-color: transparent; -fx-background-radius: 3;";
-    private static final String STYLE_TOP_HOVER =
-        "-fx-background-color: rgba(41, 171, 226, 0.15); -fx-background-radius: 3 3 0 0;";
-    private static final String STYLE_BOT_HOVER =
-        "-fx-background-color: rgba(41, 171, 226, 0.22); -fx-background-radius: 0 0 3 3;";
-    private static final String STYLE_TOP_PRESSED =
-        "-fx-background-color: rgba(0, 90, 133, 0.25); -fx-background-radius: 3 3 0 0;";
-    private static final String STYLE_BOT_PRESSED =
-        "-fx-background-color: rgba(0, 90, 133, 0.35); -fx-background-radius: 0 0 3 3;";
+    private static final String STYLE_BASE = "-fx-background-color: transparent; -fx-background-radius: 3;";
+    private static final String STYLE_ACT_HOVER = "-fx-background-color: rgba(41, 171, 226, 0.15); -fx-background-radius: 3;";
+    private static final String STYLE_DRP_HOVER = "-fx-background-color: rgba(41, 171, 226, 0.22); -fx-background-radius: 3;";
+    private static final String STYLE_ACT_PRESSED = "-fx-background-color: rgba(0, 90, 133, 0.25); -fx-background-radius: 3;";
+    private static final String STYLE_DRP_PRESSED = "-fx-background-color: rgba(0, 90, 133, 0.35); -fx-background-radius: 3;";
 
     public splitbutton_ui_main(String text, Node icon, Runnable primaryAction) {
-        this(text, icon, ui.framework_ui_main.RIBBON_BUTTON_WIDTH, primaryAction);
+        this(text, icon, framework_ui_main.RIBBON_BUTTON_WIDTH, false, primaryAction);
     }
 
     public splitbutton_ui_main(String text, Node icon, double width, Runnable primaryAction) {
-        this.primaryAction = primaryAction;
-        this.dropMenu = new ContextMenu();
+        this(text, icon, width, false, primaryAction);
+    }
 
-        double btnH = ui.framework_ui_main.RIBBON_BUTTON_HEIGHT;
+    public splitbutton_ui_main(String text, Node icon, double width, boolean arrowOnSide, Runnable primaryAction) {
+        this.primaryAction = primaryAction;
+        double btnH = framework_ui_main.RIBBON_BUTTON_HEIGHT;
 
         setPrefWidth(width);
         setMinWidth(width - 4);
@@ -56,85 +49,85 @@ public class splitbutton_ui_main extends VBox {
         setAlignment(Pos.CENTER);
         setStyle(STYLE_BASE);
 
-        // TOP HALF: Action Icon + Text Label
-        topHalf = new VBox(1);
-        topHalf.setAlignment(Pos.CENTER);
-        topHalf.setPrefHeight(btnH * 0.72);
-        topHalf.setMinHeight(btnH * 0.68);
-        topHalf.setPadding(new Insets(2, 1, 1, 1));
+        Node arrow = ribbonicons_ui_main.createArrowDown(5.0, Color.web("#52606D"));
 
-        Label textLabel = new Label(text);
-        textLabel.setStyle("-fx-font-size: " + ui.framework_ui_main.RIBBON_LABEL_FONT_SIZE + "px; -fx-text-fill: " + ui.framework_ui_main.TEXT_MAIN_COLOR + ";");
-        topHalf.getChildren().addAll(icon, textLabel);
+        if (!arrowOnSide) {
+            // Classic vertical bottom split
+            VBox topHalf = new VBox(1, icon, createLabel(text));
+            topHalf.setAlignment(Pos.CENTER);
+            topHalf.setPrefHeight(btnH * 0.72);
+            topHalf.setPadding(new Insets(2, 1, 1, 1));
+            bindAction(topHalf, () -> { if (this.primaryAction != null) this.primaryAction.run(); }, STYLE_ACT_HOVER, STYLE_ACT_PRESSED);
 
-        setupTopHalfInteractions();
+            HBox botHalf = new HBox(arrow);
+            botHalf.setAlignment(Pos.CENTER);
+            botHalf.setPrefHeight(btnH * 0.28);
+            bindDrop(botHalf, STYLE_DRP_HOVER, STYLE_DRP_PRESSED);
 
-        // BOTTOM HALF: Centered Dropdown Arrow Only
-        bottomHalf = new HBox();
-        bottomHalf.setAlignment(Pos.CENTER);
-        bottomHalf.setPrefHeight(btnH * 0.28);
-        bottomHalf.setMinHeight(btnH * 0.25);
-        bottomHalf.setPadding(new Insets(0, 2, 2, 2));
+            VBox column = new VBox(topHalf, botHalf);
+            column.setAlignment(Pos.CENTER);
+            column.setPrefWidth(width);
+            getChildren().add(column);
+        } else {
+            // Modern horizontal side-arrow split
+            VBox actionBox = new VBox(1, icon, createLabel(text));
+            actionBox.setAlignment(Pos.CENTER);
+            actionBox.setPrefWidth(width - 15);
+            actionBox.setPrefHeight(btnH);
+            actionBox.setPadding(new Insets(2, 2, 2, 2));
+            bindAction(actionBox, () -> { if (this.primaryAction != null) this.primaryAction.run(); }, STYLE_ACT_HOVER, STYLE_ACT_PRESSED);
 
-        Node arrow = ribbonicons_ui_main.createArrowDown(5.5, Color.web("#52606D"));
-        bottomHalf.getChildren().add(arrow);
+            VBox arrowBox = new VBox(arrow);
+            arrowBox.setAlignment(Pos.CENTER);
+            arrowBox.setPrefWidth(15);
+            arrowBox.setPrefHeight(btnH);
+            bindDrop(arrowBox, STYLE_DRP_HOVER, STYLE_DRP_PRESSED);
 
-        setupBottomHalfInteractions();
-
-        getChildren().addAll(topHalf, bottomHalf);
+            getChildren().addAll(actionBox, arrowBox);
+        }
     }
 
-    public void addMenuItem(String title, Runnable action) {
-        addMenuItem(title, null, action);
+    private Label createLabel(String text) {
+        Label lbl = new Label(text);
+        lbl.setStyle("-fx-font-size: " + framework_ui_main.RIBBON_LABEL_FONT_SIZE + "px; -fx-text-fill: " + framework_ui_main.TEXT_MAIN_COLOR + ";");
+        return lbl;
     }
 
-    public void addMenuItem(String title, Node graphic, Runnable action) {
-        MenuItem item = graphic != null ? new MenuItem(title, graphic) : new MenuItem(title);
-        item.setOnAction(e -> {
-            if (action != null) action.run();
-        });
-        dropMenu.getItems().add(item);
-    }
-
-    public void setPrimaryAction(Runnable primaryAction) {
-        this.primaryAction = primaryAction;
-    }
-
-    public void setDropAction(Runnable dropAction) {
-        this.dropAction = dropAction;
-    }
-
-    public ContextMenu getDropMenu() {
-        return dropMenu;
-    }
-
-    private void setupTopHalfInteractions() {
-        topHalf.setOnMouseEntered(e -> topHalf.setStyle(STYLE_TOP_HOVER));
-        topHalf.setOnMouseExited(e -> topHalf.setStyle(STYLE_BASE));
-        topHalf.setOnMousePressed(e -> topHalf.setStyle(STYLE_TOP_PRESSED));
-        topHalf.setOnMouseReleased(e -> {
-            topHalf.setStyle(topHalf.isHover() ? STYLE_TOP_HOVER : STYLE_BASE);
-            if (topHalf.isHover() && primaryAction != null) {
-                primaryAction.run();
-            }
+    private void bindAction(Node node, Runnable act, String hoverStyle, String pressedStyle) {
+        node.setOnMouseEntered(e -> node.setStyle(hoverStyle));
+        node.setOnMouseExited(e -> node.setStyle(STYLE_BASE));
+        node.setOnMousePressed(e -> node.setStyle(pressedStyle));
+        node.setOnMouseReleased(e -> {
+            node.setStyle(node.isHover() ? hoverStyle : STYLE_BASE);
+            if (node.isHover() && act != null) act.run();
         });
     }
 
-    private void setupBottomHalfInteractions() {
-        bottomHalf.setOnMouseEntered(e -> bottomHalf.setStyle(STYLE_BOT_HOVER));
-        bottomHalf.setOnMouseExited(e -> bottomHalf.setStyle(STYLE_BASE));
-        bottomHalf.setOnMousePressed(e -> {
-            bottomHalf.setStyle(STYLE_BOT_PRESSED);
+    private void bindDrop(Node node, String hoverStyle, String pressedStyle) {
+        node.setOnMouseEntered(e -> node.setStyle(hoverStyle));
+        node.setOnMouseExited(e -> node.setStyle(STYLE_BASE));
+        node.setOnMousePressed(e -> {
+            node.setStyle(pressedStyle);
             if (dropAction != null) {
                 dropAction.run();
             } else if (!dropMenu.isShowing() && !dropMenu.getItems().isEmpty()) {
-                dropMenu.show(bottomHalf, Side.BOTTOM, 0, 0);
+                dropMenu.show(node, Side.BOTTOM, 0, 0);
             } else {
                 dropMenu.hide();
             }
         });
-        bottomHalf.setOnMouseReleased(e -> {
-            bottomHalf.setStyle(bottomHalf.isHover() ? STYLE_BOT_HOVER : STYLE_BASE);
-        });
+        node.setOnMouseReleased(e -> node.setStyle(node.isHover() ? hoverStyle : STYLE_BASE));
     }
+
+    public void addMenuItem(String title, Runnable action) { addMenuItem(title, null, action); }
+
+    public void addMenuItem(String title, Node graphic, Runnable action) {
+        MenuItem item = graphic != null ? new MenuItem(title, graphic) : new MenuItem(title);
+        item.setOnAction(e -> { if (action != null) action.run(); });
+        dropMenu.getItems().add(item);
+    }
+
+    public void setPrimaryAction(Runnable primaryAction) { this.primaryAction = primaryAction; }
+    public void setDropAction(Runnable dropAction) { this.dropAction = dropAction; }
+    public ContextMenu getDropMenu() { return dropMenu; }
 }

@@ -144,6 +144,10 @@ public class shapedrafting_ui_main {
             case RECTANGLE -> shapegeometry_ui_main.createRectangle(p1, p2, isPreview);
             case EQUILATERAL_TRIANGLE -> shapegeometry_ui_main.createEquilateralTriangle(p1, p2, isPreview);
             case RIGHT_TRIANGLE -> shapegeometry_ui_main.createRightTriangle(p1, p2, isPreview);
+            case CUBE -> shapegeometry3d_ui_main.createCube(p1, p2, isPreview);
+            case CYLINDER -> shapegeometry3d_ui_main.createCylinder(p1, p2, isPreview);
+            case SPHERE -> shapegeometry3d_ui_main.createSphere(p1, p2, isPreview);
+            case CONE -> shapegeometry3d_ui_main.createCone(p1, p2, isPreview);
             default -> null;
         };
     }
@@ -156,6 +160,10 @@ public class shapedrafting_ui_main {
             case RECTANGLE -> String.format("Rectangle  |  W: %.1f mm  |  H: %.1f mm", dx, dz);
             case EQUILATERAL_TRIANGLE -> String.format("Equilateral Triangle  |  Side: %.1f mm", dist);
             case RIGHT_TRIANGLE -> String.format("Right Triangle  |  Base: %.1f mm  |  Height: %.1f mm", dx, dz);
+            case CUBE -> String.format("Cube (3D)  |  Side: %.1f mm", Math.max(dx, dz));
+            case CYLINDER -> String.format("Cylinder (3D)  |  Radius: %.1f mm  |  Height: %.1f mm", dist, dist * 2);
+            case SPHERE -> String.format("Sphere (3D)  |  Radius: %.1f mm  |  Dia: %.1f mm", dist, dist * 2);
+            case CONE -> String.format("Cone (3D)  |  Radius: %.1f mm  |  Height: %.1f mm", dist, dist * 2);
             default -> "";
         };
     }
