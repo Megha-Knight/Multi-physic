@@ -2,6 +2,7 @@ package ui.workspace;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
+import javafx.scene.SubScene;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
@@ -25,11 +26,12 @@ public class shapeeditor_ui_main {
     private final Group container;
     private Consumer<String> statusCallback;
 
-    public shapeeditor_ui_main(Group container, Pane viewport, cameracontroller_ui_main camCtrl,
+    public shapeeditor_ui_main(Group container, Pane viewport, SubScene subScene,
+                               cameracontroller_ui_main camCtrl,
                                Function<MouseEvent, Point3D> raycaster, Label hudLabel,
                                BooleanSupplier isDrawingActive) {
         this.container = container;
-        new shapeeventhandler_ui_main(this, viewport, camCtrl, raycaster, hudLabel, isDrawingActive);
+        new shapeeventhandler_ui_main(this, viewport, subScene, camCtrl, raycaster, hudLabel, isDrawingActive);
     }
 
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; }

@@ -74,12 +74,12 @@ public class shapeitem_ui_main {
             list.add(p1); list.add(new Point3D(p2.getX(), 0, p2.getZ()));
         } else if (type == basicshapes_ui_main.CYLINDER) {
             double h = Math.max(6.0, r * 2.0);
-            list.add(p1); list.add(new Point3D(p2.getX(), 0, p2.getZ())); list.add(new Point3D(p1.getX(), -h, p1.getZ()));
+            list.add(new Point3D(p2.getX(), 0, p2.getZ())); list.add(new Point3D(p1.getX(), -h, p1.getZ()));
         } else if (type == basicshapes_ui_main.SPHERE) {
-            list.add(p1); list.add(new Point3D(p2.getX(), -r, p2.getZ())); list.add(new Point3D(p1.getX(), -2.0 * r, p1.getZ()));
+            list.add(new Point3D(p2.getX(), -r, p2.getZ())); list.add(new Point3D(p1.getX(), -2.0 * r, p1.getZ()));
         } else if (type == basicshapes_ui_main.CONE) {
             double h = Math.max(6.0, r * 2.0);
-            list.add(p1); list.add(new Point3D(p2.getX(), 0, p2.getZ())); list.add(new Point3D(p1.getX(), -h, p1.getZ()));
+            list.add(new Point3D(p2.getX(), 0, p2.getZ())); list.add(new Point3D(p1.getX(), -h, p1.getZ()));
         } else if (type == basicshapes_ui_main.SQUARE || type == basicshapes_ui_main.CUBE) {
             double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ()));
             double x1 = p1.getX() + (p2.getX() >= p1.getX() ? s : -s), z1 = p1.getZ() + (p2.getZ() >= p1.getZ() ? s : -s);
@@ -97,10 +97,10 @@ public class shapeitem_ui_main {
     }
 
     public void moveHandle(int index, Point3D newPos) {
-        if (index == 0 && (type == basicshapes_ui_main.CIRCLE || type.is3D())) {
-            translate(newPos.getX() - p1.getX(), newPos.getZ() - p1.getZ());
-        } else if (type == basicshapes_ui_main.CIRCLE || type == basicshapes_ui_main.CYLINDER ||
-                   type == basicshapes_ui_main.SPHERE || type == basicshapes_ui_main.CONE) {
+        if (type == basicshapes_ui_main.CIRCLE) {
+            if (index == 0) translate(newPos.getX() - p1.getX(), newPos.getZ() - p1.getZ());
+            else if (index == 1) p2 = new Point3D(newPos.getX(), 0, newPos.getZ());
+        } else if (type == basicshapes_ui_main.CYLINDER || type == basicshapes_ui_main.CONE || type == basicshapes_ui_main.SPHERE) {
             p2 = new Point3D(newPos.getX(), 0, newPos.getZ());
         } else if (type == basicshapes_ui_main.SQUARE || type == basicshapes_ui_main.RECTANGLE || type == basicshapes_ui_main.CUBE) {
             if (index == 0) p1 = new Point3D(newPos.getX(), 0, newPos.getZ());
@@ -125,7 +125,7 @@ public class shapeitem_ui_main {
     public boolean containsNode(Node node) {
         Node cur = node;
         while (cur != null) {
-            if (cur == rootGroup) return true;
+            if (cur == shapeGroup) return true;
             cur = cur.getParent();
         }
         return false;
@@ -151,6 +151,13 @@ public class shapeitem_ui_main {
             type == basicshapes_ui_main.SPHERE || type == basicshapes_ui_main.CONE) {
             double r = p1.distance(p2), d = p1.distance(groundPt);
             return Math.abs(d - r) <= threshold || d <= r;
+        }
+        if (type == basicshapes_ui_main.SQUARE || type == basicshapes_ui_main.CUBE) {
+            double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ(), s = Math.max(Math.abs(dx), Math.abs(dz));
+            double x1 = p1.getX() + (dx >= 0 ? s : -s), z1 = p1.getZ() + (dz >= 0 ? s : -s);
+            double minX = Math.min(p1.getX(), x1) - threshold, maxX = Math.max(p1.getX(), x1) + threshold;
+            double minZ = Math.min(p1.getZ(), z1) - threshold, maxZ = Math.max(p1.getZ(), z1) + threshold;
+            return groundPt.getX() >= minX && groundPt.getX() <= maxX && groundPt.getZ() >= minZ && groundPt.getZ() <= maxZ;
         }
         double minX = Math.min(p1.getX(), p2.getX()) - threshold, maxX = Math.max(p1.getX(), p2.getX()) + threshold;
         double minZ = Math.min(p1.getZ(), p2.getZ()) - threshold, maxZ = Math.max(p1.getZ(), p2.getZ()) + threshold;

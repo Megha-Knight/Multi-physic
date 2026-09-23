@@ -3,6 +3,7 @@ package ui.workspace;
 import javafx.geometry.Point3D;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
+import javafx.scene.SubScene;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -23,6 +24,7 @@ public class shapeeventhandler_ui_main {
 
     private final shapeeditor_ui_main editor;
     private final Pane viewport;
+    private final SubScene subScene;
     private final cameracontroller_ui_main cameraController;
     private final Function<MouseEvent, Point3D> groundRaycaster;
     private final Label hudLabel;
@@ -32,26 +34,35 @@ public class shapeeventhandler_ui_main {
     private int activeHandleIdx = -1;
     private Point3D lastHit = null;
 
-    public shapeeventhandler_ui_main(shapeeditor_ui_main editor, Pane viewport,
+    public shapeeventhandler_ui_main(shapeeditor_ui_main editor, Pane viewport, SubScene subScene,
                                      cameracontroller_ui_main camCtrl,
                                      Function<MouseEvent, Point3D> raycaster,
                                      Label hudLabel, BooleanSupplier isDrawingActive) {
         this.editor = editor;
         this.viewport = viewport;
+        this.subScene = subScene;
         this.cameraController = camCtrl;
         this.groundRaycaster = raycaster;
         this.hudLabel = hudLabel;
         this.isDrawingActive = isDrawingActive;
         viewport.setFocusTraversable(true);
+        if (subScene != null) subScene.setFocusTraversable(true);
         attach();
     }
 
     private void attach() {
-        viewport.addEventFilter(MouseEvent.MOUSE_MOVED, this::handleMoved);
-        viewport.addEventFilter(MouseEvent.MOUSE_PRESSED, this::handlePressed);
-        viewport.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::handleDragged);
-        viewport.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleReleased);
+        Node target = (subScene != null) ? subScene : viewport;
+        target.addEventFilter(MouseEvent.MOUSE_MOVED, this::handleMoved);
+        target.addEventFilter(MouseEvent.MOUSE_PRESSED, this::handlePressed);
+        target.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::handleDragged);
+        target.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleReleased);
+        target.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
         viewport.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
+    }
+
+    private void setCursor(Cursor c) {
+        if (subScene != null) subScene.setCursor(c);
+        viewport.setCursor(c);
     }
 
     private void handleMoved(MouseEvent e) {
@@ -61,20 +72,21 @@ public class shapeeventhandler_ui_main {
         shapeitem_ui_main sel = editor.getSelectedShape();
         Point3D gHit = groundRaycaster.apply(e);
 
-        if (sel != null && (sel.findHandleByNode(hitNode) >= 0 || (gHit != null && sel.findHandleNear(gHit, 5.0) >= 0))) {
-            viewport.setCursor(Cursor.CROSSHAIR);
+        if (sel != null && (sel.findHandleByNode(hitNode) >= 0 || (hitNode == null && gHit != null && sel.findHandleNear(gHit, 5.0) >= 0))) {
+            setCursor(Cursor.CROSSHAIR);
             return;
         }
         if (editor.findShapeByNode(hitNode) != null || (gHit != null && editor.findShapeNear(gHit, 4.0) != null)) {
-            viewport.setCursor(Cursor.MOVE);
+            setCursor(Cursor.MOVE);
             return;
         }
-        viewport.setCursor(Cursor.DEFAULT);
+        setCursor(Cursor.DEFAULT);
     }
 
     private void handlePressed(MouseEvent e) {
         if (isDrawingActive != null && isDrawingActive.getAsBoolean()) return;
         viewport.requestFocus();
+        if (subScene != null) subScene.requestFocus();
         if (e.getButton() != MouseButton.PRIMARY) return;
         Point3D hit = groundRaycaster.apply(e);
         Node hitNode = (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null;
@@ -82,7 +94,7 @@ public class shapeeventhandler_ui_main {
         shapeitem_ui_main sel = editor.getSelectedShape();
         if (sel != null) {
             int hIdx = sel.findHandleByNode(hitNode);
-            if (hIdx < 0 && hit != null) hIdx = sel.findHandleNear(hit, 5.5);
+            if (hIdx < 0 && hitNode == null && hit != null) hIdx = sel.findHandleNear(hit, 5.5);
             if (hIdx >= 0) {
                 editor.recordSnapshot();
                 mode = EditMode.RESHAPE_HANDLE;
