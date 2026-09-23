@@ -2,6 +2,7 @@ package ui.workspace;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -14,7 +15,7 @@ import java.util.function.Function;
 
 /**
  * shapeeventhandler_ui_main.java
- * Mouse and keyboard event controller for interactive CAD shape editing.
+ * Mouse and keyboard event controller for interactive 2D and 3D CAD shape editing.
  */
 public class shapeeventhandler_ui_main {
 
@@ -56,12 +57,19 @@ public class shapeeventhandler_ui_main {
     private void handleMoved(MouseEvent e) {
         if (isDrawingActive != null && isDrawingActive.getAsBoolean()) return;
         if (mode != EditMode.IDLE) return;
-        Point3D hit = groundRaycaster.apply(e);
-        if (hit == null) { viewport.setCursor(Cursor.DEFAULT); return; }
+        Node hitNode = (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null;
         shapeitem_ui_main sel = editor.getSelectedShape();
-        if (sel != null && sel.findHandleNear(hit, 5.0) >= 0) viewport.setCursor(Cursor.CROSSHAIR);
-        else if (editor.findShapeNear(hit, 4.0) != null) viewport.setCursor(Cursor.MOVE);
-        else viewport.setCursor(Cursor.DEFAULT);
+        Point3D gHit = groundRaycaster.apply(e);
+
+        if (sel != null && (sel.findHandleByNode(hitNode) >= 0 || (gHit != null && sel.findHandleNear(gHit, 5.0) >= 0))) {
+            viewport.setCursor(Cursor.CROSSHAIR);
+            return;
+        }
+        if (editor.findShapeByNode(hitNode) != null || (gHit != null && editor.findShapeNear(gHit, 4.0) != null)) {
+            viewport.setCursor(Cursor.MOVE);
+            return;
+        }
+        viewport.setCursor(Cursor.DEFAULT);
     }
 
     private void handlePressed(MouseEvent e) {
@@ -69,11 +77,12 @@ public class shapeeventhandler_ui_main {
         viewport.requestFocus();
         if (e.getButton() != MouseButton.PRIMARY) return;
         Point3D hit = groundRaycaster.apply(e);
-        if (hit == null) return;
+        Node hitNode = (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null;
 
         shapeitem_ui_main sel = editor.getSelectedShape();
         if (sel != null) {
-            int hIdx = sel.findHandleNear(hit, 5.5);
+            int hIdx = sel.findHandleByNode(hitNode);
+            if (hIdx < 0 && hit != null) hIdx = sel.findHandleNear(hit, 5.5);
             if (hIdx >= 0) {
                 editor.recordSnapshot();
                 mode = EditMode.RESHAPE_HANDLE;
@@ -84,12 +93,14 @@ public class shapeeventhandler_ui_main {
             }
         }
 
-        shapeitem_ui_main hitShape = editor.findShapeNear(hit, 4.5);
+        shapeitem_ui_main hitShape = editor.findShapeByNode(hitNode);
+        if (hitShape == null && hit != null) hitShape = editor.findShapeNear(hit, 4.5);
+
         if (hitShape != null) {
             editor.recordSnapshot();
             editor.selectShape(hitShape);
             mode = EditMode.MOVE_SHAPE;
-            lastHit = hit;
+            lastHit = (hit != null) ? hit : new Point3D(e.getX(), 0, e.getY());
             cameraController.setEnabled(false);
             e.consume();
         } else if (sel != null) {

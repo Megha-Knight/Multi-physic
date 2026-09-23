@@ -130,4 +130,12 @@ public class shapeeditor_ui_main {
         }
         return null;
     }
+
+    public shapeitem_ui_main findShapeByNode(javafx.scene.Node node) {
+        if (node == null) return null;
+        for (int i = shapes.size() - 1; i >= 0; i--) {
+            if (shapes.get(i).containsNode(node)) return shapes.get(i);
+        }
+        return null;
+    }
 }
