@@ -2,14 +2,15 @@ package ui.workspace;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
-import javafx.scene.SubScene;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.BiFunction;
 
 /**
  * shapeeditor_ui_main.java
@@ -24,12 +25,11 @@ public class shapeeditor_ui_main {
     private final Group container;
     private Consumer<String> statusCallback;
 
-    public shapeeditor_ui_main(Group container, Pane viewport, SubScene subScene,
-                               cameracontroller_ui_main camCtrl,
-                               shapedrafting_ui_main drafter, Label hudLabel,
+    public shapeeditor_ui_main(Group container, Pane viewport, cameracontroller_ui_main camCtrl,
+                               BiFunction<MouseEvent, Double, Point3D> raycaster, Label hudLabel,
                                BooleanSupplier isDrawingActive) {
         this.container = container;
-        new shapeeventhandler_ui_main(this, viewport, subScene, camCtrl, drafter, hudLabel, isDrawingActive);
+        new shapeeventhandler_ui_main(this, viewport, camCtrl, raycaster, hudLabel, isDrawingActive);
     }
 
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; }
@@ -121,21 +121,6 @@ public class shapeeditor_ui_main {
                 statusCallback.accept(selectedShape.getType().getLabel() + " selected. Drag to move, handles to reshape.");
             }
         }
-    }
-
-    public shapeitem_ui_main findShape(Point3D origin, Point3D dir, Point3D groundPt) {
-        if (selectedShape != null && selectedShape.hitsShape(origin, dir, groundPt)) return selectedShape;
-        for (int i = shapes.size() - 1; i >= 0; i--) {
-            if (shapes.get(i).hitsShape(origin, dir, groundPt)) return shapes.get(i);
-        }
-        return null;
-    }
-
-    public int findHandle(shapeitem_ui_main sel, Point3D origin, Point3D dir, Point3D groundPt) {
-        if (sel == null) return -1;
-        int idx = sel.findHandleNearRay(origin, dir, 6.0);
-        if (idx == -1 && groundPt != null) idx = sel.findHandleNear(groundPt, 6.0);
-        return idx;
     }
 
     public shapeitem_ui_main findShapeNear(Point3D pt, double threshold) {

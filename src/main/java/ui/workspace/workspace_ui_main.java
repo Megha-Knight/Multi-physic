@@ -106,8 +106,8 @@ public class workspace_ui_main extends StackPane {
         viewCube.setOnSnapView(controller::setOrientation);
 
         drafter = new shapedrafting_ui_main(this, camera, controller, hudDimLabel);
-        shapeEditor = new shapeeditor_ui_main(drafter.getShapesGroup(), this, subScene, controller,
-            drafter, hudDimLabel, () -> drafter.getActiveShape().isDrawing());
+        shapeEditor = new shapeeditor_ui_main(drafter.getShapesGroup(), this, controller,
+            (e, planeY) -> drafter.screenToPlane(e.getX(), e.getY(), planeY), hudDimLabel, () -> drafter.getActiveShape().isDrawing());
         drafter.setEditor(shapeEditor);
         root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup());
 

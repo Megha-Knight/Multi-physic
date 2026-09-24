@@ -1,9 +1,8 @@
 package ui.workspace;
 
-import javafx.geometry.Point2D;
 import javafx.geometry.Point3D;
 import javafx.scene.Cursor;
-import javafx.scene.SubScene;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -12,10 +11,11 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 
 import java.util.function.BooleanSupplier;
+import java.util.function.BiFunction;
 
 /**
  * shapeeventhandler_ui_main.java
- * Mouse and keyboard event controller for interactive 2D and 3D CAD shape editing and translation.
+ * Mouse and keyboard event controller for interactive 2D and 3D CAD shape editing.
  */
 public class shapeeventhandler_ui_main {
 
@@ -23,29 +23,27 @@ public class shapeeventhandler_ui_main {
 
     private final shapeeditor_ui_main editor;
     private final Pane viewport;
-    private final SubScene subScene;
     private final cameracontroller_ui_main cameraController;
-    private final shapedrafting_ui_main drafter;
+    private final BiFunction<MouseEvent, Double, Point3D> raycaster;
     private final Label hudLabel;
     private final BooleanSupplier isDrawingActive;
 
     private EditMode mode = EditMode.IDLE;
     private int activeHandleIdx = -1;
     private Point3D lastHit = null;
+    private double dragPlaneY = 0.0;
 
-    public shapeeventhandler_ui_main(shapeeditor_ui_main editor, Pane viewport, SubScene subScene,
+    public shapeeventhandler_ui_main(shapeeditor_ui_main editor, Pane viewport,
                                      cameracontroller_ui_main camCtrl,
-                                     shapedrafting_ui_main drafter,
+                                     BiFunction<MouseEvent, Double, Point3D> raycaster,
                                      Label hudLabel, BooleanSupplier isDrawingActive) {
         this.editor = editor;
         this.viewport = viewport;
-        this.subScene = subScene;
         this.cameraController = camCtrl;
-        this.drafter = drafter;
+        this.raycaster = raycaster;
         this.hudLabel = hudLabel;
         this.isDrawingActive = isDrawingActive;
         viewport.setFocusTraversable(true);
-        if (subScene != null) subScene.setFocusTraversable(true);
         attach();
     }
 
@@ -55,71 +53,58 @@ public class shapeeventhandler_ui_main {
         viewport.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::handleDragged);
         viewport.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleReleased);
         viewport.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
-        if (subScene != null) subScene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
-    }
-
-    private void setCursor(Cursor c) {
-        if (subScene != null) subScene.setCursor(c);
-        viewport.setCursor(c);
-    }
-
-    private Point2D getViewportCoords(MouseEvent e) {
-        return viewport.sceneToLocal(e.getSceneX(), e.getSceneY());
     }
 
     private void handleMoved(MouseEvent e) {
         if (isDrawingActive != null && isDrawingActive.getAsBoolean()) return;
         if (mode != EditMode.IDLE) return;
-
-        Point2D loc = getViewportCoords(e);
-        double sx = loc.getX(), sy = loc.getY();
-        Point3D groundHit = drafter.screenToGround(sx, sy);
-        Point3D[] ray = drafter.screenToRay(sx, sy);
-        Point3D o = (ray != null) ? ray[0] : null, d = (ray != null) ? ray[1] : null;
-
+        Node hitNode = (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null;
         shapeitem_ui_main sel = editor.getSelectedShape();
-        if (sel != null && editor.findHandle(sel, o, d, groundHit) >= 0) {
-            setCursor(Cursor.CROSSHAIR);
+        Point3D gHit = raycaster.apply(e, 0.0);
+
+        if (sel != null && (sel.findHandleByNode(hitNode) >= 0 || (gHit != null && sel.findHandleNear(gHit, 5.0) >= 0))) {
+            viewport.setCursor(Cursor.CROSSHAIR);
             return;
         }
-        if (editor.findShape(o, d, groundHit) != null) {
-            setCursor(Cursor.MOVE);
+        if (editor.findShapeByNode(hitNode) != null || (gHit != null && editor.findShapeNear(gHit, 4.0) != null)) {
+            viewport.setCursor(Cursor.MOVE);
             return;
         }
-        setCursor(Cursor.DEFAULT);
+        viewport.setCursor(Cursor.DEFAULT);
     }
 
     private void handlePressed(MouseEvent e) {
         if (isDrawingActive != null && isDrawingActive.getAsBoolean()) return;
         viewport.requestFocus();
-        if (subScene != null) subScene.requestFocus();
         if (e.getButton() != MouseButton.PRIMARY) return;
-
-        Point2D loc = getViewportCoords(e);
-        double sx = loc.getX(), sy = loc.getY();
-        Point3D groundHit = drafter.screenToGround(sx, sy);
-        Point3D[] ray = drafter.screenToRay(sx, sy);
-        Point3D o = (ray != null) ? ray[0] : null, d = (ray != null) ? ray[1] : null;
+        Point3D hit = raycaster.apply(e, 0.0);
+        Node hitNode = (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null;
 
         shapeitem_ui_main sel = editor.getSelectedShape();
         if (sel != null) {
-            int hIdx = editor.findHandle(sel, o, d, groundHit);
+            int hIdx = sel.findHandleByNode(hitNode);
+            if (hIdx < 0 && hit != null) hIdx = sel.findHandleNear(hit, 5.5);
             if (hIdx >= 0) {
                 editor.recordSnapshot();
                 mode = EditMode.RESHAPE_HANDLE;
                 activeHandleIdx = hIdx;
+                dragPlaneY = 0.0;
                 cameraController.setEnabled(false);
                 e.consume();
                 return;
             }
         }
 
-        shapeitem_ui_main hitShape = editor.findShape(o, d, groundHit);
+        shapeitem_ui_main hitShape = editor.findShapeByNode(hitNode);
+        if (hitShape == null && hit != null) hitShape = editor.findShapeNear(hit, 4.5);
+
         if (hitShape != null) {
             editor.recordSnapshot();
             editor.selectShape(hitShape);
             mode = EditMode.MOVE_SHAPE;
-            lastHit = (groundHit != null) ? groundHit : new Point3D(sx, 0, sy);
+            dragPlaneY = resolveGrabPlaneY(e, hitNode);
+            Point3D grabHit = raycaster.apply(e, dragPlaneY);
+            lastHit = (grabHit != null) ? grabHit : hit;
             cameraController.setEnabled(false);
             e.consume();
         } else if (sel != null) {
@@ -128,36 +113,35 @@ public class shapeeventhandler_ui_main {
         }
     }
 
+    /** World-space Y of the actual 3D point clicked, or 0 (ground) if there's no precise pick. */
+    private double resolveGrabPlaneY(MouseEvent e, Node hitNode) {
+        if (hitNode == null || e.getPickResult() == null) return 0.0;
+        Point3D localPt = e.getPickResult().getIntersectedPoint();
+        if (localPt == null) return 0.0;
+        return hitNode.localToScene(localPt).getY();
+    }
+
     private void handleDragged(MouseEvent e) {
         if (mode == EditMode.IDLE || editor.getSelectedShape() == null) return;
-        Point2D loc = getViewportCoords(e);
-        Point3D groundHit = drafter.screenToGround(loc.getX(), loc.getY());
-        if (groundHit == null) return;
-
+        Point3D hit = raycaster.apply(e, dragPlaneY);
+        if (hit == null) return;
         shapeitem_ui_main sel = editor.getSelectedShape();
         if (mode == EditMode.RESHAPE_HANDLE) {
-            sel.moveHandle(activeHandleIdx, groundHit);
+            sel.moveHandle(activeHandleIdx, hit);
             hudLabel.setText(sel.formatDimensions());
             hudLabel.setVisible(true);
-            e.consume();
         } else if (mode == EditMode.MOVE_SHAPE && lastHit != null) {
-            double dx = groundHit.getX() - lastHit.getX(), dz = groundHit.getZ() - lastHit.getZ();
-            if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
-                sel.translate(dx, dz);
-                lastHit = groundHit;
-                hudLabel.setText(String.format("Moved %s | X: %.1f mm, Z: %.1f mm",
-                        sel.getType().getLabel(), groundHit.getX(), groundHit.getZ()));
-                hudLabel.setVisible(true);
-            }
-            e.consume();
+            sel.translate(hit.getX() - lastHit.getX(), hit.getZ() - lastHit.getZ());
+            lastHit = hit;
+            hudLabel.setText(String.format("Position: X=%.1f, Z=%.1f", hit.getX(), hit.getZ()));
+            hudLabel.setVisible(true);
         }
+        e.consume();
     }
 
     private void handleReleased(MouseEvent e) {
         if (mode != EditMode.IDLE) {
             mode = EditMode.IDLE;
-            activeHandleIdx = -1;
-            lastHit = null;
             cameraController.setEnabled(true);
             hudLabel.setVisible(false);
             e.consume();

@@ -168,12 +168,31 @@ public class shapedrafting_ui_main {
         };
     }
 
-    public Point3D[] screenToRay(double sx, double sy) {
-        return meshhelper_ui_main.screenToRay(camera, viewportPane.getWidth(), viewportPane.getHeight(), sx, sy);
+    /** Ground footprint (Y = 0), used for drafting/creating shapes. */
+    public Point3D screenToGround(double sx, double sy) {
+        return screenToPlane(sx, sy, 0);
     }
 
-    public Point3D screenToGround(double sx, double sy) {
-        return meshhelper_ui_main.screenToGround(camera, viewportPane.getWidth(), viewportPane.getHeight(), sx, sy);
+    /** Ray/horizontal-plane intersection at any Y, so moving an elevated 3D body can track its own height. */
+    public Point3D screenToPlane(double sx, double sy, double planeY) {
+        double w = viewportPane.getWidth(), h = viewportPane.getHeight();
+        if (w <= 0 || h <= 0) return null;
+
+        double fovRad = Math.toRadians(camera.getFieldOfView());
+        double focalLen = (h / 2.0) / Math.tan(fovRad / 2.0);
+        double dx = sx - (w / 2.0);
+        double dy = sy - (h / 2.0);
+
+        Point3D camOrigin = camera.localToScene(new Point3D(0, 0, 0));
+        Point3D rayPtCam  = camera.localToScene(new Point3D(dx / focalLen, dy / focalLen, 1.0));
+        Point3D rayDir    = rayPtCam.subtract(camOrigin).normalize();
+
+        if (Math.abs(rayDir.getY()) < 1e-4) return null;
+        double s = (planeY - camOrigin.getY()) / rayDir.getY();
+        if (s <= 0) return null;
+
+        Point3D hit = camOrigin.add(rayDir.multiply(s));
+        return new Point3D(hit.getX(), planeY, hit.getZ());
     }
 
     public basicshapes_ui_main getActiveShape() { return activeShape; }
