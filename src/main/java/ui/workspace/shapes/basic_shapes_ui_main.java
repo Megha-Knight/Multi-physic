@@ -1,10 +1,11 @@
-package ui.workspace;
+package ui.workspace.shapes;
 
 /**
- * basicshapes_ui_main.java
- * Shape type enumeration and state descriptor for 2D profile drafting and 3D primitives in Astra.
+ * basic_shapes_ui_main.java
+ * Shape type enumeration and state descriptor for 2D profile drafting
+ * and 3D primitives in Multiphysics.
  */
-public enum basicshapes_ui_main {
+public enum basic_shapes_ui_main {
     NONE("Select / Navigate", "Navigation mode (orbit & pan enabled)"),
     CIRCLE("Circle", "Click center point, drag for radius, click to place"),
     SQUARE("Square", "Click corner point, drag for side length, click to place"),
@@ -19,7 +20,7 @@ public enum basicshapes_ui_main {
     private final String label;
     private final String instruction;
 
-    basicshapes_ui_main(String label, String instruction) {
+    basic_shapes_ui_main(String label, String instruction) {
         this.label = label;
         this.instruction = instruction;
     }
@@ -27,5 +28,7 @@ public enum basicshapes_ui_main {
     public String getLabel() { return label; }
     public String getInstruction() { return instruction; }
     public boolean isDrawing() { return this != NONE; }
-    public boolean is3D() { return this == CUBE || this == CYLINDER || this == SPHERE || this == CONE; }
+    public boolean is3D() {
+        return this == CUBE || this == CYLINDER || this == SPHERE || this == CONE;
+    }
 }

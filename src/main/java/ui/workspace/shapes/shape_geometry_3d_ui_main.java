@@ -1,4 +1,4 @@
-package ui.workspace;
+package ui.workspace.shapes;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
@@ -11,12 +11,12 @@ import javafx.scene.shape.Sphere;
 import ui.framework_ui_main;
 
 /**
- * shapegeometry3d_ui_main.java
+ * shape_geometry_3d_ui_main.java
  * High-precision 3D CAD primitive geometry generator for Cube, Cylinder, Sphere, and Cone.
  */
-public final class shapegeometry3d_ui_main {
+public final class shape_geometry_3d_ui_main {
 
-    private shapegeometry3d_ui_main() {}
+    private shape_geometry_3d_ui_main() {}
 
     public static PhongMaterial createMaterial(boolean isPreview, boolean isSelected) {
         Color c = isPreview ? Color.web(framework_ui_main.DRAFT_PREVIEW_COLOR)
@@ -44,7 +44,6 @@ public final class shapegeometry3d_ui_main {
         box.setTranslateX(cx);
         box.setTranslateY(-s * 0.5);
         box.setTranslateZ(cz);
-
         return new Group(box);
     }
 
@@ -62,7 +61,6 @@ public final class shapegeometry3d_ui_main {
         cyl.setTranslateX(center.getX());
         cyl.setTranslateY(-height * 0.5);
         cyl.setTranslateZ(center.getZ());
-
         return new Group(cyl);
     }
 
@@ -79,7 +77,6 @@ public final class shapegeometry3d_ui_main {
         sph.setTranslateX(center.getX());
         sph.setTranslateY(-r);
         sph.setTranslateZ(center.getZ());
-
         return new Group(sph);
     }
 
@@ -92,11 +89,10 @@ public final class shapegeometry3d_ui_main {
         if (r < 0.2) return new Group();
 
         double height = Math.max(6.0, r * 2.0);
-        Node cone = meshhelper_ui_main.createUpwardCone(r, height, createMaterial(isPreview, isSelected));
+        Node cone = mesh_helper_ui_main.createUpwardCone(r, height, createMaterial(isPreview, isSelected));
         cone.setTranslateX(center.getX());
         cone.setTranslateY(0);
         cone.setTranslateZ(center.getZ());
-
         return new Group(cone);
     }
 }

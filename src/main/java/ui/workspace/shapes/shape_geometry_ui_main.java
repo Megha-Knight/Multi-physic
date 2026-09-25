@@ -1,4 +1,4 @@
-package ui.workspace;
+package ui.workspace.shapes;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
@@ -14,12 +14,13 @@ import ui.framework_ui_main;
 import java.util.List;
 
 /**
- * shapegeometry_ui_main.java
- * High-precision CAD geometry generator for 2D profile drafting on the horizontal XY ground plane (Z_cad = 0).
+ * shape_geometry_ui_main.java
+ * High-precision CAD geometry generator for 2D profile drafting
+ * on the horizontal XY ground plane (Z_cad = 0).
  */
-public final class shapegeometry_ui_main {
+public final class shape_geometry_ui_main {
 
-    private shapegeometry_ui_main() {}
+    private shape_geometry_ui_main() {}
 
     public static PhongMaterial createMaterial(boolean isPreview) {
         Color c = isPreview ? Color.web(framework_ui_main.DRAFT_PREVIEW_COLOR)
@@ -40,7 +41,9 @@ public final class shapegeometry_ui_main {
         Point3D mid = p1.midpoint(p2);
         Point3D yAxis = new Point3D(0, 1, 0);
         Point3D axis = yAxis.crossProduct(diff);
-        double angle = Math.toDegrees(Math.acos(Math.max(-1.0, Math.min(1.0, yAxis.dotProduct(diff.normalize())))));
+        double angle = Math.toDegrees(Math.acos(
+            Math.max(-1.0, Math.min(1.0, yAxis.dotProduct(diff.normalize())))
+        ));
 
         cyl.getTransforms().add(new Translate(mid.getX(), mid.getY(), mid.getZ()));
         if (axis.magnitude() > 1e-4) {
@@ -78,8 +81,10 @@ public final class shapegeometry_ui_main {
         double step = 2.0 * Math.PI / sides;
         for (int i = 0; i < sides; i++) {
             double a1 = i * step, a2 = (i + 1) * step;
-            Point3D pt1 = new Point3D(center.getX() + r * Math.cos(a1), 0, center.getZ() + r * Math.sin(a1));
-            Point3D pt2 = new Point3D(center.getX() + r * Math.cos(a2), 0, center.getZ() + r * Math.sin(a2));
+            Point3D pt1 = new Point3D(center.getX() + r * Math.cos(a1), 0,
+                center.getZ() + r * Math.sin(a1));
+            Point3D pt2 = new Point3D(center.getX() + r * Math.cos(a2), 0,
+                center.getZ() + r * Math.sin(a2));
             g.getChildren().add(createSegment(pt1, pt2, mat));
         }
 
@@ -89,15 +94,12 @@ public final class shapegeometry_ui_main {
         cDot.setTranslateZ(center.getZ());
         g.getChildren().add(cDot);
 
-        if (isPreview) {
-            g.getChildren().add(createSegment(center, current, mat));
-        }
+        if (isPreview) g.getChildren().add(createSegment(center, current, mat));
         return g;
     }
 
     public static Node createSquare(Point3D start, Point3D current, boolean isPreview) {
-        double dx = current.getX() - start.getX();
-        double dz = current.getZ() - start.getZ();
+        double dx = current.getX() - start.getX(), dz = current.getZ() - start.getZ();
         double s = Math.max(Math.abs(dx), Math.abs(dz));
         if (s < 0.2) return new Group();
 
@@ -125,17 +127,14 @@ public final class shapegeometry_ui_main {
     }
 
     public static Node createEquilateralTriangle(Point3D start, Point3D current, boolean isPreview) {
-        double dx = current.getX() - start.getX();
-        double dz = current.getZ() - start.getZ();
+        double dx = current.getX() - start.getX(), dz = current.getZ() - start.getZ();
         double s = Math.sqrt(dx * dx + dz * dz);
         if (s < 0.2) return new Group();
 
-        double h = s * Math.sqrt(3.0) / 2.0; // Exact required formula
+        double h = s * Math.sqrt(3.0) / 2.0;
         double ux = dx / s, uz = dz / s;
-        double vx = -uz, vz = ux; // Perpendicular vector in ground plane
-
-        double mx = start.getX() + dx * 0.5;
-        double mz = start.getZ() + dz * 0.5;
+        double vx = -uz, vz = ux;
+        double mx = start.getX() + dx * 0.5, mz = start.getZ() + dz * 0.5;
         Point3D apex = new Point3D(mx + vx * h, 0, mz + vz * h);
 
         List<Point3D> pts = List.of(
@@ -149,16 +148,16 @@ public final class shapegeometry_ui_main {
     public static Node createRightTriangle(Point3D start, Point3D current, boolean isPreview) {
         if (start.distance(current) < 0.2) return new Group();
         Point3D p0 = new Point3D(start.getX(), 0, start.getZ());
-        Point3D p1 = new Point3D(current.getX(), 0, start.getZ()); // Base along X
-        Point3D p2 = new Point3D(start.getX(), 0, current.getZ()); // Height along Z
-
+        Point3D p1 = new Point3D(current.getX(), 0, start.getZ());
+        Point3D p2 = new Point3D(start.getX(), 0, current.getZ());
         Group g = (Group) createPolyline(List.of(p0, p1, p2), true, createMaterial(isPreview));
 
-        // 90-degree corner indicator
         double signX = Math.signum(current.getX() - start.getX());
         double signZ = Math.signum(current.getZ() - start.getZ());
         if (signX != 0 && signZ != 0) {
-            double sz = Math.min(3.0, Math.min(Math.abs(current.getX() - start.getX()), Math.abs(current.getZ() - start.getZ())) * 0.25);
+            double sz = Math.min(3.0, Math.min(
+                Math.abs(current.getX() - start.getX()),
+                Math.abs(current.getZ() - start.getZ())) * 0.25);
             if (sz > 0.4) {
                 Point3D m1 = new Point3D(start.getX() + signX * sz, 0, start.getZ());
                 Point3D m2 = new Point3D(start.getX() + signX * sz, 0, start.getZ() + signZ * sz);

@@ -6,7 +6,7 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import ui.framework_ui_main;
-import ui.workspace.cameracontroller_ui_main;
+import ui.workspace.camera.camera_controller_ui_main;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,19 +31,19 @@ public class viewshortcuts_ui_main {
     public static final KeyCombination VIEW_ORTHOGRAPHIC= new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN);
 
     private final Map<KeyCombination, Runnable> actionMap = new HashMap<>();
-    private cameracontroller_ui_main cameraController;
+    private camera_controller_ui_main cameraController;
     private Runnable onToggleOrthographic;
 
     public viewshortcuts_ui_main() {
         registerDefaults();
     }
 
-    public viewshortcuts_ui_main(cameracontroller_ui_main cameraController) {
+    public viewshortcuts_ui_main(camera_controller_ui_main cameraController) {
         this.cameraController = cameraController;
         registerDefaults();
     }
 
-    public void setCameraController(cameracontroller_ui_main cameraController) {
+    public void setCameraController(camera_controller_ui_main cameraController) {
         this.cameraController = cameraController;
     }
 

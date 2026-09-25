@@ -1,0 +1,210 @@
+package ui.workspace.drafting;
+
+import javafx.geometry.Point3D;
+import javafx.scene.Group;
+import javafx.scene.Node;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.PhongMaterial;
+import javafx.scene.shape.Sphere;
+import ui.framework_ui_main;
+import ui.workspace.shapes.basic_shapes_ui_main;
+import ui.workspace.shapes.shape_geometry_3d_ui_main;
+import ui.workspace.shapes.shape_geometry_ui_main;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * shape_item_ui_main.java
+ * Interactive 2D/3D CAD entity supporting selection, translation, and vertex/face reshaping.
+ */
+public class shape_item_ui_main {
+
+    private final basic_shapes_ui_main type;
+    private Point3D p1;
+    private Point3D p2;
+    private final Group rootGroup   = new Group();
+    private final Group shapeGroup  = new Group();
+    private final Group handlesGroup = new Group();
+    private boolean selected = false;
+
+    public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) {
+        this.type = type;
+        this.p1 = p1;
+        this.p2 = p2;
+        rootGroup.getChildren().addAll(shapeGroup, handlesGroup);
+        rebuild();
+    }
+
+    public void rebuild() {
+        shapeGroup.getChildren().clear();
+        handlesGroup.getChildren().clear();
+
+        Node geo = switch (type) {
+            case CIRCLE    -> shape_geometry_ui_main.createCircle(p1, p2, false);
+            case SQUARE    -> shape_geometry_ui_main.createSquare(p1, p2, false);
+            case RECTANGLE -> shape_geometry_ui_main.createRectangle(p1, p2, false);
+            case EQUILATERAL_TRIANGLE -> shape_geometry_ui_main.createEquilateralTriangle(p1, p2, false);
+            case RIGHT_TRIANGLE -> shape_geometry_ui_main.createRightTriangle(p1, p2, false);
+            case CUBE      -> shape_geometry_3d_ui_main.createCube(p1, p2, false, selected);
+            case CYLINDER  -> shape_geometry_3d_ui_main.createCylinder(p1, p2, false, selected);
+            case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, false, selected);
+            case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, false, selected);
+            default -> null;
+        };
+        if (geo != null) shapeGroup.getChildren().add(geo);
+
+        if (selected) {
+            PhongMaterial hMat = new PhongMaterial(Color.web(framework_ui_main.DRAFT_HANDLE_COLOR));
+            List<Point3D> handles = getControlHandles();
+            for (int i = 0; i < handles.size(); i++) {
+                Point3D h = handles.get(i);
+                double rad = (i == 0) ? framework_ui_main.DRAFT_HANDLE_RADIUS * 1.4
+                                      : framework_ui_main.DRAFT_HANDLE_RADIUS * 1.1;
+                Sphere sphere = new Sphere(rad);
+                sphere.setMaterial(hMat);
+                sphere.setTranslateX(h.getX());
+                sphere.setTranslateY(h.getY());
+                sphere.setTranslateZ(h.getZ());
+                handlesGroup.getChildren().add(sphere);
+            }
+        }
+    }
+
+    public List<Point3D> getControlHandles() {
+        List<Point3D> list = new ArrayList<>();
+        double r = p1.distance(p2);
+        if (type == basic_shapes_ui_main.CIRCLE) {
+            list.add(p1); list.add(new Point3D(p2.getX(), 0, p2.getZ()));
+        } else if (type == basic_shapes_ui_main.CYLINDER) {
+            double h = Math.max(6.0, r * 2.0);
+            list.add(p1); list.add(new Point3D(p2.getX(), 0, p2.getZ()));
+            list.add(new Point3D(p1.getX(), -h, p1.getZ()));
+        } else if (type == basic_shapes_ui_main.SPHERE) {
+            list.add(p1); list.add(new Point3D(p2.getX(), -r, p2.getZ()));
+            list.add(new Point3D(p1.getX(), -2.0 * r, p1.getZ()));
+        } else if (type == basic_shapes_ui_main.CONE) {
+            double h = Math.max(6.0, r * 2.0);
+            list.add(p1); list.add(new Point3D(p2.getX(), 0, p2.getZ()));
+            list.add(new Point3D(p1.getX(), -h, p1.getZ()));
+        } else if (type == basic_shapes_ui_main.SQUARE || type == basic_shapes_ui_main.CUBE) {
+            double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ()));
+            double x1 = p1.getX() + (p2.getX() >= p1.getX() ? s : -s);
+            double z1 = p1.getZ() + (p2.getZ() >= p1.getZ() ? s : -s);
+            list.add(p1); list.add(new Point3D(x1, 0, p1.getZ()));
+            list.add(new Point3D(x1, 0, z1)); list.add(new Point3D(p1.getX(), 0, z1));
+            if (type == basic_shapes_ui_main.CUBE)
+                list.add(new Point3D((p1.getX() + x1) * 0.5, -s, (p1.getZ() + z1) * 0.5));
+        } else if (type == basic_shapes_ui_main.RECTANGLE) {
+            list.add(p1); list.add(new Point3D(p2.getX(), 0, p1.getZ()));
+            list.add(p2); list.add(new Point3D(p1.getX(), 0, p2.getZ()));
+        } else if (type == basic_shapes_ui_main.EQUILATERAL_TRIANGLE) {
+            double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ();
+            double s = Math.sqrt(dx * dx + dz * dz), h = s * Math.sqrt(3.0) / 2.0;
+            list.add(p1); list.add(p2);
+            list.add(new Point3D(p1.getX() + dx * 0.5 - (dz / s) * h, 0,
+                p1.getZ() + dz * 0.5 + (dx / s) * h));
+        } else if (type == basic_shapes_ui_main.RIGHT_TRIANGLE) {
+            list.add(p1); list.add(new Point3D(p2.getX(), 0, p1.getZ()));
+            list.add(new Point3D(p1.getX(), 0, p2.getZ()));
+        }
+        return list;
+    }
+
+    public void moveHandle(int index, Point3D newPos) {
+        if (index == 0 && (type == basic_shapes_ui_main.CIRCLE || type.is3D())) {
+            translate(newPos.getX() - p1.getX(), newPos.getZ() - p1.getZ());
+        } else if (type == basic_shapes_ui_main.CIRCLE || type == basic_shapes_ui_main.CYLINDER
+                || type == basic_shapes_ui_main.SPHERE || type == basic_shapes_ui_main.CONE) {
+            p2 = new Point3D(newPos.getX(), 0, newPos.getZ());
+        } else if (type == basic_shapes_ui_main.SQUARE || type == basic_shapes_ui_main.RECTANGLE
+                || type == basic_shapes_ui_main.CUBE) {
+            if (index == 0) p1 = new Point3D(newPos.getX(), 0, newPos.getZ());
+            else if (index == 2) p2 = new Point3D(newPos.getX(), 0, newPos.getZ());
+            else if (index == 1) {
+                p2 = new Point3D(newPos.getX(), 0, p2.getZ());
+                p1 = new Point3D(p1.getX(), 0, newPos.getZ());
+            } else if (index == 3) {
+                p1 = new Point3D(newPos.getX(), 0, p1.getZ());
+                p2 = new Point3D(p2.getX(), 0, newPos.getZ());
+            } else if (index == 4 && type == basic_shapes_ui_main.CUBE) {
+                p2 = new Point3D(newPos.getX(), 0, newPos.getZ());
+            }
+        } else if (type == basic_shapes_ui_main.RIGHT_TRIANGLE
+                || type == basic_shapes_ui_main.EQUILATERAL_TRIANGLE) {
+            if (index == 0) p1 = new Point3D(newPos.getX(), 0, newPos.getZ());
+            else if (index == 1) p2 = new Point3D(newPos.getX(), 0, newPos.getZ());
+            else if (index == 2 && type == basic_shapes_ui_main.RIGHT_TRIANGLE)
+                p2 = new Point3D(p2.getX(), 0, newPos.getZ());
+        }
+        rebuild();
+    }
+
+    public void translate(double dx, double dz) {
+        p1 = new Point3D(p1.getX() + dx, p1.getY(), p1.getZ() + dz);
+        p2 = new Point3D(p2.getX() + dx, p2.getY(), p2.getZ() + dz);
+        rebuild();
+    }
+
+    public boolean containsNode(Node node) {
+        Node cur = node;
+        while (cur != null) {
+            if (cur == rootGroup) return true;
+            cur = cur.getParent();
+        }
+        return false;
+    }
+
+    public int findHandleByNode(Node node) {
+        if (node == null) return -1;
+        return handlesGroup.getChildren().indexOf(node);
+    }
+
+    public int findHandleNear(Point3D groundPt, double threshold) {
+        List<Point3D> handles = getControlHandles();
+        for (int i = 0; i < handles.size(); i++) {
+            Point3D h = handles.get(i);
+            Point3D groundH = new Point3D(h.getX(), 0, h.getZ());
+            if (groundH.distance(groundPt) <= threshold) return i;
+        }
+        return -1;
+    }
+
+    public boolean isNear(Point3D groundPt, double threshold) {
+        if (type == basic_shapes_ui_main.CIRCLE || type == basic_shapes_ui_main.CYLINDER
+                || type == basic_shapes_ui_main.SPHERE || type == basic_shapes_ui_main.CONE) {
+            double r = p1.distance(p2), d = p1.distance(groundPt);
+            return Math.abs(d - r) <= threshold || d <= r;
+        }
+        double minX = Math.min(p1.getX(), p2.getX()) - threshold;
+        double maxX = Math.max(p1.getX(), p2.getX()) + threshold;
+        double minZ = Math.min(p1.getZ(), p2.getZ()) - threshold;
+        double maxZ = Math.max(p1.getZ(), p2.getZ()) + threshold;
+        return groundPt.getX() >= minX && groundPt.getX() <= maxX
+            && groundPt.getZ() >= minZ && groundPt.getZ() <= maxZ;
+    }
+
+    public String formatDimensions() {
+        double dist = p1.distance(p2);
+        double dx = Math.abs(p2.getX() - p1.getX()), dz = Math.abs(p2.getZ() - p1.getZ());
+        return switch (type) {
+            case CIRCLE    -> String.format("Circle  |  Radius: %.1f mm  |  Dia: %.1f mm", dist, dist * 2);
+            case SQUARE    -> String.format("Square  |  Side: %.1f mm", Math.max(dx, dz));
+            case RECTANGLE -> String.format("Rectangle  |  W: %.1f mm  |  H: %.1f mm", dx, dz);
+            case EQUILATERAL_TRIANGLE -> String.format("Equilateral Triangle  |  Side: %.1f mm", dist);
+            case RIGHT_TRIANGLE -> String.format("Right Triangle  |  Base: %.1f mm  |  Height: %.1f mm", dx, dz);
+            case CUBE      -> String.format("Cube (3D)  |  Side: %.1f mm", Math.max(dx, dz));
+            case CYLINDER  -> String.format("Cylinder (3D)  |  Radius: %.1f mm  |  Height: %.1f mm", dist, dist * 2);
+            case SPHERE    -> String.format("Sphere (3D)  |  Radius: %.1f mm  |  Dia: %.1f mm", dist, dist * 2);
+            case CONE      -> String.format("Cone (3D)  |  Radius: %.1f mm  |  Height: %.1f mm", dist, dist * 2);
+            default -> "";
+        };
+    }
+
+    public Group getRootGroup()        { return rootGroup; }
+    public basic_shapes_ui_main getType() { return type; }
+    public Point3D getP1()             { return p1; }
+    public Point3D getP2()             { return p2; }
+    public boolean isSelected()        { return selected; }
+    public void setSelected(boolean sel) { this.selected = sel; rebuild(); }
+}

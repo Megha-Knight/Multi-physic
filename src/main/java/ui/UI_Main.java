@@ -11,10 +11,10 @@ import ui.shortcuts.shortcuts_ui_main;
 import ui.shortcuts.space_bar_ui_main;
 import ui.shortcuts.viewshortcuts_ui_main;
 import ui.toolbar.tools_ui_main;
-import ui.workspace.documentserializer_ui_main;
-import ui.workspace.filetab_ui_main;
-import ui.workspace.shapeeditor_ui_main;
-import ui.workspace.shapeitem_ui_main;
+import ui.workspace.document.document_serializer_ui_main;
+import ui.workspace.document.file_tab_ui_main;
+import ui.workspace.drafting.shape_editor_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.workspace_ui_main;
 
 import java.io.File;
@@ -24,8 +24,8 @@ import java.util.List;
 
 /**
  * UI_Main.java
- * Governing view for Astra (Multi-Physics).
- * Coordinates Documents/Astra workspace, 3D drafting, breadcrumb, and navigation.
+ * Governing view for Multiphysics.
+ * Coordinates Documents/Multiphysics workspace, 3D drafting, breadcrumb, and navigation.
  */
 public class UI_Main extends BorderPane {
 
@@ -35,7 +35,7 @@ public class UI_Main extends BorderPane {
     private final navigation_ui_main navigationBar;
     private final footer_ui_main footerBar;
     private final workspace_ui_main workspace3D;
-    private final filetab_ui_main documentTabBar;
+    private final file_tab_ui_main documentTabBar;
     private final documenthandler_ui_main docHandler;
 
     private final shortcuts_ui_main shortcuts;
@@ -51,7 +51,7 @@ public class UI_Main extends BorderPane {
         tabToolbar = new tools_ui_main();
         ribbonBar = new ribbon_ui_main();
         breadcrumbBar = new breadcrumb_ui_main();
-        documentTabBar = new filetab_ui_main();
+        documentTabBar = new file_tab_ui_main();
         footerBar = new footer_ui_main();
         workspace3D = new workspace_ui_main();
 
@@ -109,7 +109,7 @@ public class UI_Main extends BorderPane {
 
     private void setupDocumentSync() {
         boolean[] syncLock = {false};
-        final filetab_ui_main.TabItem[] activeTabRef = {null};
+        final file_tab_ui_main.TabItem[] activeTabRef = {null};
 
         docHandler.setOnFileChanged(() -> navigationBar.getFileExplorer().refresh());
         documentTabBar.setOnNewRequested(docHandler::onNewFile);
@@ -124,9 +124,9 @@ public class UI_Main extends BorderPane {
             }
             activeTabRef[0] = t;
             @SuppressWarnings("unchecked")
-            List<shapeitem_ui_main> shapes = (List<shapeitem_ui_main>) t.getUserData();
+            List<shape_item_ui_main> shapes = (List<shape_item_ui_main>) t.getUserData();
             if (shapes == null && t.getFile() != null && t.getFile().exists()) {
-                shapes = documentserializer_ui_main.loadFromFile(t.getFile());
+                shapes = document_serializer_ui_main.loadFromFile(t.getFile());
                 t.setUserData(shapes);
             }
             workspace3D.getShapeEditor().loadShapes(shapes != null ? shapes : Collections.emptyList());
@@ -170,7 +170,7 @@ public class UI_Main extends BorderPane {
     }
 
     private void initShortcuts() {
-        shapeeditor_ui_main editor = workspace3D.getShapeEditor();
+        shape_editor_ui_main editor = workspace3D.getShapeEditor();
         shortcuts.register(shortcuts_ui_main.NEW_FILE, docHandler::onNewFile);
         shortcuts.register(shortcuts_ui_main.OPEN_FILE, docHandler::onOpenFile);
         shortcuts.register(shortcuts_ui_main.SAVE_FILE, docHandler::onSaveFile);
@@ -191,7 +191,7 @@ public class UI_Main extends BorderPane {
     public navigation_ui_main getNavigationBar()       { return navigationBar; }
     public footer_ui_main getFooterBar()               { return footerBar; }
     public workspace_ui_main getWorkspace3D()          { return workspace3D; }
-    public filetab_ui_main getDocumentTabBar()         { return documentTabBar; }
+    public file_tab_ui_main getDocumentTabBar()         { return documentTabBar; }
     public shortcuts_ui_main getShortcuts()            { return shortcuts; }
     public space_bar_ui_main getSpaceBarShortcut()     { return spaceBarShortcut; }
     public viewshortcuts_ui_main getViewShortcuts()    { return viewShortcuts; }

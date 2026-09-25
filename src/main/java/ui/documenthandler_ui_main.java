@@ -4,9 +4,9 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import ui.breadcrumbbar.breadcrumb_ui_main;
 import ui.footerbar.footer_ui_main;
-import ui.workspace.documentserializer_ui_main;
-import ui.workspace.filetab_ui_main;
-import ui.workspace.shapeitem_ui_main;
+import ui.workspace.document.document_serializer_ui_main;
+import ui.workspace.document.file_tab_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.workspace_ui_main;
 
 import java.io.File;
@@ -17,18 +17,18 @@ import java.util.function.Supplier;
 /**
  * documenthandler_ui_main.java
  * Handles document creation, opening, saving (.nd), and path synchronization.
- * Roots new and saved documents inside Documents/Astra.
+ * Roots new and saved documents inside Documents/Multiphysics.
  */
 public class documenthandler_ui_main {
 
-    private final filetab_ui_main documentTabBar;
+    private final file_tab_ui_main documentTabBar;
     private final footer_ui_main footerBar;
     private final breadcrumb_ui_main breadcrumbBar;
     private final workspace_ui_main workspace;
     private final Supplier<Window> windowSupplier;
     private Runnable onFileChanged;
 
-    public documenthandler_ui_main(filetab_ui_main tabBar, footer_ui_main footer,
+    public documenthandler_ui_main(file_tab_ui_main tabBar, footer_ui_main footer,
                                    breadcrumb_ui_main breadcrumb, workspace_ui_main workspace,
                                    Supplier<Window> winSupplier) {
         this.documentTabBar = tabBar;
@@ -50,14 +50,14 @@ public class documenthandler_ui_main {
             name = "untitled_" + count + ".nd";
             File candidate = new File(astraDir, name);
             boolean open = false;
-            for (filetab_ui_main.TabItem t : documentTabBar.getTabs()) {
+            for (file_tab_ui_main.TabItem t : documentTabBar.getTabs()) {
                 if (name.equalsIgnoreCase(t.getName())) { open = true; break; }
             }
             if (!candidate.exists() && !open) break;
             count++;
         }
 
-        filetab_ui_main.TabItem tab = documentTabBar.addTab(name, null, true);
+        file_tab_ui_main.TabItem tab = documentTabBar.addTab(name, null, true);
         tab.setUserData(Collections.emptyList());
         workspace.getShapeEditor().loadShapes(Collections.emptyList());
         workspace.getShapeEditor().clearHistory();
@@ -96,14 +96,14 @@ public class documenthandler_ui_main {
 
     public void openFile(File f) {
         if (f == null || !f.exists()) return;
-        for (filetab_ui_main.TabItem t : documentTabBar.getTabs()) {
+        for (file_tab_ui_main.TabItem t : documentTabBar.getTabs()) {
             if (t.getFile() != null && t.getFile().getAbsolutePath().equalsIgnoreCase(f.getAbsolutePath())) {
                 documentTabBar.selectTab(t);
                 return;
             }
         }
-        List<shapeitem_ui_main> shapes = documentserializer_ui_main.loadFromFile(f);
-        filetab_ui_main.TabItem tab = documentTabBar.addTab(f.getName(), f, true);
+        List<shape_item_ui_main> shapes = document_serializer_ui_main.loadFromFile(f);
+        file_tab_ui_main.TabItem tab = documentTabBar.addTab(f.getName(), f, true);
         tab.setUserData(shapes);
         workspace.getShapeEditor().loadShapes(shapes);
         workspace.getShapeEditor().clearHistory();
@@ -119,9 +119,9 @@ public class documenthandler_ui_main {
         File astraDir = framework_ui_main.astraDirectory();
         ch.setInitialDirectory(astraDir.exists() ? astraDir : new File(System.getProperty("user.home")));
         ch.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("All Supported Files", "*.*", "*.nd", "*.astra", "*.nc", "*.step", "*.stl"),
-            new FileChooser.ExtensionFilter("Neural Dynamics (*.nd)", "*.nd"),
-            new FileChooser.ExtensionFilter("Legacy Astra (*.nc)", "*.nc")
+            new FileChooser.ExtensionFilter("All Supported Files", "*.*", "*.nd", "*.nc", "*.step", "*.stl"),
+            new FileChooser.ExtensionFilter("Multiphysics Document (*.nd)", "*.nd"),
+            new FileChooser.ExtensionFilter("Legacy Document (*.nc)", "*.nc")
         );
         File f = ch.showOpenDialog(windowSupplier.get());
         if (f != null) {

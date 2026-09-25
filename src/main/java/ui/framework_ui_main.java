@@ -123,15 +123,15 @@ public final class framework_ui_main {
         java.io.File userHome = new java.io.File(System.getProperty("user.home"));
         java.io.File docs = new java.io.File(userHome, "Documents");
         java.io.File base = (docs.exists() || docs.mkdir()) ? docs : userHome;
-        java.io.File astra = new java.io.File(base, "Astra");
-        if (!astra.exists()) {
-            boolean ok = astra.mkdirs();
-            if (!ok && !astra.exists()) {
-                System.err.println("[Astra] Warning: Failed to create " + astra.getAbsolutePath());
+        java.io.File appDir = new java.io.File(base, "Multiphysics");
+        if (!appDir.exists()) {
+            boolean ok = appDir.mkdirs();
+            if (!ok && !appDir.exists()) {
+                System.err.println("[Multiphysics] Warning: Failed to create " + appDir.getAbsolutePath());
                 return base;
             }
         }
-        return astra;
+        return appDir;
     }
 
     // =========================================================================

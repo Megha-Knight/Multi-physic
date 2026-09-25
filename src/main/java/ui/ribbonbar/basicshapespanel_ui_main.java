@@ -13,7 +13,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import ui.framework_ui_main;
-import ui.workspace.basicshapes_ui_main;
+import ui.workspace.shapes.basic_shapes_ui_main;
 
 import java.io.InputStream;
 import java.util.function.Consumer;
@@ -29,7 +29,7 @@ public class basicshapespanel_ui_main extends HBox {
     private final Button btnCat3D = new Button("Basic3D");
     private final HBox pane2D;
     private final HBox pane3D;
-    private Consumer<basicshapes_ui_main> onShapeSelected;
+    private Consumer<basic_shapes_ui_main> onShapeSelected;
 
     public basicshapespanel_ui_main() {
         setAlignment(Pos.CENTER_LEFT);
@@ -75,7 +75,7 @@ public class basicshapespanel_ui_main extends HBox {
     }
 
     public void setAnchorNode(Node node) { /* kept for API compatibility */ }
-    public void setOnShapeSelected(Consumer<basicshapes_ui_main> cb) { this.onShapeSelected = cb; }
+    public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
     public void show() { setVisible(true); setManaged(true); }
     public void hide() { setVisible(false); setManaged(false); }
     public void toggle() { if (isVisible()) hide(); else show(); }
@@ -105,24 +105,24 @@ public class basicshapespanel_ui_main extends HBox {
 
     private HBox build2DShapesPane() {
         return new HBox(4,
-            createShapeItem("Circle", "/icons/circle.png", basicshapes_ui_main.CIRCLE),
-            createShapeItem("Square", "/icons/square.png", basicshapes_ui_main.SQUARE),
-            createShapeItem("Rectangle", "/icons/rectangle.png", basicshapes_ui_main.RECTANGLE),
-            createShapeItem("Equilateral", "/icons/triangle_equilateral.png", basicshapes_ui_main.EQUILATERAL_TRIANGLE),
-            createShapeItem("Right Angle", "/icons/triangle_right.png", basicshapes_ui_main.RIGHT_TRIANGLE)
+            createShapeItem("Circle", "/icons/circle.png", basic_shapes_ui_main.CIRCLE),
+            createShapeItem("Square", "/icons/square.png", basic_shapes_ui_main.SQUARE),
+            createShapeItem("Rectangle", "/icons/rectangle.png", basic_shapes_ui_main.RECTANGLE),
+            createShapeItem("Equilateral", "/icons/triangle_equilateral.png", basic_shapes_ui_main.EQUILATERAL_TRIANGLE),
+            createShapeItem("Right Angle", "/icons/triangle_right.png", basic_shapes_ui_main.RIGHT_TRIANGLE)
         );
     }
 
     private HBox build3DShapesPane() {
         return new HBox(4,
-            createShapeItem("Cube", "/icons/cube_3d.png", basicshapes_ui_main.CUBE),
-            createShapeItem("Cylinder", "/icons/cylinder_3d.png", basicshapes_ui_main.CYLINDER),
-            createShapeItem("Sphere", "/icons/sphere_3d.png", basicshapes_ui_main.SPHERE),
-            createShapeItem("Cone", "/icons/cone_3d.png", basicshapes_ui_main.CONE)
+            createShapeItem("Cube", "/icons/cube_3d.png", basic_shapes_ui_main.CUBE),
+            createShapeItem("Cylinder", "/icons/cylinder_3d.png", basic_shapes_ui_main.CYLINDER),
+            createShapeItem("Sphere", "/icons/sphere_3d.png", basic_shapes_ui_main.SPHERE),
+            createShapeItem("Cone", "/icons/cone_3d.png", basic_shapes_ui_main.CONE)
         );
     }
 
-    private Button createShapeItem(String label, String iconPath, basicshapes_ui_main shape) {
+    private Button createShapeItem(String label, String iconPath, basic_shapes_ui_main shape) {
         Button b = new Button();
         b.setPrefWidth(54); b.setPrefHeight(40);
         VBox vb = new VBox(1);

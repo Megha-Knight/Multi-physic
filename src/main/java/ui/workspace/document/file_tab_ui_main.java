@@ -1,4 +1,4 @@
-package ui.workspace;
+package ui.workspace.document;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -17,17 +17,18 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * filetab_ui_main.java
+ * file_tab_ui_main.java
  * Document tabs bar situated below the breadcrumb bar in the workspace.
  * Displays active .nd files with close (✕) buttons and a (+) button for new files.
  */
-public class filetab_ui_main extends HBox {
+public class file_tab_ui_main extends HBox {
 
     public static class TabItem {
         private String name;
         private File file;
         private HBox node;
         private Label nameLabel;
+        private Object userData;
 
         public TabItem(String name, File file) {
             this.name = name;
@@ -41,7 +42,6 @@ public class filetab_ui_main extends HBox {
         }
         public File getFile() { return file; }
         public void setFile(File file) { this.file = file; }
-        private Object userData;
         public Object getUserData() { return userData; }
         public void setUserData(Object userData) { this.userData = userData; }
     }
@@ -55,18 +55,18 @@ public class filetab_ui_main extends HBox {
     private Consumer<TabItem> onTabClosed;
     private Runnable onNewRequested;
 
-    public filetab_ui_main() {
+    public file_tab_ui_main() {
         setAlignment(Pos.CENTER_LEFT);
         setPrefHeight(framework_ui_main.FILE_TAB_HEIGHT);
         setMinHeight(framework_ui_main.FILE_TAB_HEIGHT);
         setMaxHeight(framework_ui_main.FILE_TAB_HEIGHT);
         setPadding(new Insets(0, 8, 0, 8));
         setSpacing(4);
-        setStyle("-fx-background-color: " + framework_ui_main.FILE_TAB_BG +
-                "; -fx-border-color: " + framework_ui_main.FILE_TAB_BORDER + "; -fx-border-width: 0 0 1 0;");
+        setStyle("-fx-background-color: " + framework_ui_main.FILE_TAB_BG
+            + "; -fx-border-color: " + framework_ui_main.FILE_TAB_BORDER
+            + "; -fx-border-width: 0 0 1 0;");
 
         fileIcon = loadIcon("/icons/file_code.png");
-
         tabsContainer = new HBox(2);
         tabsContainer.setAlignment(Pos.BOTTOM_LEFT);
 
@@ -74,14 +74,17 @@ public class filetab_ui_main extends HBox {
         newBtn.setPrefSize(20, 20);
         newBtn.setMinSize(20, 20);
         newBtn.setMaxSize(20, 20);
-        newBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 13px; -fx-font-weight: bold; " +
-                "-fx-text-fill: #475569; -fx-padding: 0; -fx-cursor: hand; -fx-background-radius: 3;");
-        newBtn.setOnMouseEntered(e -> newBtn.setStyle("-fx-background-color: #E2E8F0; -fx-font-size: 13px; " +
-                "-fx-font-weight: bold; -fx-text-fill: #005A85; -fx-padding: 0; -fx-cursor: hand; -fx-background-radius: 3;"));
-        newBtn.setOnMouseExited(e -> newBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 13px; " +
-                "-fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 0; -fx-cursor: hand; -fx-background-radius: 3;"));
+        newBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 13px; -fx-font-weight: bold; "
+            + "-fx-text-fill: #475569; -fx-padding: 0; -fx-cursor: hand; -fx-background-radius: 3;");
+        newBtn.setOnMouseEntered(e -> newBtn.setStyle("-fx-background-color: #E2E8F0; -fx-font-size: 13px; "
+            + "-fx-font-weight: bold; -fx-text-fill: #005A85; -fx-padding: 0; -fx-cursor: hand; "
+            + "-fx-background-radius: 3;"));
+        newBtn.setOnMouseExited(e -> newBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 13px; "
+            + "-fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 0; -fx-cursor: hand; "
+            + "-fx-background-radius: 3;"));
         newBtn.setOnAction(e -> { if (onNewRequested != null) onNewRequested.run(); });
 
+        HBox.setHgrow(tabsContainer, Priority.ALWAYS);
         getChildren().addAll(tabsContainer, newBtn);
     }
 
@@ -104,12 +107,12 @@ public class filetab_ui_main extends HBox {
         item.nameLabel = nameLbl;
 
         Button closeBtn = new Button("✕");
-        closeBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 9px; -fx-text-fill: #94A3B8; " +
-                "-fx-padding: 0 2 0 2; -fx-cursor: hand; -fx-background-radius: 2;");
-        closeBtn.setOnMouseEntered(e -> closeBtn.setStyle("-fx-background-color: #EF4444; -fx-font-size: 9px; " +
-                "-fx-text-fill: #FFFFFF; -fx-padding: 0 2 0 2; -fx-cursor: hand; -fx-background-radius: 2;"));
-        closeBtn.setOnMouseExited(e -> closeBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 9px; " +
-                "-fx-text-fill: #94A3B8; -fx-padding: 0 2 0 2; -fx-cursor: hand; -fx-background-radius: 2;"));
+        closeBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 9px; -fx-text-fill: #94A3B8; "
+            + "-fx-padding: 0 2 0 2; -fx-cursor: hand; -fx-background-radius: 2;");
+        closeBtn.setOnMouseEntered(e -> closeBtn.setStyle("-fx-background-color: #EF4444; -fx-font-size: 9px; "
+            + "-fx-text-fill: #FFFFFF; -fx-padding: 0 2 0 2; -fx-cursor: hand; -fx-background-radius: 2;"));
+        closeBtn.setOnMouseExited(e -> closeBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 9px; "
+            + "-fx-text-fill: #94A3B8; -fx-padding: 0 2 0 2; -fx-cursor: hand; -fx-background-radius: 2;"));
         closeBtn.setOnAction(e -> closeTab(item));
 
         tabNode.getChildren().addAll(nameLbl, closeBtn);
@@ -135,16 +138,12 @@ public class filetab_ui_main extends HBox {
         if (item == null) return;
         int idx = tabs.indexOf(item);
         if (idx < 0) return;
-
         tabs.remove(item);
         tabsContainer.getChildren().remove(item.node);
-
         if (onTabClosed != null) onTabClosed.accept(item);
-
         if (activeTab == item) {
             if (!tabs.isEmpty()) {
-                int nextIdx = Math.min(idx, tabs.size() - 1);
-                selectTab(tabs.get(nextIdx));
+                selectTab(tabs.get(Math.min(idx, tabs.size() - 1)));
             } else {
                 activeTab = null;
                 if (onNewRequested != null) onNewRequested.run();
@@ -163,13 +162,16 @@ public class filetab_ui_main extends HBox {
         for (TabItem t : tabs) {
             boolean isActive = (t == activeTab);
             if (isActive) {
-                t.node.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #005A85 #CBD5E1 transparent #CBD5E1; " +
-                        "-fx-border-width: 2 1 0 1; -fx-border-radius: 3 3 0 0; -fx-background-radius: 3 3 0 0;");
-                if (t.nameLabel != null) t.nameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #005A85;");
+                t.node.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #005A85 #CBD5E1 transparent #CBD5E1; "
+                    + "-fx-border-width: 2 1 0 1; -fx-border-radius: 3 3 0 0; -fx-background-radius: 3 3 0 0;");
+                if (t.nameLabel != null)
+                    t.nameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #005A85;");
             } else {
-                t.node.setStyle("-fx-background-color: #E2E8F0; -fx-border-color: #CBD5E1; " +
-                        "-fx-border-width: 0 1 1 0; -fx-border-radius: 2 2 0 0; -fx-background-radius: 2 2 0 0; -fx-cursor: hand;");
-                if (t.nameLabel != null) t.nameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #475569;");
+                t.node.setStyle("-fx-background-color: #E2E8F0; -fx-border-color: #CBD5E1; "
+                    + "-fx-border-width: 0 1 1 0; -fx-border-radius: 2 2 0 0; -fx-background-radius: 2 2 0 0; "
+                    + "-fx-cursor: hand;");
+                if (t.nameLabel != null)
+                    t.nameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #475569;");
             }
         }
     }
@@ -185,6 +187,6 @@ public class filetab_ui_main extends HBox {
     public List<TabItem> getTabs() { return tabs; }
 
     public void setOnTabSelected(Consumer<TabItem> onTabSelected) { this.onTabSelected = onTabSelected; }
-    public void setOnTabClosed(Consumer<TabItem> onTabClosed) { this.onTabClosed = onTabClosed; }
-    public void setOnNewRequested(Runnable onNewRequested) { this.onNewRequested = onNewRequested; }
+    public void setOnTabClosed(Consumer<TabItem> onTabClosed)     { this.onTabClosed = onTabClosed; }
+    public void setOnNewRequested(Runnable onNewRequested)         { this.onNewRequested = onNewRequested; }
 }

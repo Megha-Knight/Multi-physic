@@ -14,7 +14,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import ui.framework_ui_main;
-import ui.workspace.basicshapes_ui_main;
+import ui.workspace.shapes.basic_shapes_ui_main;
 
 import java.io.InputStream;
 import java.util.function.Consumer;
@@ -36,8 +36,8 @@ public class ribbon_ui_main extends HBox {
     private final MenuItem menuSaveRoot = new MenuItem("Save Root");
     private final MenuItem menuSaveIn   = new MenuItem("Save In...");
 
-    private Consumer<basicshapes_ui_main> onShapeSelected;
-    private basicshapes_ui_main currentShape = basicshapes_ui_main.CIRCLE;
+    private Consumer<basic_shapes_ui_main> onShapeSelected;
+    private basic_shapes_ui_main currentShape = basic_shapes_ui_main.CIRCLE;
 
     public ribbon_ui_main() {
         setPadding(new Insets(2, 8, 2, 8));
@@ -127,7 +127,7 @@ public class ribbon_ui_main extends HBox {
     public splitbutton_ui_main getBasicShapesButton()     { return basicShapesButton; }
     public basicshapespanel_ui_main getShapesPanel()       { return shapesPanel; }
 
-    public void setOnShapeSelected(Consumer<basicshapes_ui_main> cb) { this.onShapeSelected = cb; }
+    public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
 
     public void setOnSave(Runnable r) {
         saveButton.setPrimaryAction(r);

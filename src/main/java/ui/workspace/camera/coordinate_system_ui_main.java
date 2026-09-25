@@ -1,4 +1,4 @@
-package ui.workspace;
+package ui.workspace.camera;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
@@ -11,11 +11,11 @@ import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 
 /**
- * coordinatesystem_ui_main.java
+ * coordinate_system_ui_main.java
  * Expansive engineering floor grid extending across all visible space,
  * with enhanced contrast for clear visibility in top-down and isometric views.
  */
-public class coordinatesystem_ui_main extends Group {
+public class coordinate_system_ui_main extends Group {
 
     public static final double AXIS_LENGTH = 55.0;
     public static final double AXIS_RADIUS = 0.35;
@@ -25,16 +25,16 @@ public class coordinatesystem_ui_main extends Group {
     private final Point3D yTipPoint   = new Point3D(0, 0, AXIS_LENGTH + 6);
     private final Point3D zTipPoint   = new Point3D(0, -(AXIS_LENGTH + 6), 0);
 
-    public coordinatesystem_ui_main() {
+    public coordinate_system_ui_main() {
         buildGroundGrid();
         buildAxes();
         buildOrigin();
     }
 
     public Point3D getOriginPoint() { return originPoint; }
-    public Point3D getXTipPoint()    { return xTipPoint; }
-    public Point3D getYTipPoint()    { return yTipPoint; }
-    public Point3D getZTipPoint()    { return zTipPoint; }
+    public Point3D getXTipPoint()   { return xTipPoint; }
+    public Point3D getYTipPoint()   { return yTipPoint; }
+    public Point3D getZTipPoint()   { return zTipPoint; }
 
     private void buildAxes() {
         PhongMaterial redMat   = new PhongMaterial(Color.web("#DC2626"));
@@ -71,13 +71,10 @@ public class coordinatesystem_ui_main extends Group {
         getChildren().add(originSphere);
     }
 
-    /**
-     * Builds expansive floor grid with calibrated contrast for top-down visibility.
-     */
+    /** Builds expansive floor grid with calibrated contrast for top-down visibility. */
     private void buildGroundGrid() {
         Group gridGroup = new Group();
 
-        // Slightly enhanced contrast materials for clear visibility from all angles
         PhongMaterial normalMat    = new PhongMaterial(Color.web("#CBD5E1"));
         PhongMaterial redAxisMat   = new PhongMaterial(Color.web("#F87171"));
         PhongMaterial greenAxisMat = new PhongMaterial(Color.web("#4ADE80"));
@@ -89,7 +86,6 @@ public class coordinatesystem_ui_main extends Group {
         for (int i = -gridLines / 2; i <= gridLines / 2; i++) {
             double pos = i * gridSpacing;
 
-            // Z Line (Depth direction)
             PhongMaterial zMat = (i == 0) ? greenAxisMat : normalMat;
             double zThick = (i == 0) ? 0.4 : 0.18;
             Box zLine = new Box(zThick, 0.05, totalSize);
@@ -97,7 +93,6 @@ public class coordinatesystem_ui_main extends Group {
             zLine.setTranslateY(0.2);
             zLine.setMaterial(zMat);
 
-            // X Line (Right direction)
             PhongMaterial xMat = (i == 0) ? redAxisMat : normalMat;
             double xThick = (i == 0) ? 0.4 : 0.18;
             Box xLine = new Box(totalSize, 0.05, xThick);

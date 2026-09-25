@@ -5,9 +5,9 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import ui.breadcrumbbar.breadcrumb_ui_main;
 import ui.footerbar.footer_ui_main;
-import ui.workspace.documentserializer_ui_main;
-import ui.workspace.filetab_ui_main;
-import ui.workspace.shapeitem_ui_main;
+import ui.workspace.document.document_serializer_ui_main;
+import ui.workspace.document.file_tab_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
 
 import java.io.File;
 import java.util.List;
@@ -21,14 +21,14 @@ public final class savecommands_ui_main {
 
     private savecommands_ui_main() {}
 
-    public static void executeSave(filetab_ui_main.TabItem active, List<shapeitem_ui_main> shapes,
+    public static void executeSave(file_tab_ui_main.TabItem active, List<shape_item_ui_main> shapes,
                                    footer_ui_main footer, Runnable onSaveAs, Runnable notifyChange) {
         if (active == null) return;
         if (active.getFile() == null) {
             if (onSaveAs != null) onSaveAs.run();
             return;
         }
-        if (documentserializer_ui_main.saveToFile(active.getFile(), shapes)) {
+        if (document_serializer_ui_main.saveToFile(active.getFile(), shapes)) {
             active.setUserData(shapes);
             footer.setStatusText("Saved: " + active.getName());
             if (notifyChange != null) notifyChange.run();
@@ -37,8 +37,8 @@ public final class savecommands_ui_main {
         }
     }
 
-    public static void executeSaveAs(filetab_ui_main.TabItem active, List<shapeitem_ui_main> shapes,
-                                     Window window, filetab_ui_main tabBar, footer_ui_main footer,
+    public static void executeSaveAs(file_tab_ui_main.TabItem active, List<shape_item_ui_main> shapes,
+                                     Window window, file_tab_ui_main tabBar, footer_ui_main footer,
                                      breadcrumb_ui_main breadcrumb, Runnable notifyChange) {
         if (active == null) return;
         FileChooser ch = new FileChooser();
@@ -47,8 +47,8 @@ public final class savecommands_ui_main {
         ch.setInitialDirectory((initialDir != null && initialDir.exists()) ? initialDir : framework_ui_main.astraDirectory());
         ch.setInitialFileName(active.getName());
 
-        FileChooser.ExtensionFilter extNd = new FileChooser.ExtensionFilter("Astra Document (*.nd)", "*.nd");
-        FileChooser.ExtensionFilter extNc = new FileChooser.ExtensionFilter("Legacy Astra (*.nc)", "*.nc");
+        FileChooser.ExtensionFilter extNd = new FileChooser.ExtensionFilter("Multiphysics Document (*.nd)", "*.nd");
+        FileChooser.ExtensionFilter extNc = new FileChooser.ExtensionFilter("Legacy Document (*.nc)", "*.nc");
         FileChooser.ExtensionFilter extStep = new FileChooser.ExtensionFilter("STEP File (*.step)", "*.step");
         FileChooser.ExtensionFilter extStp = new FileChooser.ExtensionFilter("STEP File (*.stp)", "*.stp");
         ch.getExtensionFilters().addAll(extNd, extNc, extStep, extStp);
@@ -71,7 +71,7 @@ public final class savecommands_ui_main {
             f = new File(f.getParentFile(), f.getName() + ".nd");
         }
 
-        if (documentserializer_ui_main.saveToFile(f, shapes)) {
+        if (document_serializer_ui_main.saveToFile(f, shapes)) {
             active.setUserData(shapes);
             tabBar.updateActiveTab(f.getName(), f);
             footer.setOpenedFilePath(f.getAbsolutePath());
@@ -83,8 +83,8 @@ public final class savecommands_ui_main {
         }
     }
 
-    public static void executeSaveRoot(filetab_ui_main.TabItem active, List<shapeitem_ui_main> shapes,
-                                       filetab_ui_main tabBar, footer_ui_main footer,
+    public static void executeSaveRoot(file_tab_ui_main.TabItem active, List<shape_item_ui_main> shapes,
+                                       file_tab_ui_main tabBar, footer_ui_main footer,
                                        breadcrumb_ui_main breadcrumb, Runnable notifyChange) {
         if (active == null) return;
         File astraDir = framework_ui_main.astraDirectory();
@@ -107,7 +107,7 @@ public final class savecommands_ui_main {
             }
         }
 
-        if (documentserializer_ui_main.saveToFile(target, shapes)) {
+        if (document_serializer_ui_main.saveToFile(target, shapes)) {
             active.setUserData(shapes);
             tabBar.updateActiveTab(target.getName(), target);
             footer.setOpenedFilePath(target.getAbsolutePath());
@@ -119,8 +119,8 @@ public final class savecommands_ui_main {
         }
     }
 
-    public static void executeSaveIn(filetab_ui_main.TabItem active, List<shapeitem_ui_main> shapes,
-                                     Window window, filetab_ui_main tabBar, footer_ui_main footer,
+    public static void executeSaveIn(file_tab_ui_main.TabItem active, List<shape_item_ui_main> shapes,
+                                     Window window, file_tab_ui_main tabBar, footer_ui_main footer,
                                      breadcrumb_ui_main breadcrumb, Runnable notifyChange) {
         if (active == null) return;
         DirectoryChooser dc = new DirectoryChooser();
@@ -137,7 +137,7 @@ public final class savecommands_ui_main {
         }
         File target = new File(dir, name);
 
-        if (documentserializer_ui_main.saveToFile(target, shapes)) {
+        if (document_serializer_ui_main.saveToFile(target, shapes)) {
             active.setUserData(shapes);
             tabBar.updateActiveTab(target.getName(), target);
             footer.setOpenedFilePath(target.getAbsolutePath());

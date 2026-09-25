@@ -18,20 +18,23 @@ import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 import ui.framework_ui_main;
 import ui.viewcube.viewcube_ui_main;
+import ui.workspace.camera.camera_controller_ui_main;
+import ui.workspace.camera.coordinate_system_ui_main;
+import ui.workspace.drafting.shape_drafting_ui_main;
+import ui.workspace.drafting.shape_editor_ui_main;
 
 /**
  * workspace_ui_main.java
  * Central 3D Engineering Viewport with integrated View Cube in top-right corner.
- * Supports exact Isometric, Axonometric, Perspective, and Orthographic projection modes.
+ * Supports Isometric, Axonometric, Perspective, and Orthographic projection modes.
  */
 public class workspace_ui_main extends StackPane {
 
     private final SubScene subScene;
     private final Group root3D;
-    private final coordinatesystem_ui_main coordSystem;
+    private final coordinate_system_ui_main coordSystem;
     private final PerspectiveCamera camera;
 
-    // Camera transforms with standard mathematical isometric initialization
     private final Rotate rx = new Rotate(framework_ui_main.ISO_PITCH, Rotate.X_AXIS);
     private final Rotate ry = new Rotate(framework_ui_main.ISO_YAW, Rotate.Y_AXIS);
     private final Translate t = new Translate(0, -30, -400);
@@ -39,9 +42,9 @@ public class workspace_ui_main extends StackPane {
     private final Pane labelOverlay;
     private final Label originLabel, xLabel, yLabel, zLabel, hudDimLabel;
     private final viewcube_ui_main viewCube;
-    private final cameracontroller_ui_main controller;
-    private final shapedrafting_ui_main drafter;
-    private final shapeeditor_ui_main shapeEditor;
+    private final camera_controller_ui_main controller;
+    private final shape_drafting_ui_main drafter;
+    private final shape_editor_ui_main shapeEditor;
 
     private boolean isOrthographic = false;
     private double savedDist = -400.0;
@@ -51,7 +54,7 @@ public class workspace_ui_main extends StackPane {
         setStyle("-fx-background-color: " + framework_ui_main.WORKSPACE_BG + ";");
 
         root3D = new Group();
-        coordSystem = new coordinatesystem_ui_main();
+        coordSystem = new coordinate_system_ui_main();
         root3D.getChildren().add(coordSystem);
 
         AmbientLight ambientLight = new AmbientLight(Color.web("#E2E8F0"));
@@ -71,7 +74,6 @@ public class workspace_ui_main extends StackPane {
         cameraYGroup.getTransforms().add(ry);
         cameraXGroup.getTransforms().add(rx);
         camera.getTransforms().add(t);
-
         cameraXGroup.getChildren().add(camera);
         cameraYGroup.getChildren().add(cameraXGroup);
         root3D.getChildren().add(cameraYGroup);
@@ -79,7 +81,6 @@ public class workspace_ui_main extends StackPane {
         subScene = new SubScene(root3D, 800, 600, true, SceneAntialiasing.BALANCED);
         subScene.setFill(Color.web("#F8FAFC"));
         subScene.setCamera(camera);
-
         subScene.widthProperty().bind(this.widthProperty());
         subScene.heightProperty().bind(this.heightProperty());
 
@@ -101,13 +102,17 @@ public class workspace_ui_main extends StackPane {
 
         getChildren().addAll(subScene, labelOverlay, viewCube);
 
-        controller = new cameracontroller_ui_main(rx, ry, t, this::updateLabels);
+        controller = new camera_controller_ui_main(rx, ry, t, this::updateLabels);
         controller.attach(this);
         viewCube.setOnSnapView(controller::setOrientation);
 
-        drafter = new shapedrafting_ui_main(this, camera, controller, hudDimLabel);
-        shapeEditor = new shapeeditor_ui_main(drafter.getShapesGroup(), this, controller,
-            (e, planeY) -> drafter.screenToPlane(e.getX(), e.getY(), planeY), hudDimLabel, () -> drafter.getActiveShape().isDrawing());
+        drafter = new shape_drafting_ui_main(this, camera, controller, hudDimLabel);
+        shapeEditor = new shape_editor_ui_main(
+            drafter.getShapesGroup(), this, controller,
+            e -> drafter.screenToGround(e.getX(), e.getY()),
+            hudDimLabel,
+            () -> drafter.getActiveShape().isDrawing()
+        );
         drafter.setEditor(shapeEditor);
         root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup());
 
@@ -116,9 +121,7 @@ public class workspace_ui_main extends StackPane {
         Platform.runLater(this::updateLabels);
     }
 
-    public void toggleProjection() {
-        setOrthographic(!isOrthographic);
-    }
+    public void toggleProjection() { setOrthographic(!isOrthographic); }
 
     public void setOrthographic(boolean ortho) {
         this.isOrthographic = ortho;
@@ -142,9 +145,9 @@ public class workspace_ui_main extends StackPane {
         Label lbl = new Label(text);
         String weight = bold ? "bold" : "normal";
         lbl.setStyle(String.format(
-            "-fx-text-fill: %s; -fx-font-size: %.0fpx; -fx-font-weight: %s; " +
-            "-fx-background-color: rgba(255,255,255,0.85); -fx-padding: 1 3 1 3; " +
-            "-fx-background-radius: 2; -fx-border-color: rgba(200,200,200,0.5); -fx-border-radius: 2;",
+            "-fx-text-fill: %s; -fx-font-size: %.0fpx; -fx-font-weight: %s; "
+            + "-fx-background-color: rgba(255,255,255,0.85); -fx-padding: 1 3 1 3; "
+            + "-fx-background-radius: 2; -fx-border-color: rgba(200,200,200,0.5); -fx-border-radius: 2;",
             colorHex, fontSize, weight
         ));
         return lbl;
@@ -159,7 +162,8 @@ public class workspace_ui_main extends StackPane {
         projectPointToLabel(coordSystem.getZTipPoint(), zLabel, w, h, -10, -10);
     }
 
-    private void projectPointToLabel(Point3D worldPt, Label label, double w, double h, double offX, double offY) {
+    private void projectPointToLabel(Point3D worldPt, Label label, double w, double h,
+                                     double offX, double offY) {
         Point3D scene3D = coordSystem.localToScene(worldPt);
         Point3D camPt   = camera.sceneToLocal(scene3D);
         if (camPt.getZ() > 0) {
@@ -175,9 +179,9 @@ public class workspace_ui_main extends StackPane {
         }
     }
 
-    public cameracontroller_ui_main getCameraController() { return controller; }
-    public PerspectiveCamera getCamera() { return camera; }
-    public viewcube_ui_main getViewCube() { return viewCube; }
-    public shapedrafting_ui_main getDrafter() { return drafter; }
-    public shapeeditor_ui_main getShapeEditor() { return shapeEditor; }
+    public camera_controller_ui_main getCameraController() { return controller; }
+    public PerspectiveCamera getCamera()                   { return camera; }
+    public viewcube_ui_main getViewCube()                  { return viewCube; }
+    public shape_drafting_ui_main getDrafter()             { return drafter; }
+    public shape_editor_ui_main getShapeEditor()           { return shapeEditor; }
 }

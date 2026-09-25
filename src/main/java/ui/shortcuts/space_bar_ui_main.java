@@ -4,7 +4,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.TextInputControl;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import ui.workspace.cameracontroller_ui_main;
+import ui.workspace.camera.camera_controller_ui_main;
 
 /**
  * space_bar_ui_main.java
@@ -13,17 +13,17 @@ import ui.workspace.cameracontroller_ui_main;
  */
 public class space_bar_ui_main {
 
-    private cameracontroller_ui_main cameraController;
+    private camera_controller_ui_main cameraController;
     private Runnable customResetAction;
 
     public space_bar_ui_main() {
     }
 
-    public space_bar_ui_main(cameracontroller_ui_main cameraController) {
+    public space_bar_ui_main(camera_controller_ui_main cameraController) {
         this.cameraController = cameraController;
     }
 
-    public void setCameraController(cameracontroller_ui_main cameraController) {
+    public void setCameraController(camera_controller_ui_main cameraController) {
         this.cameraController = cameraController;
     }
 
