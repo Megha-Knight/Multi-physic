@@ -171,8 +171,10 @@ public class shape_drafting_ui_main {
         double dx = sx - (w / 2.0);
         double dy = sy - (h / 2.0);
 
-        Point3D camOrigin = camera.localToScene(new Point3D(0, 0, 0));
-        Point3D rayPtCam  = camera.localToScene(new Point3D(dx / focalLen, dy / focalLen, 1.0));
+        Point3D camOriginScene = camera.localToScene(new Point3D(0, 0, 0));
+        Point3D rayPtCamScene  = camera.localToScene(new Point3D(dx / focalLen, dy / focalLen, 1.0));
+        Point3D camOrigin = shapesGroup.sceneToLocal(camOriginScene);
+        Point3D rayPtCam  = shapesGroup.sceneToLocal(rayPtCamScene);
         Point3D rayDir    = rayPtCam.subtract(camOrigin).normalize();
 
         if (Math.abs(rayDir.getY()) < 1e-4) return null;

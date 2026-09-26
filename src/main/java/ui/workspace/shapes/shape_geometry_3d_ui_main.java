@@ -20,11 +20,11 @@ public final class shape_geometry_3d_ui_main {
 
     public static PhongMaterial createMaterial(boolean isPreview, boolean isSelected) {
         Color c = isPreview ? Color.web(framework_ui_main.DRAFT_PREVIEW_COLOR)
-                : isSelected ? Color.web(framework_ui_main.DRAFT_SELECTED_COLOR)
-                : Color.web(framework_ui_main.DRAFT_PROFILE_COLOR);
+                : isSelected ? Color.web(framework_ui_main.OBJECT_SELECTED_COLOR)
+                : Color.web(framework_ui_main.OBJECT_UNSELECTED_COLOR);
         PhongMaterial mat = new PhongMaterial(c);
-        mat.setSpecularColor(Color.web(isSelected ? "#E0F2FE" : framework_ui_main.DRAFT_ACCENT_COLOR));
-        mat.setSpecularPower(32.0);
+        mat.setSpecularColor(Color.web(isSelected ? "#BAE6FD" : "#5A6B7C"));
+        mat.setSpecularPower(48.0);
         return mat;
     }
 
@@ -55,7 +55,7 @@ public final class shape_geometry_3d_ui_main {
         double r = center.distance(new Point3D(current.getX(), 0, current.getZ()));
         if (r < 0.2) return new Group();
 
-        double height = Math.max(6.0, r * 2.0);
+        double height = Math.abs(current.getY()) > 0.1 ? Math.abs(current.getY()) : Math.max(6.0, r * 2.0);
         Cylinder cyl = new Cylinder(r, height);
         cyl.setMaterial(createMaterial(isPreview, isSelected));
         cyl.setTranslateX(center.getX());
@@ -88,7 +88,7 @@ public final class shape_geometry_3d_ui_main {
         double r = center.distance(new Point3D(current.getX(), 0, current.getZ()));
         if (r < 0.2) return new Group();
 
-        double height = Math.max(6.0, r * 2.0);
+        double height = Math.abs(current.getY()) > 0.1 ? Math.abs(current.getY()) : Math.max(6.0, r * 2.0);
         Node cone = mesh_helper_ui_main.createUpwardCone(r, height, createMaterial(isPreview, isSelected));
         cone.setTranslateX(center.getX());
         cone.setTranslateY(0);

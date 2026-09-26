@@ -74,17 +74,18 @@ public class file_tab_ui_main extends HBox {
         newBtn.setPrefSize(20, 20);
         newBtn.setMinSize(20, 20);
         newBtn.setMaxSize(20, 20);
-        newBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 13px; -fx-font-weight: bold; "
-            + "-fx-text-fill: #475569; -fx-padding: 0; -fx-cursor: hand; -fx-background-radius: 3;");
-        newBtn.setOnMouseEntered(e -> newBtn.setStyle("-fx-background-color: #E2E8F0; -fx-font-size: 13px; "
+        newBtn.setTooltip(new javafx.scene.control.Tooltip("New Tab (Ctrl+N)"));
+        newBtn.setStyle("-fx-background-color: #E2E8F0; -fx-font-size: 13px; -fx-font-weight: bold; "
+            + "-fx-text-fill: #334155; -fx-padding: 0; -fx-cursor: hand; -fx-background-radius: 3; "
+            + "-fx-border-color: #CBD5E1; -fx-border-width: 1; -fx-border-radius: 3;");
+        newBtn.setOnMouseEntered(e -> newBtn.setStyle("-fx-background-color: #CBD5E1; -fx-font-size: 13px; "
             + "-fx-font-weight: bold; -fx-text-fill: #005A85; -fx-padding: 0; -fx-cursor: hand; "
-            + "-fx-background-radius: 3;"));
-        newBtn.setOnMouseExited(e -> newBtn.setStyle("-fx-background-color: transparent; -fx-font-size: 13px; "
-            + "-fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 0; -fx-cursor: hand; "
-            + "-fx-background-radius: 3;"));
+            + "-fx-background-radius: 3; -fx-border-color: #94A3B8; -fx-border-width: 1; -fx-border-radius: 3;"));
+        newBtn.setOnMouseExited(e -> newBtn.setStyle("-fx-background-color: #E2E8F0; -fx-font-size: 13px; "
+            + "-fx-font-weight: bold; -fx-text-fill: #334155; -fx-padding: 0; -fx-cursor: hand; "
+            + "-fx-background-radius: 3; -fx-border-color: #CBD5E1; -fx-border-width: 1; -fx-border-radius: 3;"));
         newBtn.setOnAction(e -> { if (onNewRequested != null) onNewRequested.run(); });
 
-        HBox.setHgrow(tabsContainer, Priority.ALWAYS);
         getChildren().addAll(tabsContainer, newBtn);
     }
 

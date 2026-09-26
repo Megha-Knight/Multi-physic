@@ -109,8 +109,36 @@ public final class framework_ui_main {
     public static String DRAFT_ACCENT_COLOR       = "#29ABE2";
     public static String DRAFT_SELECTED_COLOR     = "#0284C7";
     public static String DRAFT_HANDLE_COLOR       = "#29ABE2";
-    public static double DRAFT_LINE_RADIUS        = 0.45;
-    public static double DRAFT_HANDLE_RADIUS      = 1.1;
+    public static String ROTATION_HANDLE_COLOR    = "#F59E0B";
+    public static double DRAFT_LINE_RADIUS        = 0.70;
+    public static double DRAFT_HANDLE_RADIUS      = 2.4;
+
+    // CAD Object Selection & Edge Styling (Color grading between gray and white)
+    public static String OBJECT_UNSELECTED_COLOR       = "#8C9DAE";
+    public static String OBJECT_UNSELECTED_EDGE_COLOR  = "#475569";
+    public static String OBJECT_SELECTED_COLOR         = "#0284C7";
+    public static String OBJECT_SELECTED_EDGE_COLOR    = "#005A85";
+    public static double OBJECT_SELECTION_STROKE_WIDTH = 1.2;
+
+    // Feature Manager Selection Styling
+    public static String FEATURE_ROW_SELECTED_BG       = "#E0F2FE";
+    public static String FEATURE_ROW_HOVER_BG          = "#F1F5F9";
+    public static String FEATURE_ROW_BORDER            = "#005A85";
+
+    // Dimension Editor Dialog Dimensions
+    public static double DIMENSION_DIALOG_WIDTH        = 340.0;
+    public static double DIMENSION_DIALOG_HEIGHT       = 440.0;
+
+    // XYZ Translation gizmo colours (world-axis handles on selected 3D objects)
+    public static String GIZMO_X_COLOR           = "#DC2626"; // Red  — X axis
+    public static String GIZMO_Y_COLOR           = "#16A34A"; // Green — Y axis
+    public static String GIZMO_Z_COLOR           = "#2563EB"; // Blue  — Z axis
+    public static String GIZMO_X_HOVER           = "#FCA5A5";
+    public static String GIZMO_Y_HOVER           = "#86EFAC";
+    public static String GIZMO_Z_HOVER           = "#93C5FD";
+    public static double GIZMO_SHAFT_RADIUS      = 1.5;       // Shaft cylinder radius
+    public static double GIZMO_TIP_RADIUS        = 4.0;       // Arrowhead sphere radius
+    public static double GIZMO_LENGTH            = 42.0;      // Total axis arm length
 
     // =========================================================================
     // 11. DOCUMENTS & ASTRA WORKSPACE DIRECTORY

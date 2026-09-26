@@ -64,6 +64,7 @@ public class UI_Main extends BorderPane {
         setTop(new VBox(tabToolbar, ribbonBar, breadcrumbBar));
 
         navigationBar = new navigation_ui_main();
+        navigationBar.getFeatureManager().bindToEditor(workspace3D.getShapeEditor());
         setLeft(navigationBar);
 
         VBox centerArea = new VBox(documentTabBar, workspace3D);
@@ -181,8 +182,7 @@ public class UI_Main extends BorderPane {
         shortcuts.register(shortcuts_ui_main.CUT, editor::cutSelected);
         shortcuts.register(shortcuts_ui_main.PASTE, editor::paste);
         shortcuts.register(shortcuts_ui_main.UNDO, editor::undo);
-        shortcuts.register(shortcuts_ui_main.REDO, editor::redo);
-        shortcuts.register(shortcuts_ui_main.REDO_ALT, editor::redo);
+        shortcuts.register(shortcuts_ui_main.REDO, editor::redo); shortcuts.register(shortcuts_ui_main.REDO_ALT, editor::redo);
     }
 
     public tools_ui_main getTabToolbar()              { return tabToolbar; }

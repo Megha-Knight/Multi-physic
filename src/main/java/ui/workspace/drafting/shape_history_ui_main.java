@@ -40,7 +40,8 @@ public class shape_history_ui_main {
 
     public void copy(shape_item_ui_main item) {
         if (item != null) {
-            this.clipboard = new shape_item_ui_main(item.getType(), item.getP1(), item.getP2());
+            this.clipboard = new shape_item_ui_main(item.getType(), item.getP1(), item.getP2(),
+                item.getWorldX(), item.getWorldY(), item.getWorldZ(), item.getRotationAngle());
         }
     }
 
@@ -49,8 +50,10 @@ public class shape_history_ui_main {
         Point3D off = new Point3D(offsetDistance, 0, offsetDistance);
         Point3D np1 = clipboard.getP1().add(off);
         Point3D np2 = clipboard.getP2().add(off);
-        clipboard = new shape_item_ui_main(clipboard.getType(), np1, np2);
-        return new shape_item_ui_main(clipboard.getType(), np1, np2);
+        clipboard = new shape_item_ui_main(clipboard.getType(), np1, np2,
+            clipboard.getWorldX(), clipboard.getWorldY(), clipboard.getWorldZ(), clipboard.getRotationAngle());
+        return new shape_item_ui_main(clipboard.getType(), np1, np2,
+            clipboard.getWorldX(), clipboard.getWorldY(), clipboard.getWorldZ(), clipboard.getRotationAngle());
     }
 
     public boolean hasClipboard() { return clipboard != null; }

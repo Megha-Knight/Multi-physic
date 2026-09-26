@@ -57,11 +57,11 @@ public class workspace_ui_main extends StackPane {
         coordSystem = new coordinate_system_ui_main();
         root3D.getChildren().add(coordSystem);
 
-        AmbientLight ambientLight = new AmbientLight(Color.web("#E2E8F0"));
+        AmbientLight ambientLight = new AmbientLight(Color.web("#8494A5"));
         PointLight pointLight = new PointLight(Color.web("#FFFFFF"));
-        pointLight.setTranslateX(150);
-        pointLight.setTranslateY(-300);
-        pointLight.setTranslateZ(-250);
+        pointLight.setTranslateX(180);
+        pointLight.setTranslateY(-320);
+        pointLight.setTranslateZ(-260);
         root3D.getChildren().addAll(ambientLight, pointLight);
 
         camera = new PerspectiveCamera(true);
@@ -108,10 +108,11 @@ public class workspace_ui_main extends StackPane {
 
         drafter = new shape_drafting_ui_main(this, camera, controller, hudDimLabel);
         shapeEditor = new shape_editor_ui_main(
-            drafter.getShapesGroup(), this, controller,
+            drafter.getShapesGroup(), this, subScene, controller,
             e -> drafter.screenToGround(e.getX(), e.getY()),
             hudDimLabel,
-            () -> drafter.getActiveShape().isDrawing()
+            () -> drafter.getActiveShape().isDrawing(),
+            camera
         );
         drafter.setEditor(shapeEditor);
         root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup());
