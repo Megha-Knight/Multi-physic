@@ -117,6 +117,7 @@ public class shape_item_ui_main {
         double extZ = Math.max(12.0, shape_rotation_helper_ui_main.getExtentZ(this));
         Cylinder stem = new Cylinder(0.5, 24.0);
         stem.setMaterial(new PhongMaterial(Color.web("#94A3B8")));
+        stem.setMouseTransparent(true);
         stem.getTransforms().addAll(new Translate(c.getX(), 0, c.getZ() + extZ + 12.0), new Rotate(90, Rotate.X_AXIS));
         Sphere rotSph = new Sphere(framework_ui_main.DRAFT_HANDLE_RADIUS * 1.6);
         rotSph.setMaterial(new PhongMaterial(Color.web(framework_ui_main.ROTATION_HANDLE_COLOR)));
@@ -125,7 +126,7 @@ public class shape_item_ui_main {
     }
 
     public List<Point3D> getControlHandles() { return shape_handles_ui_main.getControlHandles(type, p1, p2); }
-    public boolean isRotationHandle(int idx) { return idx >= 0 && idx == getControlHandles().size(); }
+    public boolean isRotationHandle(int idx) { return idx >= 0 && idx >= getControlHandles().size(); }
 
     public void moveHandle(int index, Point3D newPos) {
         if (isRotationHandle(index)) {
@@ -143,26 +144,18 @@ public class shape_item_ui_main {
     }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }
     public int findHandleNear(Point3D groundPt, double threshold) {
+        Point3D rhW = shape_rotation_helper_ui_main.getRotationHandleWorldPos(this);
+        if (new Point3D(rhW.getX(), 0, rhW.getZ()).distance(groundPt) <= threshold * 2.5) return getControlHandles().size();
         List<Point3D> handles = getControlHandles();
         for (int i = 0; i < handles.size(); i++) {
             Point3D h = handles.get(i);
             if (new Point3D(h.getX(), 0, h.getZ()).distance(groundPt) <= threshold) return i;
         }
-        Point3D rh = shape_rotation_helper_ui_main.getRotationHandlePos(this);
-        if (new Point3D(rh.getX(), 0, rh.getZ()).distance(groundPt) <= threshold * 2.0) return handles.size();
         return -1;
     }
 
     public boolean isNear(Point3D groundPt, double threshold) {
-        double ox = type.is3D() ? worldX : 0, oz = type.is3D() ? worldZ : 0;
-        if (type == basic_shapes_ui_main.CIRCLE || type == basic_shapes_ui_main.CYLINDER
-                || type == basic_shapes_ui_main.SPHERE || type == basic_shapes_ui_main.CONE) {
-            double r = p1.distance(p2), d = new Point3D(p1.getX() + ox, 0, p1.getZ() + oz).distance(groundPt);
-            return Math.abs(d - r) <= threshold || d <= r;
-        }
-        double minX = Math.min(p1.getX(), p2.getX()) + ox - threshold, maxX = Math.max(p1.getX(), p2.getX()) + ox + threshold;
-        double minZ = Math.min(p1.getZ(), p2.getZ()) + oz - threshold, maxZ = Math.max(p1.getZ(), p2.getZ()) + oz + threshold;
-        return groundPt.getX() >= minX && groundPt.getX() <= maxX && groundPt.getZ() >= minZ && groundPt.getZ() <= maxZ;
+        return shape_rotation_helper_ui_main.isPointNearShape(this, groundPt, threshold);
     }
 
     public String formatDimensions() {

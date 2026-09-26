@@ -119,8 +119,8 @@ public class shape_event_handler_ui_main {
             if (hIdx < 0 && hit != null) hIdx = sel.findHandleNear(hit, 8.0);
             if (hIdx >= 0) {
                 mode = sel.isRotationHandle(hIdx) ? EditMode.ROTATE_SHAPE : EditMode.RESHAPE_HANDLE;
-                activeHandleIdx = hIdx; cameraController.setEnabled(false);
-                e.consume(); return;
+                activeHandleIdx = hIdx; startDragX = e.getX(); startAngle = sel.getRotationAngle();
+                cameraController.setEnabled(false); e.consume(); return;
             }
         }
 

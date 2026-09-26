@@ -54,6 +54,40 @@ public final class shape_rotation_helper_ui_main {
         return new Point3D(c.getX(), 0, c.getZ() + extZ + 24.0);
     }
 
+    public static Point3D getRotationHandleWorldPos(shape_item_ui_main item) {
+        if (item == null) return new Point3D(0, 0, 0);
+        Point3D wc = item.getWorldCenter();
+        double extZ = Math.max(12.0, getExtentZ(item));
+        double rad = Math.toRadians(item.getRotationAngle());
+        double off = extZ + 24.0;
+        return new Point3D(wc.getX() + off * Math.sin(rad), 0, wc.getZ() + off * Math.cos(rad));
+    }
+
+    public static boolean isPointNearShape(shape_item_ui_main item, Point3D groundPt, double threshold) {
+        if (item == null || groundPt == null) return false;
+        Point3D wc = item.getWorldCenter(), c = item.getCenter();
+        double dx = groundPt.getX() - wc.getX(), dz = groundPt.getZ() - wc.getZ();
+        double rad = Math.toRadians(-item.getRotationAngle());
+        double lx = c.getX() + (dx * Math.cos(rad) + dz * Math.sin(rad));
+        double lz = c.getZ() + (-dx * Math.sin(rad) + dz * Math.cos(rad));
+        basic_shapes_ui_main type = item.getType();
+        Point3D p1 = item.getP1(), p2 = item.getP2();
+        if (type == basic_shapes_ui_main.CIRCLE || type == basic_shapes_ui_main.CYLINDER
+                || type == basic_shapes_ui_main.SPHERE || type == basic_shapes_ui_main.CONE) {
+            double r = p1.distance(p2), d = Math.hypot(lx - p1.getX(), lz - p1.getZ());
+            return Math.abs(d - r) <= threshold || d <= r;
+        }
+        if (type == basic_shapes_ui_main.CUBE || type == basic_shapes_ui_main.SQUARE) {
+            double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) * 0.5;
+            return Math.abs(lx - c.getX()) <= s + threshold && Math.abs(lz - c.getZ()) <= s + threshold;
+        }
+        if (type == basic_shapes_ui_main.RECTANGLE) {
+            double hw = Math.abs(p2.getX() - p1.getX()) * 0.5, hd = Math.abs(p2.getZ() - p1.getZ()) * 0.5;
+            return Math.abs(lx - c.getX()) <= hw + threshold && Math.abs(lz - c.getZ()) <= hd + threshold;
+        }
+        return Math.hypot(dx, dz) <= Math.max(20.0, getExtentZ(item)) + threshold;
+    }
+
     public static double calculateAngle(Point3D centerWorld, Point3D mouseHit) {
         if (centerWorld == null || mouseHit == null) return 0.0;
         double dx = mouseHit.getX() - centerWorld.getX();
