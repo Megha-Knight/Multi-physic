@@ -170,25 +170,18 @@ public class axis_drag_controller_ui_main {
     }
 
     private static Point3D getAnchor(shape_item_ui_main item) {
-        Point3D p1 = item.getP1(), p2 = item.getP2();
+        Point3D c = item.getCenter(), p1 = item.getP1(), p2 = item.getP2();
         return switch (item.getType()) {
             case CUBE -> {
-                double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ();
-                double s = Math.max(Math.abs(dx), Math.abs(dz));
-                double cx = p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5);
-                double cz = p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5);
-                yield new Point3D(cx, -s, cz);
+                double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ()));
+                yield new Point3D(c.getX(), -s, c.getZ());
             }
             case CYLINDER, CONE -> {
-                double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-                double h = Math.max(6.0, r * 2.0);
-                yield new Point3D(p1.getX(), -h, p1.getZ());
+                double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.max(6.0, r * 2.0);
+                yield new Point3D(c.getX(), -h, c.getZ());
             }
-            case SPHERE -> {
-                double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-                yield new Point3D(p1.getX(), -2.0 * r, p1.getZ());
-            }
-            default -> new Point3D((p1.getX() + p2.getX()) * 0.5, 0, (p1.getZ() + p2.getZ()) * 0.5);
+            case SPHERE -> new Point3D(c.getX(), -2.0 * p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), c.getZ());
+            default -> new Point3D(c.getX(), 0, c.getZ());
         };
     }
 

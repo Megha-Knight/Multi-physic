@@ -5,6 +5,7 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
+import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
@@ -33,18 +34,10 @@ public class shape_item_ui_main {
     private final Group rootGroup = new Group(), shapeGroup = new Group(), handlesGroup = new Group();
     private boolean selected = false;
 
-    public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) {
-        this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0);
-    }
-    public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) {
-        this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0);
-    }
-    public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z, double rot) {
-        this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, rot);
-    }
-    public shape_item_ui_main(String id, String name, basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) {
-        this(id, name, t, p1, p2, x, y, z, 0);
-    }
+    public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) { this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0); }
+    public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0); }
+    public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z, double rot) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, rot); }
+    public shape_item_ui_main(String id, String name, basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(id, name, t, p1, p2, x, y, z, 0); }
     public shape_item_ui_main(String id, String name, basic_shapes_ui_main type, Point3D p1, Point3D p2,
                                double wx, double wy, double wz, double rot) {
         this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
@@ -80,10 +73,7 @@ public class shape_item_ui_main {
     public double getWorldZ() { return worldZ; }
     public double getRotationAngle() { return rotationAngle; }
     public Point3D getCenter() { return shape_rotation_helper_ui_main.computeCenter(type, p1, p2); }
-    public Point3D getWorldCenter() {
-        Point3D c = getCenter();
-        return type.is3D() ? new Point3D(worldX + c.getX(), worldY + c.getY(), worldZ + c.getZ()) : c;
-    }
+    public Point3D getWorldCenter() { Point3D c = getCenter(); return new Point3D(worldX + c.getX(), worldY + c.getY(), worldZ + c.getZ()); }
 
     public void translate(double dx, double dz) {
         if (type.is3D()) { applyWorldDelta(dx, 0, dz); }
@@ -121,11 +111,17 @@ public class shape_item_ui_main {
             s.setMaterial(hMat); s.setTranslateX(h.getX()); s.setTranslateY(h.getY()); s.setTranslateZ(h.getZ());
             handlesGroup.getChildren().add(s);
         }
+        // Rotation handle on ground plane +Z with connecting guide stem
         Point3D rh = shape_rotation_helper_ui_main.getRotationHandlePos(this);
-        Sphere rotSph = new Sphere(framework_ui_main.DRAFT_HANDLE_RADIUS * 1.5);
+        Point3D c = getCenter();
+        double extZ = Math.max(12.0, shape_rotation_helper_ui_main.getExtentZ(this));
+        Cylinder stem = new Cylinder(0.5, 24.0);
+        stem.setMaterial(new PhongMaterial(Color.web("#94A3B8")));
+        stem.getTransforms().addAll(new Translate(c.getX(), 0, c.getZ() + extZ + 12.0), new Rotate(90, Rotate.X_AXIS));
+        Sphere rotSph = new Sphere(framework_ui_main.DRAFT_HANDLE_RADIUS * 1.6);
         rotSph.setMaterial(new PhongMaterial(Color.web(framework_ui_main.ROTATION_HANDLE_COLOR)));
         rotSph.setTranslateX(rh.getX()); rotSph.setTranslateY(rh.getY()); rotSph.setTranslateZ(rh.getZ());
-        handlesGroup.getChildren().add(rotSph);
+        handlesGroup.getChildren().addAll(stem, rotSph);
     }
 
     public List<Point3D> getControlHandles() { return shape_handles_ui_main.getControlHandles(type, p1, p2); }
@@ -153,7 +149,7 @@ public class shape_item_ui_main {
             if (new Point3D(h.getX(), 0, h.getZ()).distance(groundPt) <= threshold) return i;
         }
         Point3D rh = shape_rotation_helper_ui_main.getRotationHandlePos(this);
-        if (new Point3D(rh.getX(), 0, rh.getZ()).distance(groundPt) <= threshold * 1.6) return handles.size();
+        if (new Point3D(rh.getX(), 0, rh.getZ()).distance(groundPt) <= threshold * 2.0) return handles.size();
         return -1;
     }
 

@@ -18,7 +18,7 @@ import java.util.function.Function;
 
 /**
  * shape_event_handler_ui_main.java
- * Mouse and keyboard event controller for interactive 2D/3D CAD shape editing & 360° rotation.
+ * Mouse and keyboard event controller for interactive 2D/3D CAD editing & 360° rotation.
  */
 public class shape_event_handler_ui_main {
 
@@ -36,6 +36,7 @@ public class shape_event_handler_ui_main {
     private EditMode mode = EditMode.IDLE;
     private int activeHandleIdx = -1;
     private Point3D lastHit = null;
+    private double startDragX = 0, startAngle = 0;
 
     public shape_event_handler_ui_main(shape_editor_ui_main editor, Pane viewport, SubScene subScene,
                                        camera_controller_ui_main camCtrl, Function<MouseEvent, Point3D> raycaster,
@@ -60,10 +61,7 @@ public class shape_event_handler_ui_main {
         viewport.addEventFilter(KeyEvent.KEY_PRESSED,    this::handleKeyPressed);
     }
 
-    private void setCursor(Cursor c) {
-        if (subScene != null) subScene.setCursor(c);
-        viewport.setCursor(c);
-    }
+    private void setCursor(Cursor c) { if (subScene != null) subScene.setCursor(c); viewport.setCursor(c); }
 
     private void handleMoved(MouseEvent e) {
         if (isDrawingActive != null && isDrawingActive.getAsBoolean()) return;
@@ -103,8 +101,9 @@ public class shape_event_handler_ui_main {
             if (rShape == null && hit != null) rShape = editor.findShapeNear(hit, 8.0);
             if (rShape != null) {
                 editor.recordSnapshot(); editor.selectShape(rShape);
-                mode = EditMode.ROTATE_SHAPE; cameraController.setEnabled(false);
-                e.consume(); return;
+                mode = EditMode.ROTATE_SHAPE; activeHandleIdx = -1;
+                startDragX = e.getX(); startAngle = rShape.getRotationAngle();
+                cameraController.setEnabled(false); e.consume(); return;
             }
         }
         if (e.getButton() != MouseButton.PRIMARY) return;
@@ -151,13 +150,19 @@ public class shape_event_handler_ui_main {
         }
         shape_item_ui_main sel = editor.getSelectedShape();
         Point3D hit = groundRaycaster.apply(e);
-        if (sel == null || hit == null) return;
+        if (sel == null) return;
         if (mode == EditMode.ROTATE_SHAPE) {
-            sel.setRotationAngle(shape_rotation_helper_ui_main.calculateAngle(sel.getWorldCenter(), hit));
+            double angle = (activeHandleIdx >= 0 && hit != null)
+                ? shape_rotation_helper_ui_main.calculateAngle(sel.getWorldCenter(), hit)
+                : shape_rotation_helper_ui_main.normalize360(startAngle + (e.getX() - startDragX) * 0.8);
+            sel.setRotationAngle(angle);
             axisDrag.updateGizmoPosition();
             hudLabel.setText(String.format("%s | Rotation: %.1f° (360°)", sel.getName(), sel.getRotationAngle()));
             hudLabel.setVisible(true);
-        } else if (mode == EditMode.RESHAPE_HANDLE) {
+            e.consume(); return;
+        }
+        if (hit == null) return;
+        if (mode == EditMode.RESHAPE_HANDLE) {
             sel.moveHandle(activeHandleIdx, hit);
             axisDrag.updateGizmoPosition();
             hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true);
@@ -181,15 +186,11 @@ public class shape_event_handler_ui_main {
 
     private void handleKeyPressed(KeyEvent e) {
         if (editor.getSelectedShape() == null) return;
-        if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) {
-            editor.deleteSelected(); e.consume();
-        } else if (e.getCode() == KeyCode.ESCAPE) {
+        if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) { editor.deleteSelected(); e.consume(); }
+        else if (e.getCode() == KeyCode.ESCAPE) {
             if (axisDrag.isDragging()) axisDrag.onReleased();
             editor.selectShape(null); e.consume();
         }
     }
-
-    private static Node pickNode(MouseEvent e) {
-        return (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null;
-    }
+    private static Node pickNode(MouseEvent e) { return (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null; }
 }
