@@ -48,27 +48,20 @@ public final class savecommands_ui_main {
         ch.setInitialFileName(active.getName());
 
         FileChooser.ExtensionFilter extNd = new FileChooser.ExtensionFilter("Multiphysics Document (*.nd)", "*.nd");
-        FileChooser.ExtensionFilter extNc = new FileChooser.ExtensionFilter("Legacy Document (*.nc)", "*.nc");
-        FileChooser.ExtensionFilter extStep = new FileChooser.ExtensionFilter("STEP File (*.step)", "*.step");
-        FileChooser.ExtensionFilter extStp = new FileChooser.ExtensionFilter("STEP File (*.stp)", "*.stp");
-        ch.getExtensionFilters().addAll(extNd, extNc, extStep, extStp);
+        FileChooser.ExtensionFilter extStep = new FileChooser.ExtensionFilter("STEP CAD File (*.step)", "*.step");
+        FileChooser.ExtensionFilter extStp = new FileChooser.ExtensionFilter("STEP CAD File (*.stp)", "*.stp");
+        FileChooser.ExtensionFilter extStl = new FileChooser.ExtensionFilter("Stereolithography Mesh (*.stl)", "*.stl");
+        FileChooser.ExtensionFilter extObj = new FileChooser.ExtensionFilter("Wavefront 3D Object (*.obj)", "*.obj");
+        FileChooser.ExtensionFilter extNc = new FileChooser.ExtensionFilter("CNC G-Code / Legacy (*.nc)", "*.nc");
+        ch.getExtensionFilters().addAll(extNd, extStep, extStp, extStl, extObj, extNc);
         ch.setSelectedExtensionFilter(extNd);
 
         File f = ch.showSaveDialog(window);
         if (f == null) return;
 
         String lower = f.getName().toLowerCase();
-        FileChooser.ExtensionFilter chosenExt = ch.getSelectedExtensionFilter();
-        boolean isStep = lower.endsWith(".step") || lower.endsWith(".stp") ||
-                         (chosenExt != null && (chosenExt.getExtensions().contains("*.step") || chosenExt.getExtensions().contains("*.stp")));
-
-        if (isStep) {
-            footer.setStatusText("STEP export is not available yet.");
-            return;
-        }
-
-        if (!lower.endsWith(".nd") && !lower.endsWith(".nc")) {
-            f = new File(f.getParentFile(), f.getName() + ".nd");
+        if (!hasKnownExtension(lower)) {
+            f = new File(f.getParentFile(), f.getName() + getFilterExtension(ch.getSelectedExtensionFilter()));
         }
 
         if (document_serializer_ui_main.saveToFile(f, shapes)) {
@@ -132,9 +125,7 @@ public final class savecommands_ui_main {
         if (dir == null || !dir.exists()) return;
 
         String name = active.getName();
-        if (!name.toLowerCase().endsWith(".nd") && !name.toLowerCase().endsWith(".nc")) {
-            name += ".nd";
-        }
+        if (!hasKnownExtension(name.toLowerCase())) name += ".nd";
         File target = new File(dir, name);
 
         if (document_serializer_ui_main.saveToFile(target, shapes)) {
@@ -147,5 +138,19 @@ public final class savecommands_ui_main {
         } else {
             footer.setStatusText("Save In failed: " + target.getName());
         }
+    }
+
+    private static boolean hasKnownExtension(String name) {
+        if (name == null) return false;
+        String l = name.toLowerCase();
+        return l.endsWith(".nd") || l.endsWith(".step") || l.endsWith(".stp") || l.endsWith(".stl") || l.endsWith(".obj") || l.endsWith(".nc");
+    }
+
+    private static String getFilterExtension(FileChooser.ExtensionFilter filter) {
+        if (filter != null && !filter.getExtensions().isEmpty()) {
+            String ext = filter.getExtensions().get(0);
+            if (ext.startsWith("*.")) return ext.substring(1);
+        }
+        return ".nd";
     }
 }

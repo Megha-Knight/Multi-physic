@@ -119,9 +119,12 @@ public class documenthandler_ui_main {
         File astraDir = framework_ui_main.astraDirectory();
         ch.setInitialDirectory(astraDir.exists() ? astraDir : new File(System.getProperty("user.home")));
         ch.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("All Supported Files", "*.*", "*.nd", "*.nc", "*.step", "*.stl"),
+            new FileChooser.ExtensionFilter("All Supported Files (*.nd, *.step, *.stp, *.stl, *.obj, *.nc)", "*.nd", "*.step", "*.stp", "*.stl", "*.obj", "*.nc"),
             new FileChooser.ExtensionFilter("Multiphysics Document (*.nd)", "*.nd"),
-            new FileChooser.ExtensionFilter("Legacy Document (*.nc)", "*.nc")
+            new FileChooser.ExtensionFilter("STEP CAD File (*.step, *.stp)", "*.step", "*.stp"),
+            new FileChooser.ExtensionFilter("Stereolithography Mesh (*.stl)", "*.stl"),
+            new FileChooser.ExtensionFilter("Wavefront 3D Object (*.obj)", "*.obj"),
+            new FileChooser.ExtensionFilter("CNC G-Code / Legacy (*.nc)", "*.nc")
         );
         File f = ch.showOpenDialog(windowSupplier.get());
         if (f != null) {

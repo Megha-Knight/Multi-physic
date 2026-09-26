@@ -23,6 +23,15 @@ public final class document_serializer_ui_main {
 
     public static boolean saveToFile(File file, List<shape_item_ui_main> shapes) {
         if (file == null) return false;
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".step") || name.endsWith(".stp")) return step_exporter_ui_main.exportToStep(file, shapes);
+        if (name.endsWith(".stl")) return mesh_exporter_ui_main.exportToStl(file, shapes);
+        if (name.endsWith(".obj")) return mesh_exporter_ui_main.exportToObj(file, shapes);
+        if (name.endsWith(".nc")) return nc_exporter_ui_main.exportToNc(file, shapes);
+        return saveToNd(file, shapes);
+    }
+
+    private static boolean saveToNd(File file, List<shape_item_ui_main> shapes) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
             pw.println("# Multiphysics Model (.nd)");
             pw.println("# Format Version: 1.3");
@@ -63,6 +72,7 @@ public final class document_serializer_ui_main {
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty() || line.startsWith("#")) continue;
+                if (line.startsWith("(") && line.endsWith(")")) line = line.substring(1, line.length() - 1).trim();
 
                 if (line.startsWith("SHAPE:")) {
                     if (currentType != null && p1 != null && p2 != null) {
