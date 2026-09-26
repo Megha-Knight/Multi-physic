@@ -18,8 +18,13 @@ public class filetreeitem_ui_main extends TreeItem<File> {
     private static final Image ICON_FOLDER      = loadIcon("/icons/folder.png");
     private static final Image ICON_FOLDER_OPEN = loadIcon("/icons/folder_open.png");
     private static final Image ICON_FILE        = loadIcon("/icons/file.png");
+    private static final Image ICON_FILE_ND     = loadIcon("/icons/file_nd.png");
+    private static final Image ICON_FILE_STEP   = loadIcon("/icons/file_step.png");
+    private static final Image ICON_FILE_STL    = loadIcon("/icons/file_stl.png");
+    private static final Image ICON_FILE_OBJ    = loadIcon("/icons/file_obj.png");
+    private static final Image ICON_FILE_NC     = loadIcon("/icons/file_nc.png");
     private static final Image ICON_FILE_CODE   = loadIcon("/icons/file_code.png");
-    private static final Image ICON_FILE_CAD    = loadIcon("/icons/file_cad.png");
+    private static final Image ICON_FILE_PY     = loadIcon("/icons/file_py.png");
     private static final Image ICON_DRIVE       = loadIcon("/icons/drive.png");
 
     private boolean isFirstChildren = true;
@@ -81,11 +86,14 @@ public class filetreeitem_ui_main extends TreeItem<File> {
         if (f == null || f.getParent() == null) return ICON_DRIVE;
         if (f.isDirectory()) return exp ? ICON_FOLDER_OPEN : ICON_FOLDER;
         String n = f.getName().toLowerCase();
-        if (n.endsWith(".java") || n.endsWith(".m") || n.endsWith(".nd") || n.endsWith(".nc") || n.endsWith(".py") || n.endsWith(".json")) {
-            return ICON_FILE_CODE;
-        }
-        if (n.endsWith(".step") || n.endsWith(".stp") || n.endsWith(".stl") || n.endsWith(".astra") || n.endsWith(".obj")) {
-            return ICON_FILE_CAD;
+        if (n.endsWith(".nd")) return ICON_FILE_ND != null ? ICON_FILE_ND : ICON_FILE;
+        if (n.endsWith(".step") || n.endsWith(".stp") || n.endsWith(".astra")) return ICON_FILE_STEP != null ? ICON_FILE_STEP : ICON_FILE;
+        if (n.endsWith(".stl")) return ICON_FILE_STL != null ? ICON_FILE_STL : ICON_FILE;
+        if (n.endsWith(".obj")) return ICON_FILE_OBJ != null ? ICON_FILE_OBJ : ICON_FILE;
+        if (n.endsWith(".nc")) return ICON_FILE_NC != null ? ICON_FILE_NC : ICON_FILE;
+        if (n.endsWith(".py")) return ICON_FILE_PY != null ? ICON_FILE_PY : ICON_FILE_CODE;
+        if (n.endsWith(".java") || n.endsWith(".cpp") || n.endsWith(".c") || n.endsWith(".h") || n.endsWith(".json") || n.endsWith(".m")) {
+            return ICON_FILE_CODE != null ? ICON_FILE_CODE : ICON_FILE;
         }
         return ICON_FILE;
     }

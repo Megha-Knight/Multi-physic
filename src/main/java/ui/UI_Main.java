@@ -114,9 +114,7 @@ public class UI_Main extends BorderPane {
 
         docHandler.setOnFileChanged(() -> navigationBar.getFileExplorer().refresh());
         documentTabBar.setOnNewRequested(docHandler::onNewFile);
-        documentTabBar.setOnTabClosed(t -> {
-            if (activeTabRef[0] == t) activeTabRef[0] = null;
-        });
+        documentTabBar.setOnTabClosed(t -> { if (activeTabRef[0] == t) activeTabRef[0] = null; });
 
         documentTabBar.setOnTabSelected(t -> {
             workspace3D.getDrafter().cancel();
@@ -154,6 +152,7 @@ public class UI_Main extends BorderPane {
             }
         });
 
+        navigationBar.getFileExplorer().setOnFileDeleted(f -> footerBar.setStatusText("Deleted: " + f.getName()));
         navigationBar.getFileExplorer().setOnPathSelected(path -> {
             if (path == null) return;
             File f = new File(path);
@@ -162,7 +161,8 @@ public class UI_Main extends BorderPane {
                 try {
                     breadcrumbBar.setFolderPath(path);
                     footerBar.setOpenedFilePath(path);
-                    if (f.isFile() && (path.endsWith(".nd") || path.endsWith(".nc"))) {
+                    String lp = path.toLowerCase();
+                    if (f.isFile() && (lp.endsWith(".nd") || lp.endsWith(".nc") || lp.endsWith(".step") || lp.endsWith(".stp") || lp.endsWith(".stl") || lp.endsWith(".obj"))) {
                         docHandler.openFile(f);
                     }
                 } finally { syncLock[0] = false; }
