@@ -36,7 +36,7 @@ public class shape_event_handler_ui_main {
     private EditMode mode = EditMode.IDLE;
     private int activeHandleIdx = -1;
     private Point3D lastHit = null;
-    private double startDragX = 0, startAngle = 0;
+    private double startDragX = 0, startDragY = 0, startAngleX = 0, startAngleY = 0;
 
     public shape_event_handler_ui_main(shape_editor_ui_main editor, Pane viewport, SubScene subScene,
                                        camera_controller_ui_main camCtrl, Function<MouseEvent, Point3D> raycaster,
@@ -53,12 +53,9 @@ public class shape_event_handler_ui_main {
 
     private void attach() {
         Node target = (subScene != null) ? subScene : viewport;
-        target.addEventFilter(MouseEvent.MOUSE_MOVED,    this::handleMoved);
-        target.addEventFilter(MouseEvent.MOUSE_PRESSED,  this::handlePressed);
-        target.addEventFilter(MouseEvent.MOUSE_DRAGGED,  this::handleDragged);
-        target.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleReleased);
-        target.addEventFilter(KeyEvent.KEY_PRESSED,      this::handleKeyPressed);
-        viewport.addEventFilter(KeyEvent.KEY_PRESSED,    this::handleKeyPressed);
+        target.addEventFilter(MouseEvent.MOUSE_MOVED, this::handleMoved); target.addEventFilter(MouseEvent.MOUSE_PRESSED, this::handlePressed);
+        target.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::handleDragged); target.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleReleased);
+        target.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed); viewport.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
     }
 
     private void setCursor(Cursor c) { if (subScene != null) subScene.setCursor(c); viewport.setCursor(c); }
@@ -95,14 +92,15 @@ public class shape_event_handler_ui_main {
         Point3D hit = groundRaycaster.apply(e);
         shape_item_ui_main sel = editor.getSelectedShape();
 
-        // Right-click or Shift/Alt drag on shape directly rotates 360°
+        // Right-click or Shift/Alt drag on shape directly rotates in X and Y
         if (e.getButton() == MouseButton.SECONDARY || e.isShiftDown() || e.isAltDown()) {
             shape_item_ui_main rShape = editor.findShapeByNode(hitNode);
             if (rShape == null && hit != null) rShape = editor.findShapeNear(hit, 8.0);
             if (rShape != null) {
                 editor.recordSnapshot(); editor.selectShape(rShape);
                 mode = EditMode.ROTATE_SHAPE; activeHandleIdx = -1;
-                startDragX = e.getX(); startAngle = rShape.getRotationAngle();
+                startDragX = e.getX(); startDragY = e.getY();
+                startAngleX = rShape.getRotationX(); startAngleY = rShape.getRotationY();
                 cameraController.setEnabled(false); e.consume(); return;
             }
         }
@@ -119,7 +117,8 @@ public class shape_event_handler_ui_main {
             if (hIdx < 0 && hit != null) hIdx = sel.findHandleNear(hit, 8.0);
             if (hIdx >= 0) {
                 mode = sel.isRotationHandle(hIdx) ? EditMode.ROTATE_SHAPE : EditMode.RESHAPE_HANDLE;
-                activeHandleIdx = hIdx; startDragX = e.getX(); startAngle = sel.getRotationAngle();
+                activeHandleIdx = hIdx; startDragX = e.getX(); startDragY = e.getY();
+                startAngleX = sel.getRotationX(); startAngleY = sel.getRotationY();
                 cameraController.setEnabled(false); e.consume(); return;
             }
         }
@@ -152,12 +151,12 @@ public class shape_event_handler_ui_main {
         Point3D hit = groundRaycaster.apply(e);
         if (sel == null) return;
         if (mode == EditMode.ROTATE_SHAPE) {
-            double angle = (activeHandleIdx >= 0 && hit != null)
-                ? shape_rotation_helper_ui_main.calculateAngle(sel.getWorldCenter(), hit)
-                : shape_rotation_helper_ui_main.normalize360(startAngle + (e.getX() - startDragX) * 0.8);
-            sel.setRotationAngle(angle);
+            double dx = e.getX() - startDragX, dy = e.getY() - startDragY;
+            double ny = shape_rotation_helper_ui_main.normalize360(startAngleY + dx * 0.8);
+            double nx = shape_rotation_helper_ui_main.normalize360(startAngleX - dy * 0.8);
+            sel.setRotation(nx, ny);
             axisDrag.updateGizmoPosition();
-            hudLabel.setText(String.format("%s | Rotation: %.1f° (360°)", sel.getName(), sel.getRotationAngle()));
+            hudLabel.setText(String.format("%s | Rot Y (L/R): %.1f° | Rot X (T/B): %.1f°", sel.getName(), sel.getRotationY(), sel.getRotationX()));
             hudLabel.setVisible(true);
             e.consume(); return;
         }

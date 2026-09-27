@@ -20,7 +20,7 @@ public final class shape_rotation_helper_ui_main {
                 double s = Math.max(Math.abs(dx), Math.abs(dz));
                 double cx = p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5);
                 double cz = p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5);
-                yield new Point3D(cx, 0, cz);
+                yield new Point3D(cx, (type == basic_shapes_ui_main.CUBE) ? -s * 0.5 : 0, cz);
             }
             case RECTANGLE -> new Point3D((p1.getX() + p2.getX()) * 0.5, 0, (p1.getZ() + p2.getZ()) * 0.5);
             case EQUILATERAL_TRIANGLE -> {
@@ -30,7 +30,12 @@ public final class shape_rotation_helper_ui_main {
                 yield new Point3D((p1.getX() + p2.getX() + p3.getX()) / 3.0, 0, (p1.getZ() + p2.getZ() + p3.getZ()) / 3.0);
             }
             case RIGHT_TRIANGLE -> new Point3D((2.0 * p1.getX() + p2.getX()) / 3.0, 0, (2.0 * p1.getZ() + p2.getZ()) / 3.0);
-            default -> p1; // CIRCLE, CYLINDER, SPHERE, CONE all have p1 as center
+            case CYLINDER, CONE -> {
+                double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) * 2.0);
+                yield new Point3D(p1.getX(), -h * 0.5, p1.getZ());
+            }
+            case SPHERE -> new Point3D(p1.getX(), -p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), p1.getZ());
+            default -> p1;
         };
     }
 
@@ -46,28 +51,63 @@ public final class shape_rotation_helper_ui_main {
         };
     }
 
+    public static double getExtentY(shape_item_ui_main item) {
+        if (item == null) return 15.0;
+        Point3D p1 = item.getP1(), p2 = item.getP2();
+        double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
+        return switch (item.getType()) {
+            case CUBE -> Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) * 0.5;
+            case CYLINDER, CONE -> (Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0)) * 0.5;
+            case SPHERE -> r;
+            default -> 12.0;
+        };
+    }
+
     public static Point3D getRotationHandlePos(shape_item_ui_main item) {
         if (item == null) return new Point3D(0, 0, 0);
         Point3D c = item.getCenter();
         double extZ = Math.max(12.0, getExtentZ(item));
-        // Placed on horizontal ground plane, 24 units in front (+Z) of object boundary
-        return new Point3D(c.getX(), 0, c.getZ() + extZ + 24.0);
+        return new Point3D(c.getX(), c.getY(), c.getZ() + extZ + 24.0);
+    }
+
+    public static Point3D getRotationPitchHandlePos(shape_item_ui_main item) {
+        if (item == null) return new Point3D(0, 0, 0);
+        Point3D c = item.getCenter();
+        double extY = Math.max(12.0, getExtentY(item));
+        return new Point3D(c.getX(), c.getY() - extY - 24.0, c.getZ());
     }
 
     public static Point3D getRotationHandleWorldPos(shape_item_ui_main item) {
         if (item == null) return new Point3D(0, 0, 0);
-        Point3D wc = item.getWorldCenter();
-        double extZ = Math.max(12.0, getExtentZ(item));
-        double rad = Math.toRadians(item.getRotationAngle());
-        double off = extZ + 24.0;
-        return new Point3D(wc.getX() + off * Math.sin(rad), 0, wc.getZ() + off * Math.cos(rad));
+        Point3D wc = item.getWorldCenter(), c = item.getCenter();
+        Point3D rh = getRotationHandlePos(item);
+        return transformPoint(rh, c, item.getRotationX(), item.getRotationY(), item.getWorldX(), item.getWorldY(), item.getWorldZ());
+    }
+
+    public static Point3D transformPoint(Point3D p, Point3D c, double rxDeg, double ryDeg, double wx, double wy, double wz) {
+        double rx = Math.toRadians(rxDeg), ry = Math.toRadians(ryDeg);
+        double dx = p.getX() - c.getX(), dy = p.getY() - c.getY(), dz = p.getZ() - c.getZ();
+        double y1 = dy * Math.cos(rx) - dz * Math.sin(rx);
+        double z1 = dy * Math.sin(rx) + dz * Math.cos(rx);
+        double x2 = dx * Math.cos(ry) + z1 * Math.sin(ry);
+        double z2 = -dx * Math.sin(ry) + z1 * Math.cos(ry);
+        return new Point3D(c.getX() + x2 + wx, c.getY() + y1 + wy, c.getZ() + z2 + wz);
+    }
+
+    public static Point3D transformNormal(Point3D n, double rxDeg, double ryDeg) {
+        double rx = Math.toRadians(rxDeg), ry = Math.toRadians(ryDeg);
+        double ny1 = n.getY() * Math.cos(rx) - n.getZ() * Math.sin(rx);
+        double nz1 = n.getY() * Math.sin(rx) + n.getZ() * Math.cos(rx);
+        double nx2 = n.getX() * Math.cos(ry) + nz1 * Math.sin(ry);
+        double nz2 = -n.getX() * Math.sin(ry) + nz1 * Math.cos(ry);
+        return new Point3D(nx2, ny1, nz2);
     }
 
     public static boolean isPointNearShape(shape_item_ui_main item, Point3D groundPt, double threshold) {
         if (item == null || groundPt == null) return false;
         Point3D wc = item.getWorldCenter(), c = item.getCenter();
         double dx = groundPt.getX() - wc.getX(), dz = groundPt.getZ() - wc.getZ();
-        double rad = Math.toRadians(-item.getRotationAngle());
+        double rad = Math.toRadians(-item.getRotationY());
         double lx = c.getX() + (dx * Math.cos(rad) + dz * Math.sin(rad));
         double lz = c.getZ() + (-dx * Math.sin(rad) + dz * Math.cos(rad));
         basic_shapes_ui_main type = item.getType();
@@ -90,11 +130,8 @@ public final class shape_rotation_helper_ui_main {
 
     public static double calculateAngle(Point3D centerWorld, Point3D mouseHit) {
         if (centerWorld == null || mouseHit == null) return 0.0;
-        double dx = mouseHit.getX() - centerWorld.getX();
-        double dz = mouseHit.getZ() - centerWorld.getZ();
-        double deg = Math.toDegrees(Math.atan2(dx, dz));
-        if (deg < 0) deg += 360.0;
-        return normalize360(deg);
+        double deg = Math.toDegrees(Math.atan2(mouseHit.getX() - centerWorld.getX(), mouseHit.getZ() - centerWorld.getZ()));
+        return normalize360(deg < 0 ? deg + 360.0 : deg);
     }
 
     public static double normalize360(double deg) {

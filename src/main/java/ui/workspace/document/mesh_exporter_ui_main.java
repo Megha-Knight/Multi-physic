@@ -97,9 +97,9 @@ public final class mesh_exporter_ui_main {
             default -> addTriangle2D(localTris, p1, p2, type);
         }
 
-        // Transform all vertices with item's centroid, yaw rotation, and world translation
+        // Transform all vertices with item's centroid, pitch/yaw rotation, and world translation
         Point3D c = item.getCenter();
-        double rot = item.getRotationAngle(), rad = Math.toRadians(rot);
+        double rx = item.getRotationX(), ry = item.getRotationY();
         double wx = item.getType().is3D() ? item.getWorldX() : 0;
         double wy = item.getType().is3D() ? -item.getWorldY() : 0;
         double wz = item.getType().is3D() ? item.getWorldZ() : 0;
@@ -107,22 +107,13 @@ public final class mesh_exporter_ui_main {
         List<Tri> transformed = new ArrayList<>();
         for (Tri t : localTris) {
             transformed.add(new Tri(
-                xform(t.a, c, rad, wx, wy, wz),
-                xform(t.b, c, rad, wx, wy, wz),
-                xform(t.c, c, rad, wx, wy, wz),
-                xformNormal(t.n, rad)
+                ui.workspace.drafting.shape_rotation_helper_ui_main.transformPoint(t.a, c, rx, ry, wx, wy, wz),
+                ui.workspace.drafting.shape_rotation_helper_ui_main.transformPoint(t.b, c, rx, ry, wx, wy, wz),
+                ui.workspace.drafting.shape_rotation_helper_ui_main.transformPoint(t.c, c, rx, ry, wx, wy, wz),
+                ui.workspace.drafting.shape_rotation_helper_ui_main.transformNormal(t.n, rx, ry)
             ));
         }
         return transformed;
-    }
-
-    private static Point3D xform(Point3D p, Point3D c, double rad, double wx, double wy, double wz) {
-        double dx = p.getX() - c.getX(), dz = p.getZ() - c.getZ();
-        return new Point3D(c.getX() + dx * Math.cos(rad) + dz * Math.sin(rad) + wx, p.getY() + wy, c.getZ() - dx * Math.sin(rad) + dz * Math.cos(rad) + wz);
-    }
-
-    private static Point3D xformNormal(Point3D n, double rad) {
-        return new Point3D(n.getX() * Math.cos(rad) + n.getZ() * Math.sin(rad), n.getY(), -n.getX() * Math.sin(rad) + n.getZ() * Math.cos(rad));
     }
 
     private static void addQuad(List<Tri> list, Point3D a, Point3D b, Point3D c, Point3D d, Point3D n) {

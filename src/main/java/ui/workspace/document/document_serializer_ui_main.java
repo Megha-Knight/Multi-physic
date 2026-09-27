@@ -47,9 +47,8 @@ public final class document_serializer_ui_main {
                     if (s.getType().is3D() && (s.getWorldX() != 0 || s.getWorldY() != 0 || s.getWorldZ() != 0)) {
                         pw.printf(java.util.Locale.US, "tx: %.4f, %.4f, %.4f%n", s.getWorldX(), s.getWorldY(), s.getWorldZ());
                     }
-                    if (s.getRotationAngle() != 0) {
-                        pw.printf(java.util.Locale.US, "rot: %.4f%n", s.getRotationAngle());
-                    }
+                    if (s.getRotationY() != 0) pw.printf(java.util.Locale.US, "rot: %.4f%n", s.getRotationY());
+                    if (s.getRotationX() != 0) pw.printf(java.util.Locale.US, "rotX: %.4f%n", s.getRotationX());
                     pw.println();
                 }
             }
@@ -67,7 +66,7 @@ public final class document_serializer_ui_main {
             String line, id = null, name = null;
             basic_shapes_ui_main currentType = null;
             Point3D p1 = null, p2 = null;
-            double tx = 0, ty = 0, tz = 0, rot = 0;
+            double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0;
 
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -76,12 +75,12 @@ public final class document_serializer_ui_main {
 
                 if (line.startsWith("SHAPE:")) {
                     if (currentType != null && p1 != null && p2 != null) {
-                        list.add(new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rot));
+                        list.add(new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY));
                     }
                     String typeStr = line.substring(6).trim();
                     try { currentType = basic_shapes_ui_main.valueOf(typeStr); }
                     catch (Exception ex) { currentType = null; }
-                    id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rot = 0;
+                    id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0;
                 } else if (line.startsWith("id:")) {
                     id = line.substring(3).trim();
                 } else if (line.startsWith("name:")) {
@@ -94,11 +93,13 @@ public final class document_serializer_ui_main {
                     Point3D txPt = parsePoint(line.substring(3).trim());
                     tx = txPt.getX(); ty = txPt.getY(); tz = txPt.getZ();
                 } else if (line.startsWith("rot:")) {
-                    try { rot = Double.parseDouble(line.substring(4).trim()); } catch (Exception ignored) {}
+                    try { rotY = Double.parseDouble(line.substring(4).trim()); } catch (Exception ignored) {}
+                } else if (line.startsWith("rotX:")) {
+                    try { rotX = Double.parseDouble(line.substring(5).trim()); } catch (Exception ignored) {}
                 }
             }
             if (currentType != null && p1 != null && p2 != null) {
-                list.add(new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rot));
+                list.add(new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY));
             }
         } catch (Exception e) {
             System.err.println("[Multiphysics] Error loading: " + e.getMessage());
@@ -111,7 +112,7 @@ public final class document_serializer_ui_main {
         if (source != null) {
             for (shape_item_ui_main s : source) {
                 copy.add(new shape_item_ui_main(s.getId(), s.getName(), s.getType(), s.getP1(), s.getP2(),
-                    s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationAngle()));
+                    s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationX(), s.getRotationY()));
             }
         }
         return copy;

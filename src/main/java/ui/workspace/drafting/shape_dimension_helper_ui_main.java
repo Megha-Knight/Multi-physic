@@ -77,15 +77,16 @@ public final class shape_dimension_helper_ui_main {
             map.put("Position Y", p1.getZ());
             map.put("Position Z", 0.0);
         }
-        map.put("Rotation Angle (°)", item.getRotationAngle());
+        map.put("Rotation Y (Left/Right °)", item.getRotationY());
+        map.put("Rotation X (Top/Bottom °)", item.getRotationX());
         return map;
     }
 
     public static void applyDimensions(shape_item_ui_main item, Map<String, Double> vals) {
         if (item == null || vals == null) return;
-        if (vals.containsKey("Rotation Angle (°)")) {
-            item.setRotationAngle(vals.get("Rotation Angle (°)"));
-        }
+        if (vals.containsKey("Rotation Y (Left/Right °)")) item.setRotationY(vals.get("Rotation Y (Left/Right °)"));
+        if (vals.containsKey("Rotation X (Top/Bottom °)")) item.setRotationX(vals.get("Rotation X (Top/Bottom °)"));
+        if (vals.containsKey("Rotation Angle (°)")) item.setRotationAngle(vals.get("Rotation Angle (°)"));
         basic_shapes_ui_main type = item.getType();
         Point3D p1 = item.getP1(), p2 = item.getP2();
 
