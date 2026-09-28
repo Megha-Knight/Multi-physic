@@ -44,7 +44,7 @@ public final class document_serializer_ui_main {
                     Point3D p1 = s.getP1(), p2 = s.getP2();
                     pw.printf(java.util.Locale.US, "p1: %.4f, %.4f, %.4f%n", p1.getX(), p1.getY(), p1.getZ());
                     pw.printf(java.util.Locale.US, "p2: %.4f, %.4f, %.4f%n", p2.getX(), p2.getY(), p2.getZ());
-                    if (s.getType().is3D() && (s.getWorldX() != 0 || s.getWorldY() != 0 || s.getWorldZ() != 0)) {
+                    if (s.getWorldX() != 0 || s.getWorldY() != 0 || s.getWorldZ() != 0) {
                         pw.printf(java.util.Locale.US, "tx: %.4f, %.4f, %.4f%n", s.getWorldX(), s.getWorldY(), s.getWorldZ());
                     }
                     if (s.getRotationY() != 0) pw.printf(java.util.Locale.US, "rot: %.4f%n", s.getRotationY());

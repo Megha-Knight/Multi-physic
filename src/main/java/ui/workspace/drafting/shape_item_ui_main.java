@@ -81,14 +81,7 @@ public class shape_item_ui_main {
     public Point3D getCenter() { return shape_rotation_helper_ui_main.computeCenter(type, p1, p2); }
     public Point3D getWorldCenter() { Point3D c = getCenter(); return new Point3D(worldX + c.getX(), worldY + c.getY(), worldZ + c.getZ()); }
 
-    public void translate(double dx, double dz) {
-        if (type.is3D()) { applyWorldDelta(dx, 0, dz); }
-        else {
-            p1 = new Point3D(p1.getX() + dx, p1.getY(), p1.getZ() + dz);
-            p2 = new Point3D(p2.getX() + dx, p2.getY(), p2.getZ() + dz);
-            updateRotationPivot(); rebuild();
-        }
-    }
+    public void translate(double dx, double dz) { applyWorldDelta(dx, 0, dz); }
 
     public void rebuild() {
         shapeGroup.getChildren().clear(); handlesGroup.getChildren().clear();
@@ -117,35 +110,12 @@ public class shape_item_ui_main {
             s.setMaterial(hMat); s.setTranslateX(h.getX()); s.setTranslateY(h.getY()); s.setTranslateZ(h.getZ());
             handlesGroup.getChildren().add(s);
         }
-        Point3D c = getCenter();
-        // Yaw handle (Left/Right) on +Z
-        Point3D rh = shape_rotation_helper_ui_main.getRotationHandlePos(this);
-        Cylinder stemY = new Cylinder(0.5, 24.0); stemY.setMouseTransparent(true);
-        stemY.setMaterial(new PhongMaterial(Color.web("#94A3B8")));
-        stemY.getTransforms().addAll(new Translate(c.getX(), c.getY(), c.getZ() + Math.max(12.0, shape_rotation_helper_ui_main.getExtentZ(this)) + 12.0), new Rotate(90, Rotate.X_AXIS));
-        Sphere rotY = new Sphere(framework_ui_main.DRAFT_HANDLE_RADIUS * 1.6);
-        rotY.setMaterial(new PhongMaterial(Color.web(framework_ui_main.ROTATION_HANDLE_COLOR)));
-        rotY.setTranslateX(rh.getX()); rotY.setTranslateY(rh.getY()); rotY.setTranslateZ(rh.getZ());
-        // Pitch handle (Top/Bottom) on -Y
-        Point3D ph = shape_rotation_helper_ui_main.getRotationPitchHandlePos(this);
-        Cylinder stemX = new Cylinder(0.5, 24.0); stemX.setMouseTransparent(true);
-        stemX.setMaterial(new PhongMaterial(Color.web("#94A3B8")));
-        stemX.getTransforms().add(new Translate(c.getX(), c.getY() - Math.max(12.0, shape_rotation_helper_ui_main.getExtentY(this)) - 12.0, c.getZ()));
-        Sphere rotX = new Sphere(framework_ui_main.DRAFT_HANDLE_RADIUS * 1.6);
-        rotX.setMaterial(new PhongMaterial(Color.web("#06B6D4")));
-        rotX.setTranslateX(ph.getX()); rotX.setTranslateY(ph.getY()); rotX.setTranslateZ(ph.getZ());
-        handlesGroup.getChildren().addAll(stemY, rotY, stemX, rotX);
     }
 
     public List<Point3D> getControlHandles() { return shape_handles_ui_main.getControlHandles(type, p1, p2); }
-    public boolean isRotationHandle(int idx) { return idx >= 0 && idx >= getControlHandles().size(); }
+    public boolean isRotationHandle(int idx) { return false; }
 
     public void moveHandle(int index, Point3D newPos) {
-        if (isRotationHandle(index)) {
-            if (index == getControlHandles().size()) setRotationY(shape_rotation_helper_ui_main.calculateAngle(getWorldCenter(), newPos));
-            else setRotationX(shape_rotation_helper_ui_main.calculateAngle(getWorldCenter(), newPos));
-            return;
-        }
         Point3D[] updated = shape_handles_ui_main.moveHandle(type, p1, p2, index, newPos);
         this.p1 = updated[0]; this.p2 = updated[1];
         updateRotationPivot(); rebuild();
@@ -157,8 +127,6 @@ public class shape_item_ui_main {
     }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }
     public int findHandleNear(Point3D groundPt, double threshold) {
-        Point3D rhW = shape_rotation_helper_ui_main.getRotationHandleWorldPos(this);
-        if (new Point3D(rhW.getX(), 0, rhW.getZ()).distance(groundPt) <= threshold * 2.5) return getControlHandles().size();
         List<Point3D> handles = getControlHandles();
         for (int i = 0; i < handles.size(); i++) {
             Point3D h = handles.get(i);
@@ -171,18 +139,19 @@ public class shape_item_ui_main {
 
     public String formatDimensions() {
         double dist = p1.distance(p2), dx = Math.abs(p2.getX() - p1.getX()), dz = Math.abs(p2.getZ() - p1.getZ());
-        String rotStr = String.format(" | Rot Y: %.0f° | Rot X: %.0f°", rotationY, rotationX);
+        String rotStr = (rotationY != 0 || rotationX != 0) ? String.format(" | Rot Y: %.0f° | Rot X: %.0f°", rotationY, rotationX) : "";
+        String posStr = String.format(" | Pos: X=%.1f Y=%.1f Z=%.1f", worldX, worldZ, -worldY);
         return switch (type) {
-            case CIRCLE    -> String.format("%s | Radius: %.1f mm%s", getName(), dist, rotStr);
-            case SQUARE    -> String.format("%s | Side: %.1f mm%s", getName(), Math.max(dx, dz), rotStr);
-            case RECTANGLE -> String.format("%s | W: %.1f H: %.1f%s", getName(), dx, dz, rotStr);
-            case EQUILATERAL_TRIANGLE -> String.format("%s | Side: %.1f mm%s", getName(), dist, rotStr);
-            case RIGHT_TRIANGLE -> String.format("%s | Base: %.1f H: %.1f%s", getName(), dx, dz, rotStr);
-            case CUBE      -> String.format("%s | Side: %.1f | X=%.0f Y=%.0f Z=%.0f%s", getName(), Math.max(dx, dz), worldX, worldZ, -worldY, rotStr);
-            case CYLINDER  -> String.format("%s | R: %.1f H: %.1f | X=%.0f Y=%.0f Z=%.0f%s", getName(), dist, Math.max(6.0, dist*2), worldX, worldZ, -worldY, rotStr);
-            case SPHERE    -> String.format("%s | Radius: %.1f | X=%.0f Y=%.0f Z=%.0f%s", getName(), dist, worldX, worldZ, -worldY, rotStr);
-            case CONE      -> String.format("%s | R: %.1f H: %.1f | X=%.0f Y=%.0f Z=%.0f%s", getName(), dist, Math.max(6.0, dist*2), worldX, worldZ, -worldY, rotStr);
-            default -> getName() + rotStr;
+            case CIRCLE    -> String.format("%s | Radius: %.1f mm%s%s", getName(), dist, posStr, rotStr);
+            case SQUARE    -> String.format("%s | Side: %.1f mm%s%s", getName(), Math.max(dx, dz), posStr, rotStr);
+            case RECTANGLE -> String.format("%s | W: %.1f H: %.1f mm%s%s", getName(), dx, dz, posStr, rotStr);
+            case EQUILATERAL_TRIANGLE -> String.format("%s | Side: %.1f mm%s%s", getName(), dist, posStr, rotStr);
+            case RIGHT_TRIANGLE -> String.format("%s | Base: %.1f H: %.1f mm%s%s", getName(), dx, dz, posStr, rotStr);
+            case CUBE      -> String.format("%s | Side: %.1f mm%s%s", getName(), Math.max(dx, dz), posStr, rotStr);
+            case CYLINDER  -> String.format("%s | R: %.1f H: %.1f mm%s%s", getName(), dist, Math.max(6.0, dist*2), posStr, rotStr);
+            case SPHERE    -> String.format("%s | Radius: %.1f mm%s%s", getName(), dist, posStr, rotStr);
+            case CONE      -> String.format("%s | R: %.1f H: %.1f mm%s%s", getName(), dist, Math.max(6.0, dist*2), posStr, rotStr);
+            default -> getName() + posStr + rotStr;
         };
     }
 

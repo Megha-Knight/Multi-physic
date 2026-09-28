@@ -100,9 +100,7 @@ public final class mesh_exporter_ui_main {
         // Transform all vertices with item's centroid, pitch/yaw rotation, and world translation
         Point3D c = item.getCenter();
         double rx = item.getRotationX(), ry = item.getRotationY();
-        double wx = item.getType().is3D() ? item.getWorldX() : 0;
-        double wy = item.getType().is3D() ? -item.getWorldY() : 0;
-        double wz = item.getType().is3D() ? item.getWorldZ() : 0;
+        double wx = item.getWorldX(), wy = -item.getWorldY(), wz = item.getWorldZ();
 
         List<Tri> transformed = new ArrayList<>();
         for (Tri t : localTris) {
