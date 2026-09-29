@@ -139,23 +139,4 @@ public final class shape_rotation_helper_ui_main {
         if (a < 0) a += 360.0;
         return Math.round(a * 10.0) / 10.0;
     }
-
-    public static shape_item_ui_main findShapeNearRay(java.util.List<shape_item_ui_main> shapes, shape_item_ui_main sel, double[] ray, double threshold) {
-        if (ray == null || shapes == null) return null;
-        if (sel != null && isRayNearShape(sel, ray, threshold)) return sel;
-        for (int i = shapes.size() - 1; i >= 0; i--) {
-            shape_item_ui_main s = shapes.get(i);
-            if (isRayNearShape(s, ray, threshold)) return s;
-        }
-        return null;
-    }
-
-    public static boolean isRayNearShape(shape_item_ui_main item, double[] ray, double threshold) {
-        if (item == null || ray == null) return false;
-        if (item.getType().is3D()) {
-            return world_raycaster_ui_main.distRayToPoint(ray, item.getWorldCenter()) <= (item.getBoundingRadius() + threshold);
-        }
-        Point3D gHit = world_raycaster_ui_main.hitGround(ray);
-        return gHit != null && item.isNear(gHit, threshold);
-    }
 }

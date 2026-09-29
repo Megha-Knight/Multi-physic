@@ -44,12 +44,15 @@ public final class world_raycaster_ui_main {
         };
     }
 
-    public static Point3D hitGround(double[] ray) { return hitPlaneY(ray, 0.0); }
-    public static Point3D hitPlaneY(double[] ray, double planeY) {
+    public static Point3D hitGround(double[] ray) {
+        return hitPlaneY(ray, 0);
+    }
+
+    public static Point3D hitPlaneY(double[] ray, double yPlane) {
         if (ray == null || Math.abs(ray[4]) < 1e-4) return null;
-        double s = (planeY - ray[1]) / ray[4];
+        double s = (yPlane - ray[1]) / ray[4];
         if (s <= 0) return null;
-        return new Point3D(ray[0] + ray[3] * s, planeY, ray[2] + ray[5] * s);
+        return new Point3D(ray[0] + ray[3] * s, yPlane, ray[2] + ray[5] * s);
     }
 
     public static double projectOnAxis(double[] ray, Point3D axisPoint, Point3D axis) {

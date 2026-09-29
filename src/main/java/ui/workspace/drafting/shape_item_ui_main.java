@@ -53,12 +53,10 @@ public class shape_item_ui_main {
     public void applyWorldDelta(double dx, double dy, double dz) {
         worldX += dx; worldY += dy; worldZ += dz;
         worldTx.setX(worldX); worldTx.setY(worldY); worldTx.setZ(worldZ);
-        updateRotationPivot();
     }
     public void setWorldTranslation(double x, double y, double z) {
         worldX = x; worldY = y; worldZ = z;
         worldTx.setX(x); worldTx.setY(y); worldTx.setZ(z);
-        updateRotationPivot(); rebuild();
     }
     public void setRotation(double rx, double ry) {
         this.rotationX = shape_rotation_helper_ui_main.normalize360(rx);
@@ -98,7 +96,7 @@ public class shape_item_ui_main {
             default -> null;
         };
         if (geo != null) shapeGroup.getChildren().add(geo);
-        if (selected && !type.is3D()) buildResizeHandles();
+        if (selected) buildResizeHandles();
     }
 
     private void buildResizeHandles() {
@@ -122,23 +120,15 @@ public class shape_item_ui_main {
     }
 
     public boolean containsNode(Node node) {
-        for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup || c == shapeGroup) return true;
+        for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup) return true;
         return false;
-    }
-    public double getBoundingRadius() {
-        if (p1 == null || p2 == null) return 15.0;
-        if (type == basic_shapes_ui_main.CUBE || type == basic_shapes_ui_main.SQUARE) {
-            double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ()));
-            return Math.max(s * 0.866, 15.0);
-        }
-        return Math.max(p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), 15.0);
     }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }
     public int findHandleNear(Point3D groundPt, double threshold) {
         List<Point3D> handles = getControlHandles();
         for (int i = 0; i < handles.size(); i++) {
             Point3D h = handles.get(i);
-            if (new Point3D(h.getX(), 0, h.getZ()).distance(groundPt) <= threshold) return i;
+            if (new Point3D(h.getX() + worldX, 0, h.getZ() + worldZ).distance(groundPt) <= threshold) return i;
         }
         return -1;
     }

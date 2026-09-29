@@ -42,13 +42,14 @@ public class shape_editor_ui_main {
         axisDrag = new axis_drag_controller_ui_main(viewport, camera, camCtrl, container);
         axisDrag.setStatusCallback(s -> { if (statusCallback != null) statusCallback.accept(s); });
         new shape_event_handler_ui_main(this, viewport, subScene, camCtrl, raycaster,
-                                        hudLabel, isDrawingActive, axisDrag);
+                                        hudLabel, isDrawingActive, axisDrag, camera, container);
     }
 
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; }
     public void setOnShapesChanged(Runnable r) { this.onShapesChanged = r; }
     public void setOnSelectionChanged(Consumer<shape_item_ui_main> c) { this.onSelectionChanged = c; }
     public void notifyShapesChanged() { if (onShapesChanged != null) onShapesChanged.run(); }
+
     public void recordSnapshot() { history.pushSnapshot(shapes); }
 
     public String generateNextName(basic_shapes_ui_main type) {
@@ -157,7 +158,6 @@ public class shape_editor_ui_main {
     public List<shape_item_ui_main> getShapes() { return new ArrayList<>(shapes); }
     public shape_item_ui_main getSelectedShape()  { return selectedShape; }
     public axis_drag_controller_ui_main getAxisDrag() { return axisDrag; }
-    public Group getContainer() { return container; }
 
     public void selectShape(shape_item_ui_main item) {
         if (selectedShape != null) selectedShape.setSelected(false);
@@ -181,10 +181,6 @@ public class shape_editor_ui_main {
             if (shapes.get(i).isNear(pt, threshold)) return shapes.get(i);
         }
         return null;
-    }
-
-    public shape_item_ui_main findShapeNearRay(double[] ray) {
-        return shape_rotation_helper_ui_main.findShapeNearRay(shapes, selectedShape, ray, 10.0);
     }
 
     public shape_item_ui_main findShapeByNode(javafx.scene.Node node) {
