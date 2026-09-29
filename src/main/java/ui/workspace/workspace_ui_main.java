@@ -55,6 +55,7 @@ public class workspace_ui_main extends StackPane {
 
         root3D = new Group();
         coordSystem = new coordinate_system_ui_main();
+        coordSystem.setMouseTransparent(true);
         root3D.getChildren().add(coordSystem);
 
         AmbientLight ambientLight = new AmbientLight(Color.web("#8494A5"));
