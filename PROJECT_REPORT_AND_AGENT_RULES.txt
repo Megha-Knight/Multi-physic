@@ -1,0 +1,196 @@
+================================================================================
+MULTI-PHYSICS (ASTRA) CAD/CAE PROJECT REPORT & AI AGENT GUIDELINES
+================================================================================
+Document Version: 1.0.0
+Target Platform: Java 25.0.4 LTS | JavaFX 25.0.2 | Maven 3.9.16
+Operating System: Windows 10/11 (x64)
+Repository: https://github.com/Megha-Knight/Multi-physic.git
+Branch: main
+================================================================================
+
+--------------------------------------------------------------------------------
+1. PROJECT OVERVIEW & ARCHITECTURAL PHILOSOPHY
+--------------------------------------------------------------------------------
+Multi-physics (internal project code: Astra) is a high-performance, interactive
+2D/3D Computer-Aided Design (CAD) and Multiphysics simulation environment built
+with JavaFX and modern 3D graphics rendering.
+
+Key Goals:
+- Deliver an intuitive, professional CAD workspace similar to industry-standard
+  tools (ANSYS SpaceClaim, CATIA, Fusion 360, SolidWorks).
+- Provide seamless 2D sketch drafting on the ground plane (Circle, Square,
+  Rectangle, Equilateral Triangle, Right Triangle).
+- Provide direct 3D solid primitive modeling (Cube, Cylinder, Sphere, Cone).
+- Deliver 1:1 direct-manipulation editing: direct body click-and-drag across
+  the XY plane, Shift+drag elevation along the Z vertical axis, 360-degree
+  rotation via right-click / Alt+drag, and keyboard arrow key precision nudging.
+- Eliminate cluttered, distracting handles (stems/spheres) in favor of clean,
+  modern direct-interaction CAD paradigms.
+- Support comprehensive export/import across industry CAD/analysis formats:
+  .nd (native XML), .step/.stp, .iges/.igs, .brep, .obj, .stl, .dxf, .json, .txt.
+
+--------------------------------------------------------------------------------
+2. PROJECT STRUCTURE & PACKAGE MAP
+--------------------------------------------------------------------------------
+src/main/java/
+├── application/
+│   ├── Main.java                        # JavaFX Application (creates PrimaryStage, loads scene & icons)
+│   └── Launcher.java                    # Plain Java entrypoint for IDE run button without JavaFX bootstrap
+└── ui/
+    ├── UI_Main.java                     # Master governing view assembling ribbon, toolbar, workspace, footers
+    ├── framework_ui_main.java           # Central design tokens, color palette, dimension constants, fonts
+    ├── documenthandler_ui_main.java     # Multi-document tab manager, dirty/saved state tracker
+    ├── savecommands_ui_main.java        # Multi-format CAD file exporter (.nd, .step, .iges, .obj, .stl, .dxf, etc.)
+    │
+    ├── ribbonbar/
+    │   └── ribbon_ui_main.java          # Ribbon menu with tabs (Home, Geometry, Physics, Mesh, Results, View)
+    ├── toolbar/
+    │   └── tools_ui_main.java           # Left vertical quick-access toolbar
+    ├── navigationbar/
+    │   └── navigation_ui_main.java      # Left dockable Model Tree / Geometry explorer
+    ├── breadcrumbbar/
+    │   └── breadcrumb_ui_main.java      # Breadcrumb path bar displaying active model context
+    ├── Directorybar/
+    │   └── directory_ui_main.java       # High-performance file explorer (deletion, rename, open, modern icons)
+    ├── footerbar/
+    │   └── footer_ui_main.java          # Status bar with cursor coords, camera angles, dimensions readout
+    │
+    └── workspace/
+        ├── workspace_ui_main.java       # 3D SubScene container, camera, ViewCube, drafting overlay
+        │
+        ├── camera/
+        │   ├── camera_controller_ui_main.java   # Orbit, pitch/yaw, scroll-zoom, preset camera snapping
+        │   ├── coordinate_system_ui_main.java   # 3D Cartesian XYZ axes & grid (mouseTransparent = true)
+        │   └── viewcube_ui_main.java            # Interactive 3D orientation ViewCube
+        │
+        ├── document/
+        │   └── document_serializer_ui_main.java # Serializes & deserializes shapes to/from project formats
+        │
+        ├── shapes/
+        │   ├── basic_shapes_ui_main.java        # Shape enum (CIRCLE, SQUARE, RECTANGLE, TRIANGLES, CUBE, CYLINDER, SPHERE, CONE)
+        │   ├── shape_geometry_ui_main.java      # 2D planar vector profile rendering
+        │   ├── shape_geometry_3d_ui_main.java   # 3D solid geometry generators (Box, Cylinder, Sphere, Mesh)
+        │   └── mesh_helper_ui_main.java         # Parametric 3D triangle mesh builder (upward cone, etc.)
+        │
+        └── drafting/
+            ├── shape_drafting_ui_main.java      # Mouse interactive drafting engine with live preview & HUD
+            ├── shape_editor_ui_main.java        # Shape collection, selection, undo/redo history, clipboard
+            ├── shape_item_ui_main.java          # CAD entity: rootGroup, worldTx, worldRy, worldRx, dimensions
+            ├── shape_event_handler_ui_main.java # Mouse & key event controller: drag, elevate, rotate, nudge
+            ├── world_raycaster_ui_main.java     # Viewport mouse raycasting & hitPlaneY elevation tracking
+            ├── shape_handles_ui_main.java       # Shape control vertices and handle calculations
+            ├── shape_rotation_helper_ui_main.java # Centers, extents, and 360-degree rotation math
+            ├── dimension_editor_dialog_ui_main.java # Precision numerical dimension editing modal
+            ├── shape_dimension_helper_ui_main.java  # Dimension string formatting & parsing
+            ├── translation_gizmo_ui_main.java   # 3D coordinate arrows gizmo (kept hidden per user preference)
+            ├── axis_drag_controller_ui_main.java# Translation gizmo axis controller
+            └── shape_history_ui_main.java       # Snapshot undo/redo and copy/cut/paste stack
+
+src/main/resources/
+├── icons/                              # Professional SVG/PNG icons for ribbon, explorer, and app logo
+└── themes/
+    ├── dark.css                         # Dark theme stylesheet
+    └── light.css                        # Light theme stylesheet
+
+================================================================================
+3. STRICT ARCHITECTURAL & CODING RULES FOR ALL AI AGENTS
+================================================================================
+
+RULE 1: STRICT 200-LINE LIMIT PER JAVA FILE (CRITICAL CONSTRAINT)
+-----------------------------------------------------------------
+- No single `.java` file in this repository may EVER exceed 200 lines.
+- This is a non-negotiable rule. Before concluding any task, you MUST run a
+  verification script to ensure every file is <= 200 lines.
+- If a file reaches ~190 lines, refactor by extracting helper methods, using
+  compact switch expressions, combining field declarations, or extracting
+  a helper class.
+
+RULE 2: NAMING CONVENTION (`_ui_main.java`)
+-------------------------------------------
+- Every UI component class and file name must end with the suffix:
+  `_ui_main.java` (e.g., `shape_editor_ui_main.java`, `tools_ui_main.java`).
+- Only core entry points (`Main.java`, `Launcher.java`) are exceptions.
+
+RULE 3: FILE BOUNDARIES & POM RESTRICTION
+-----------------------------------------
+- Only modify files inside `src/main/java/ui/` and `src/main/resources/`.
+- NEVER modify `pom.xml` unless explicitly instructed by the user.
+
+RULE 4: NEVER CALL `rebuild()` DURING TRANSLATION / DRAGGING
+------------------------------------------------------------
+- In `shape_item_ui_main.java`, `applyWorldDelta()` and `setWorldTranslation()`
+  update the hardware transform `worldTx` (`worldTx.setX(worldX)`, etc.).
+- NEVER call `rebuild()` inside `applyWorldDelta()` or `setWorldTranslation()`.
+- REASON: Calling `rebuild()` removes and recreates the JavaFX Node (`Box`,
+  `Cylinder`, `Sphere`, `MeshView`). If an active mouse drag is in progress,
+  destroying the Node detaches the mouse event target, immediately killing
+  the JavaFX drag gesture and freezing object dragging.
+- `rebuild()` should ONLY be invoked when dimensions (`p1`, `p2`) change, or
+  when selection state toggles.
+
+RULE 5: DIRECT BODY DRAGGING VS HANDLE RESHAPING
+------------------------------------------------
+- Clicking on any shape body (solid 3D mesh or 2D profile) MUST ALWAYS enter
+  `EditMode.MOVE_SHAPE`.
+- Handle reshaping (`EditMode.RESHAPE_HANDLE`) must ONLY be triggered if:
+  a) The user clicks directly on a visible handle sphere (`sel.findHandleByNode(hitNode) >= 0`), OR
+  b) The user clicks in empty space within 6mm of a handle.
+- NEVER allow `findHandleNear()` to override a click that hits the shape body.
+  In 3D solids, handles sit at corners and centers; checking `findHandleNear()`
+  on body clicks causes false handle triggers and blocks dragging entirely.
+
+RULE 6: ELEVATION-PLANE RAYCASTING (1:1 MOUSE TRACKING)
+-------------------------------------------------------
+- When dragging 3D objects or elevated 2D shapes, raycasting MUST NOT be
+  restricted to the ground plane $Y=0$.
+- Use `world_raycaster_ui_main.hitPlaneY(ray, sel.getWorldCenter().getY())`.
+  This intersects the mouse ray with the horizontal plane passing through the
+  object's vertical center.
+- This guarantees 1:1 mouse tracking with ZERO parallax jumping, regardless of
+  whether the object is on the ground or elevated high in the air.
+- Provide a camera-yaw aligned fallback translation if the camera view ray
+  is parallel to the horizon (`dy ~ 0`).
+
+RULE 7: MOUSE TRANSPARENCY ON BACKGROUND OVERLAYS
+-------------------------------------------------
+- The 3D grid and coordinate axes (`coordinate_system_ui_main`) and 2D text
+  overlays (`labelOverlay`) MUST have `setMouseTransparent(true)`.
+- If mouse transparency is false, clicking near the origin or grid lines will
+  intercept mouse events and prevent clicking/dragging 3D objects.
+
+RULE 8: INTERACTION STANDARDS & CONTROLS
+----------------------------------------
+- Primary Mouse Drag (Left-click): Moves shape across the horizontal plane.
+- Shift + Mouse Drag: Elevates / lowers the shape vertically along Y (CAD Z-axis).
+- Secondary Mouse Drag (Right-click) or Alt + Drag: Rotates shape in 360 degrees
+  (Left/Right moves Yaw Y-rotation, Up/Down moves Pitch X-rotation).
+- Arrow Keys: Precision nudging (Left/Right along X, Up/Down along depth Z).
+- Shift + Up/Down: Precision vertical elevation nudging along Y.
+- Double-Click on Shape: Opens modal dimension editor dialog.
+- Delete / Backspace: Deletes selected shape.
+- Escape: Deselects shape / cancels active draft.
+
+RULE 9: JDK 25 & MAVEN COMPILATION ENVIRONMENT
+-----------------------------------------------
+- The project is configured for **Java 25 LTS** and **Maven 3.9.16**.
+- JDK path: `C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot`
+- To compile via command line on Windows:
+  cmd.exe /c "set JAVA_HOME=C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot&& set PATH=C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot\bin;%PATH%&& mvn compile"
+- Do not run plain `mvn compile` without ensuring `JAVA_HOME` points to JDK 25,
+  as standard Maven may fall back to older installed JREs lacking modern Java 25
+  switch expressions and API features.
+
+RULE 10: MANDATORY POST-TASK VERIFICATION & GIT PUSH
+----------------------------------------------------
+After every successful feature addition, enhancement, or bug fix:
+1. Verify line count: Confirm that all `.java` files are strictly <= 200 lines:
+   powershell -Command "Get-ChildItem -Recurse -Filter *.java src | ForEach-Object { if ((Get-Content `$_.FullName).Count -gt 200) { Write-Host `$_.FullName (Get-Content `$_.FullName).Count } }"
+2. Verify compilation: Clean compile with JDK 25 (`BUILD SUCCESS`).
+3. Commit and push:
+   git add src/
+   git commit -m "<type>(<scope>): <clear description>"
+   git push origin main
+
+================================================================================
+END OF GUIDELINES
+================================================================================

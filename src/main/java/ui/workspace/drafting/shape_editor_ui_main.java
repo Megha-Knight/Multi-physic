@@ -160,14 +160,14 @@ public class shape_editor_ui_main {
     public axis_drag_controller_ui_main getAxisDrag() { return axisDrag; }
 
     public void selectShape(shape_item_ui_main item) {
+        if (selectedShape == item) return;
         if (selectedShape != null) selectedShape.setSelected(false);
         selectedShape = item;
         if (selectedShape != null) {
             selectedShape.setSelected(true);
             axisDrag.attachTo(selectedShape);
             if (statusCallback != null) {
-                String msg = selectedShape.getName() + " selected (" + selectedShape.getType().getLabel() + ")";
-                statusCallback.accept(msg);
+                statusCallback.accept(selectedShape.getName() + " selected (" + selectedShape.getType().getLabel() + ")");
             }
         } else {
             axisDrag.detach();

@@ -47,7 +47,12 @@ public class axis_drag_controller_ui_main {
 
     public void attachTo(shape_item_ui_main item) {
         this.target = item;
-        gizmo.setVisible(false);
+        if (target != null && target.getType().is3D()) {
+            gizmo.setVisible(true);
+            updateGizmoPosition();
+        } else {
+            gizmo.setVisible(false);
+        }
     }
 
     public void detach() {
@@ -64,13 +69,20 @@ public class axis_drag_controller_ui_main {
 
     public boolean isGizmoNode(Node node) { return gizmo.isGizmoNode(node); }
 
+    public Point3D getGizmoOrigin() {
+        if (target == null) return new Point3D(0, 0, 0);
+        Point3D a = getAnchor(target), c = target.getCenter();
+        return shape_rotation_helper_ui_main.transformPoint(
+            a, c, target.getRotationX(), target.getRotationY(),
+            target.getWorldX(), target.getWorldY(), target.getWorldZ()
+        );
+    }
+
     public Axis findAxisNearRay(MouseEvent e) {
         if (!gizmo.isVisible() || target == null) return null;
         double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, shapesGroup);
         if (ray == null) return null;
-        Point3D anchor = getAnchor(target);
-        Point3D worldPt = new Point3D(anchor.getX() + target.getWorldX(),
-            anchor.getY() + target.getWorldY(), anchor.getZ() + target.getWorldZ());
+        Point3D worldPt = getGizmoOrigin();
         Axis[] axes = {Axis.X, Axis.Y, Axis.Z};
         Point3D[] dirs = {DIR_X, DIR_Y, DIR_Z};
         for (int i = 0; i < 3; i++) {
@@ -95,6 +107,7 @@ public class axis_drag_controller_ui_main {
 
         double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, shapesGroup);
         axisAnchorScalar = computeAxisScalar(ray, a);
+        if (Double.isNaN(axisAnchorScalar)) axisAnchorScalar = 0;
         return true;
     }
 
@@ -120,8 +133,9 @@ public class axis_drag_controller_ui_main {
                     "%s — Pos: X=%.1f Y=%.1f Z=%.1f",
                     target.getType().getLabel(), target.getWorldX(), target.getWorldZ(), -target.getWorldY()
                 ));
+            return true;
         }
-        return true;
+        return false;
     }
 
     public boolean onReleased() {
@@ -133,28 +147,21 @@ public class axis_drag_controller_ui_main {
         return true;
     }
 
-    public void onHover(Node node) {
+    public void onHover(Axis a) {
         if (!gizmo.isVisible()) return;
-        Axis a = axisForNode(node);
         if (a != null) gizmo.highlight(a);
         else gizmo.clearHighlight();
     }
 
     public void updateGizmoPosition() {
-        if (target == null) return;
-        Point3D a = getAnchor(target);
-        gizmo.moveTo(target.getWorldX(), target.getWorldY(), target.getWorldZ(),
-                     a.getX(), a.getY(), a.getZ());
+        if (target == null || !gizmo.isVisible()) return;
+        Point3D p = getGizmoOrigin();
+        gizmo.moveTo(p.getX(), p.getY(), p.getZ(), 0, 0, 0);
     }
 
     private double computeAxisScalar(double[] ray, Axis axis) {
         if (ray == null || target == null) return Double.NaN;
-        Point3D a = getAnchor(target);
-        Point3D worldPt = new Point3D(
-            a.getX() + target.getWorldX(),
-            a.getY() + target.getWorldY(),
-            a.getZ() + target.getWorldZ()
-        );
+        Point3D worldPt = getGizmoOrigin();
         Point3D axisDir = switch (axis) {
             case X -> DIR_X;
             case Y -> DIR_Y;

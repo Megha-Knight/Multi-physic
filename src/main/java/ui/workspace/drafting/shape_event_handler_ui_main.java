@@ -48,10 +48,6 @@ public class shape_event_handler_ui_main {
         this.hudLabel = hudLabel; this.isDrawingActive = isDrawingActive;
         this.axisDrag = axisDrag; this.camera = camera; this.container = container;
         viewport.setFocusTraversable(true); if (subScene != null) subScene.setFocusTraversable(true);
-        attach();
-    }
-
-    private void attach() {
         Node target = (subScene != null) ? subScene : viewport;
         target.addEventFilter(MouseEvent.MOUSE_MOVED, this::handleMoved); target.addEventFilter(MouseEvent.MOUSE_PRESSED, this::handlePressed);
         target.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::handleDragged); target.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleReleased);
@@ -79,7 +75,7 @@ public class shape_event_handler_ui_main {
         Node hitNode = pickNode(e);
         Axis axis = axisDrag.axisForNode(hitNode);
         if (axis == null) axis = axisDrag.findAxisNearRay(e);
-        axisDrag.onHover(axis != null ? hitNode : null);
+        axisDrag.onHover(axis);
         if (axis != null) { setCursor(axis == Axis.X ? Cursor.H_RESIZE : axis == Axis.Y ? Cursor.CROSSHAIR : Cursor.V_RESIZE); return; }
         shape_item_ui_main sel = editor.getSelectedShape();
         if (sel != null && sel.findHandleByNode(hitNode) >= 0) { setCursor(Cursor.CROSSHAIR); return; }
@@ -105,10 +101,17 @@ public class shape_event_handler_ui_main {
         if (e.getButton() != MouseButton.PRIMARY) return;
         editor.recordSnapshot();
 
+        if (sel != null && sel.getType().is3D() && axisDrag.onAxisPressed(hitNode, e)) {
+            startMode(EditMode.AXIS_DRAG, -1, e); return;
+        }
         int hIdx;
         if (sel != null && (hIdx = sel.findHandleByNode(hitNode)) >= 0) { startMode(EditMode.RESHAPE_HANDLE, hIdx, e); return; }
 
         shape_item_ui_main hitShape = editor.findShapeByNode(hitNode);
+        if (hitShape == null && sel != null) {
+            Point3D hitSel = raycastPlane(e, sel.getWorldCenter().getY());
+            if (hitSel != null && sel.isNear(hitSel, 8.0)) hitShape = sel;
+        }
         if (hitShape == null) { Point3D hit = raycastPlane(e, 0); if (hit != null) hitShape = editor.findShapeNear(hit, 8.0); }
         if (hitShape != null) {
             editor.selectShape(hitShape);
@@ -119,9 +122,7 @@ public class shape_event_handler_ui_main {
 
         if (sel != null) {
             Point3D hit = raycastPlane(e, sel.getWorldCenter().getY());
-            if (hit != null && (hIdx = sel.findHandleNear(hit, 6.0)) >= 0) {
-                startMode(EditMode.RESHAPE_HANDLE, hIdx, e); return;
-            }
+            if (hit != null && (hIdx = sel.findHandleNear(hit, 6.0)) >= 0) { startMode(EditMode.RESHAPE_HANDLE, hIdx, e); return; }
             editor.selectShape(null); cameraController.setEnabled(true);
         }
     }
@@ -131,16 +132,20 @@ public class shape_event_handler_ui_main {
         shape_item_ui_main sel = editor.getSelectedShape();
         if (sel == null) return;
 
+        if (mode == EditMode.AXIS_DRAG) {
+            if (axisDrag.onDrag(e)) { hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); }
+            e.consume(); return;
+        }
         if (mode == EditMode.ROTATE_SHAPE) {
             double nx = shape_rotation_helper_ui_main.normalize360(startAngleX - (e.getY() - startDragY) * 0.8);
             double ny = shape_rotation_helper_ui_main.normalize360(startAngleY + (e.getX() - startDragX) * 0.8);
-            sel.setRotation(nx, ny);
-            hudLabel.setText(String.format("%s | Rot Y (L/R): %.1f° | Rot X (T/B): %.1f°", sel.getName(), sel.getRotationY(), sel.getRotationX()));
+            sel.setRotation(nx, ny); axisDrag.updateGizmoPosition();
+            hudLabel.setText(String.format("%s | Rot Y: %.1f° | Rot X: %.1f°", sel.getName(), sel.getRotationY(), sel.getRotationX()));
             hudLabel.setVisible(true); e.consume(); return;
         }
         if (mode == EditMode.RESHAPE_HANDLE) {
             Point3D hit = raycastPlane(e, sel.getWorldCenter().getY());
-            if (hit != null) { sel.moveHandle(activeHandleIdx, hit); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); }
+            if (hit != null) { sel.moveHandle(activeHandleIdx, hit); axisDrag.updateGizmoPosition(); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); }
             e.consume(); return;
         }
         if (mode == EditMode.MOVE_SHAPE) {
@@ -159,13 +164,13 @@ public class shape_event_handler_ui_main {
                 }
                 lastHit = hit;
             }
-            hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true);
-            editor.notifyShapesChanged(); e.consume();
+            axisDrag.updateGizmoPosition(); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); e.consume();
         }
     }
 
     private void handleReleased(MouseEvent e) {
         boolean wasBusy = (mode != EditMode.IDLE);
+        if (mode == EditMode.AXIS_DRAG) axisDrag.onReleased();
         if (wasBusy) { cameraController.setEnabled(true); editor.notifyShapesChanged(); }
         mode = EditMode.IDLE; activeHandleIdx = -1; lastHit = null; hudLabel.setVisible(false);
         if (wasBusy) e.consume();
@@ -177,17 +182,17 @@ public class shape_event_handler_ui_main {
         if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) { editor.deleteSelected(); e.consume(); return; }
         if (e.getCode() == KeyCode.ESCAPE) { editor.selectShape(null); e.consume(); return; }
 
-        double step = (e.isControlDown() || e.isAltDown()) ? 0.2 : 2.0;
+        double s = (e.isControlDown() || e.isAltDown()) ? 0.2 : 2.0;
         boolean moved = switch (e.getCode()) {
-            case LEFT -> { sel.applyWorldDelta(-step, 0, 0); yield true; }
-            case RIGHT -> { sel.applyWorldDelta(step, 0, 0); yield true; }
-            case UP -> { sel.applyWorldDelta(0, e.isShiftDown() ? -step : 0, e.isShiftDown() ? 0 : -step); yield true; }
-            case DOWN -> { sel.applyWorldDelta(0, e.isShiftDown() ? step : 0, e.isShiftDown() ? 0 : step); yield true; }
-            case PAGE_UP -> { sel.applyWorldDelta(0, -step, 0); yield true; }
-            case PAGE_DOWN -> { sel.applyWorldDelta(0, step, 0); yield true; }
+            case LEFT -> { sel.applyWorldDelta(-s, 0, 0); yield true; }
+            case RIGHT -> { sel.applyWorldDelta(s, 0, 0); yield true; }
+            case UP -> { sel.applyWorldDelta(0, e.isShiftDown() ? -s : 0, e.isShiftDown() ? 0 : -s); yield true; }
+            case DOWN -> { sel.applyWorldDelta(0, e.isShiftDown() ? s : 0, e.isShiftDown() ? 0 : s); yield true; }
+            case PAGE_UP -> { sel.applyWorldDelta(0, -s, 0); yield true; }
+            case PAGE_DOWN -> { sel.applyWorldDelta(0, s, 0); yield true; }
             default -> false;
         };
-        if (moved) { hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); editor.notifyShapesChanged(); e.consume(); }
+        if (moved) { axisDrag.updateGizmoPosition(); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); editor.notifyShapesChanged(); e.consume(); }
     }
     private static Node pickNode(MouseEvent e) { return (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null; }
 }
