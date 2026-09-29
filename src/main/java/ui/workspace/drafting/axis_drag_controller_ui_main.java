@@ -47,12 +47,7 @@ public class axis_drag_controller_ui_main {
 
     public void attachTo(shape_item_ui_main item) {
         this.target = item;
-        if (target != null && target.getType().is3D()) {
-            gizmo.setVisible(true);
-            updateGizmoPosition();
-        } else {
-            gizmo.setVisible(false);
-        }
+        gizmo.setVisible(false);
     }
 
     public void detach() {
