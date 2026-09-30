@@ -31,17 +31,21 @@ public final class hole_cylinder_builder_ui_main {
         if (hole == null || !hole.isValid() || (hole.getFaceKind() != face_kind_ui_main.TOP_CAP && hole.getFaceKind() != face_kind_ui_main.BOTTOM_CAP)) {
             return shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview, isSelected);
         }
+        if (!hole.fitsWithinCylinderCap(r)) {
+            return shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview, isSelected);
+        }
 
         TriangleMesh mesh = new TriangleMesh();
         mesh.getTexCoords().setAll(0, 0, 1, 0, 0, 1, 1, 1);
         List<Float> pts = new ArrayList<>();
         List<Integer> fcs = new ArrayList<>();
 
-        double hr = Math.min(hole.getRadius(), r * 0.85);
+        double hr = hole.getRadius();
         double depth = hole.isThroughAll() ? h : Math.min(h, hole.getDepth());
         boolean isTop = (hole.getFaceKind() == face_kind_ui_main.TOP_CAP);
 
         double cx = p1.getX(), cz = p1.getZ();
+        double hx = cx + hole.getU(), hz = cz + (isTop ? hole.getV() : -hole.getV());
         double entryY = isTop ? -h : 0, endY = isTop ? (-h + depth) : -depth;
 
         // Outer lateral wall of cylinder
@@ -55,27 +59,27 @@ public final class hole_cylinder_builder_ui_main {
         }
 
         // Annular entry cap
-        buildAnnulus(cx, cz, entryY, r, hr, isTop, pts, fcs);
+        buildAnnulus(cx, cz, hx, hz, entryY, r, hr, isTop, pts, fcs);
 
         // Hole cylindrical interior wall
         for (int i = 0; i < SEGS; i++) {
             double a1 = i * 2.0 * Math.PI / SEGS, a2 = (i + 1) * 2.0 * Math.PI / SEGS;
-            Point3D h1 = new Point3D(cx + hr * Math.cos(a1), entryY, cz + hr * Math.sin(a1));
-            Point3D h2 = new Point3D(cx + hr * Math.cos(a2), entryY, cz + hr * Math.sin(a2));
-            Point3D d1 = new Point3D(cx + hr * Math.cos(a1), endY, cz + hr * Math.sin(a1));
-            Point3D d2 = new Point3D(cx + hr * Math.cos(a2), endY, cz + hr * Math.sin(a2));
-            addQuad(h1, d1, d2, h2, pts, fcs); // normal faces inward into hole
+            Point3D h1 = new Point3D(hx + hr * Math.cos(a1), entryY, hz + hr * Math.sin(a1));
+            Point3D h2 = new Point3D(hx + hr * Math.cos(a2), entryY, hz + hr * Math.sin(a2));
+            Point3D d1 = new Point3D(hx + hr * Math.cos(a1), endY, hz + hr * Math.sin(a1));
+            Point3D d2 = new Point3D(hx + hr * Math.cos(a2), endY, hz + hr * Math.sin(a2));
+            addQuad(h1, d1, d2, h2, pts, fcs);
         }
 
         if (hole.isThroughAll()) {
-            buildAnnulus(cx, cz, isTop ? 0 : -h, r, hr, !isTop, pts, fcs);
+            buildAnnulus(cx, cz, hx, hz, isTop ? 0 : -h, r, hr, !isTop, pts, fcs);
         } else {
             // Blind hole bottom cap
-            Point3D bCenter = new Point3D(cx, endY, cz);
+            Point3D bCenter = new Point3D(hx, endY, hz);
             for (int i = 0; i < SEGS; i++) {
                 double a1 = i * 2.0 * Math.PI / SEGS, a2 = (i + 1) * 2.0 * Math.PI / SEGS;
-                Point3D d1 = new Point3D(cx + hr * Math.cos(a1), endY, cz + hr * Math.sin(a1));
-                Point3D d2 = new Point3D(cx + hr * Math.cos(a2), endY, cz + hr * Math.sin(a2));
+                Point3D d1 = new Point3D(hx + hr * Math.cos(a1), endY, hz + hr * Math.sin(a1));
+                Point3D d2 = new Point3D(hx + hr * Math.cos(a2), endY, hz + hr * Math.sin(a2));
                 addTri(bCenter, isTop ? d2 : d1, isTop ? d1 : d2, pts, fcs);
             }
             // Opposite full cap
@@ -96,21 +100,20 @@ public final class hole_cylinder_builder_ui_main {
 
         mesh.getPoints().setAll(pa);
         mesh.getFaces().setAll(fa);
-
         MeshView mv = new MeshView(mesh);
         mv.setCullFace(CullFace.NONE);
         mv.setMaterial(shape_geometry_3d_ui_main.createMaterial(isPreview, isSelected));
         return mv;
     }
 
-    private static void buildAnnulus(double cx, double cz, double y, double rOut, double rIn,
+    private static void buildAnnulus(double cx, double cz, double hx, double hz, double y, double rOut, double rIn,
                                      boolean faceUp, List<Float> pts, List<Integer> fcs) {
         for (int i = 0; i < SEGS; i++) {
             double a1 = i * 2.0 * Math.PI / SEGS, a2 = (i + 1) * 2.0 * Math.PI / SEGS;
             Point3D o1 = new Point3D(cx + rOut * Math.cos(a1), y, cz + rOut * Math.sin(a1));
             Point3D o2 = new Point3D(cx + rOut * Math.cos(a2), y, cz + rOut * Math.sin(a2));
-            Point3D i1 = new Point3D(cx + rIn * Math.cos(a1), y, cz + rIn * Math.sin(a1));
-            Point3D i2 = new Point3D(cx + rIn * Math.cos(a2), y, cz + rIn * Math.sin(a2));
+            Point3D i1 = new Point3D(hx + rIn * Math.cos(a1), y, hz + rIn * Math.sin(a1));
+            Point3D i2 = new Point3D(hx + rIn * Math.cos(a2), y, hz + rIn * Math.sin(a2));
             if (faceUp) {
                 addQuad(o1, i1, i2, o2, pts, fcs);
             } else {

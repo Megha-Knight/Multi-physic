@@ -20,57 +20,60 @@ public final class shape_dimension_helper_ui_main {
 
         Point3D p1 = item.getP1(), p2 = item.getP2();
         basic_shapes_ui_main type = item.getType();
-        double dist = p1.distance(p2);
-        double dx = Math.abs(p2.getX() - p1.getX());
-        double dz = Math.abs(p2.getZ() - p1.getZ());
+        double dist = (p1 != null && p2 != null) ? p1.distance(p2) : 0.0;
+        double dx = (p1 != null && p2 != null) ? Math.abs(p2.getX() - p1.getX()) : 0.0;
+        double dz = (p1 != null && p2 != null) ? Math.abs(p2.getZ() - p1.getZ()) : 0.0;
 
         switch (type) {
             case CIRCLE -> {
-                map.put("Radius", dist);
-                map.put("Diameter", dist * 2.0);
+                map.put("Radius (mm)", dist);
+                map.put("Diameter (mm)", dist * 2.0);
             }
             case SQUARE, CUBE -> {
                 double s = Math.max(dx, dz);
-                map.put("Side Length", Math.max(1.0, s));
+                map.put("Side Length (mm)", Math.max(1.0, s));
             }
             case RECTANGLE -> {
-                map.put("Width", Math.max(1.0, dx));
-                map.put("Height", Math.max(1.0, dz));
+                map.put("Width (mm)", Math.max(1.0, dx));
+                map.put("Height (mm)", Math.max(1.0, dz));
             }
             case EQUILATERAL_TRIANGLE -> {
-                map.put("Side Length", Math.max(1.0, dist));
-                map.put("Height", Math.max(1.0, dist) * Math.sqrt(3.0) / 2.0);
+                map.put("Side Length (mm)", Math.max(1.0, dist));
+                map.put("Height (mm)", Math.max(1.0, dist) * Math.sqrt(3.0) / 2.0);
             }
             case RIGHT_TRIANGLE -> {
-                map.put("Base", Math.max(1.0, dx));
-                map.put("Height", Math.max(1.0, dz));
+                map.put("Base (mm)", Math.max(1.0, dx));
+                map.put("Height (mm)", Math.max(1.0, dz));
             }
             case CYLINDER -> {
-                double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-                double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-                map.put("Radius", r);
-                map.put("Diameter", r * 2.0);
-                map.put("Height", h);
+                double r = (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 0.0;
+                double h = (p2 != null && Math.abs(p2.getY()) > 0.1) ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
+                map.put("Radius (mm)", r);
+                map.put("Diameter (mm)", r * 2.0);
+                map.put("Height (mm)", h);
             }
             case SPHERE -> {
-                double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-                map.put("Radius", r);
-                map.put("Diameter", r * 2.0);
+                double r = (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 0.0;
+                map.put("Radius (mm)", r);
+                map.put("Diameter (mm)", r * 2.0);
             }
             case CONE -> {
-                double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-                double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-                map.put("Base Radius", r);
-                map.put("Base Diameter", r * 2.0);
-                map.put("Height", h);
+                double r = (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 0.0;
+                double h = (p2 != null && Math.abs(p2.getY()) > 0.1) ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
+                map.put("Base Radius (mm)", r);
+                map.put("Base Diameter (mm)", r * 2.0);
+                map.put("Height (mm)", h);
             }
             default -> {}
         }
 
         // CAD Coordinates: X = X, Y = Depth (Z_javafx), Z = Height (-Y_javafx)
-        map.put("Position X", item.getWorldX());
-        map.put("Position Y", item.getWorldZ());
-        map.put("Position Z", -item.getWorldY());
+        double curX = item.getWorldX() + (p1 != null ? p1.getX() : 0.0);
+        double curY = item.getWorldZ() + (p1 != null ? p1.getZ() : 0.0);
+        double curZ = -(item.getWorldY() + (p1 != null ? p1.getY() : 0.0));
+        map.put("Position X (mm)", curX);
+        map.put("Position Y (mm)", curY);
+        map.put("Position Z (mm)", curZ);
         map.put("Rotation Y (Left/Right °)", item.getRotationY());
         map.put("Rotation X (Top/Bottom °)", item.getRotationX());
         return map;
@@ -84,63 +87,107 @@ public final class shape_dimension_helper_ui_main {
         basic_shapes_ui_main type = item.getType();
         Point3D p1 = item.getP1(), p2 = item.getP2();
 
-        double posX = vals.getOrDefault("Position X", item.getWorldX());
-        double posY = vals.getOrDefault("Position Y", item.getWorldZ());
-        double posZ = vals.getOrDefault("Position Z", -item.getWorldY());
-        item.setWorldTranslation(posX, -posZ, posY);
+        double curX = item.getWorldX() + (p1 != null ? p1.getX() : 0.0);
+        double curY = item.getWorldZ() + (p1 != null ? p1.getZ() : 0.0);
+        double curZ = -(item.getWorldY() + (p1 != null ? p1.getY() : 0.0));
+
+        double posX = getVal(vals, "Position X", curX);
+        double posY = getVal(vals, "Position Y", curY);
+        double posZ = getVal(vals, "Position Z", curZ);
 
         Point3D np1 = p1, np2 = p2;
-
-        switch (type) {
-            case CIRCLE -> {
-                double r = vals.getOrDefault("Radius", p1.distance(p2));
-                np1 = new Point3D(0, 0, 0); np2 = new Point3D(r, 0, 0);
+        if (item.isOnFace()) {
+            item.applyWorldDelta(posX - curX, -(posZ - curZ), posY - curY);
+            Point3D u = item.getUAxis() != null ? item.getUAxis().normalize() : new Point3D(1, 0, 0);
+            Point3D v = item.getVAxis() != null ? item.getVAxis().normalize() : new Point3D(0, 0, 1);
+            switch (type) {
+                case CIRCLE -> {
+                    double r = getRadiusVal(vals, p1.distance(p2));
+                    np2 = p1.add(u.multiply(r));
+                }
+                case SQUARE -> {
+                    double s = getVal(vals, "Side Length", Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())));
+                    np2 = p1.add(u.multiply(s)).add(v.multiply(s));
+                }
+                case RECTANGLE -> {
+                    double w = getVal(vals, "Width", Math.abs(p2.getX() - p1.getX()));
+                    double h = getVal(vals, "Height", Math.abs(p2.getZ() - p1.getZ()));
+                    np2 = p1.add(u.multiply(w)).add(v.multiply(h));
+                }
+                case EQUILATERAL_TRIANGLE -> {
+                    double s = getVal(vals, "Side Length", p1.distance(p2));
+                    np2 = p1.add(u.multiply(s));
+                }
+                case RIGHT_TRIANGLE -> {
+                    double b = getVal(vals, "Base", Math.abs(p2.getX() - p1.getX()));
+                    double h = getVal(vals, "Height", Math.abs(p2.getZ() - p1.getZ()));
+                    np2 = p1.add(u.multiply(b)).add(v.multiply(h));
+                }
+                default -> {}
             }
-            case SQUARE -> {
-                double s = vals.getOrDefault("Side Length", Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())));
-                np1 = new Point3D(0, 0, 0); np2 = new Point3D(s, 0, s);
+        } else {
+            item.setWorldTranslation(posX, -posZ, posY);
+            switch (type) {
+                case CIRCLE -> {
+                    double r = getRadiusVal(vals, (p1 != null && p2 != null) ? p1.distance(p2) : 10.0);
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(r, 0, 0);
+                }
+                case SQUARE -> {
+                    double s = getVal(vals, "Side Length", (p1 != null && p2 != null) ? Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) : 10.0);
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(s, 0, s);
+                }
+                case RECTANGLE -> {
+                    double w = getVal(vals, "Width", (p1 != null && p2 != null) ? Math.abs(p2.getX() - p1.getX()) : 10.0);
+                    double h = getVal(vals, "Height", (p1 != null && p2 != null) ? Math.abs(p2.getZ() - p1.getZ()) : 10.0);
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(w, 0, h);
+                }
+                case EQUILATERAL_TRIANGLE -> {
+                    double s = getVal(vals, "Side Length", (p1 != null && p2 != null) ? p1.distance(p2) : 10.0);
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(s, 0, 0);
+                }
+                case RIGHT_TRIANGLE -> {
+                    double b = getVal(vals, "Base", (p1 != null && p2 != null) ? Math.abs(p2.getX() - p1.getX()) : 10.0);
+                    double h = getVal(vals, "Height", (p1 != null && p2 != null) ? Math.abs(p2.getZ() - p1.getZ()) : 10.0);
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(b, 0, h);
+                }
+                case CUBE -> {
+                    double s = getVal(vals, "Side Length", (p1 != null && p2 != null) ? Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) : 10.0);
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(s, 0, s);
+                }
+                case CYLINDER -> {
+                    double r = getRadiusVal(vals, (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 10.0);
+                    double h = getVal(vals, "Height", Math.max(6.0, r * 2.0));
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(r, -h, 0);
+                }
+                case SPHERE -> {
+                    double r = getRadiusVal(vals, (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 10.0);
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(r, 0, 0);
+                }
+                case CONE -> {
+                    double r = getVal(vals, "Base Radius", (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 10.0);
+                    if (r <= 0.0 && (vals.containsKey("Base Diameter (mm)") || vals.containsKey("Base Diameter"))) {
+                        r = getVal(vals, "Base Diameter", 20.0) * 0.5;
+                    }
+                    double h = getVal(vals, "Height", Math.max(6.0, r * 2.0));
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(r, -h, 0);
+                }
+                default -> {}
             }
-            case RECTANGLE -> {
-                double w = vals.getOrDefault("Width", Math.abs(p2.getX() - p1.getX()));
-                double h = vals.getOrDefault("Height", Math.abs(p2.getZ() - p1.getZ()));
-                np1 = new Point3D(0, 0, 0); np2 = new Point3D(w, 0, h);
-            }
-            case EQUILATERAL_TRIANGLE -> {
-                double s = vals.getOrDefault("Side Length", p1.distance(p2));
-                np1 = new Point3D(0, 0, 0); np2 = new Point3D(s, 0, 0);
-            }
-            case RIGHT_TRIANGLE -> {
-                double b = vals.getOrDefault("Base", Math.abs(p2.getX() - p1.getX()));
-                double h = vals.getOrDefault("Height", Math.abs(p2.getZ() - p1.getZ()));
-                np1 = new Point3D(0, 0, 0); np2 = new Point3D(b, 0, h);
-            }
-            case CUBE -> {
-                double s = vals.getOrDefault("Side Length", Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())));
-                np1 = new Point3D(0, 0, 0); np2 = new Point3D(s, 0, s);
-            }
-            case CYLINDER -> {
-                double r = vals.getOrDefault("Radius", p1.distance(new Point3D(p2.getX(), 0, p2.getZ())));
-                double h = vals.getOrDefault("Height", Math.max(6.0, r * 2.0));
-                np1 = new Point3D(0, 0, 0);
-                np2 = new Point3D(r, -h, 0);
-                item.setWorldTranslation(posX, -posZ, posY);
-            }
-            case SPHERE -> {
-                double r = vals.getOrDefault("Radius", p1.distance(new Point3D(p2.getX(), 0, p2.getZ())));
-                np1 = new Point3D(0, 0, 0);
-                np2 = new Point3D(r, 0, 0);
-                item.setWorldTranslation(posX, -posZ, posY);
-            }
-            case CONE -> {
-                double r = vals.getOrDefault("Base Radius", p1.distance(new Point3D(p2.getX(), 0, p2.getZ())));
-                double h = vals.getOrDefault("Height", Math.max(6.0, r * 2.0));
-                np1 = new Point3D(0, 0, 0);
-                np2 = new Point3D(r, -h, 0);
-                item.setWorldTranslation(posX, -posZ, posY);
-            }
-            default -> {}
         }
-
         item.setP1P2(np1, np2);
+    }
+
+    private static double getRadiusVal(Map<String, Double> vals, double fallback) {
+        if (vals.containsKey("Radius (mm)")) return vals.get("Radius (mm)");
+        if (vals.containsKey("Radius")) return vals.get("Radius");
+        if (vals.containsKey("Diameter (mm)")) return vals.get("Diameter (mm)") * 0.5;
+        if (vals.containsKey("Diameter")) return vals.get("Diameter") * 0.5;
+        return fallback;
+    }
+
+    private static double getVal(Map<String, Double> vals, String baseKey, double fallback) {
+        if (vals.containsKey(baseKey + " (mm)")) return vals.get(baseKey + " (mm)");
+        if (vals.containsKey(baseKey)) return vals.get(baseKey);
+        return fallback;
     }
 }

@@ -123,11 +123,12 @@ public class axis_drag_controller_ui_main {
             }
             updateGizmoPosition();
 
-            if (statusCallback != null)
-                statusCallback.accept(String.format(
-                    "%s — Pos: X=%.1f Y=%.1f Z=%.1f",
-                    target.getType().getLabel(), target.getWorldX(), target.getWorldZ(), -target.getWorldY()
-                ));
+            if (statusCallback != null) {
+                double px = target.getWorldX() + (target.getP1() != null ? target.getP1().getX() : 0.0);
+                double py = target.getWorldZ() + (target.getP1() != null ? target.getP1().getZ() : 0.0);
+                double pz = -(target.getWorldY() + (target.getP1() != null ? target.getP1().getY() : 0.0));
+                statusCallback.accept(String.format("%s — Pos: X=%.1f mm Y=%.1f mm Z=%.1f mm", target.getType().getLabel(), px, py, pz));
+            }
             return true;
         }
         return false;

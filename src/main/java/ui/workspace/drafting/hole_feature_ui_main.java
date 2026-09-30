@@ -73,6 +73,19 @@ public class hole_feature_ui_main {
         return diameter >= 0.1 && (throughAll || depth >= 0.1) && faceKind != null && faceKind.isPlanar();
     }
 
+    public boolean fitsWithinFace(double faceWidth, double faceHeight) {
+        if (!isValid() || faceWidth <= 0 || faceHeight <= 0) return false;
+        double r = getRadius();
+        if (diameter >= Math.min(faceWidth, faceHeight)) return false;
+        return (Math.abs(u) + r <= faceWidth * 0.5 + 1e-4) && (Math.abs(v) + r <= faceHeight * 0.5 + 1e-4);
+    }
+
+    public boolean fitsWithinCylinderCap(double capRadius) {
+        if (!isValid() || capRadius <= 0) return false;
+        double r = getRadius();
+        return (Math.hypot(u, v) + r < capRadius * 0.99);
+    }
+
     @Override
     public String toString() {
         String depthStr = throughAll ? "Through-All" : String.format(java.util.Locale.US, "Depth: %.1f mm", depth);

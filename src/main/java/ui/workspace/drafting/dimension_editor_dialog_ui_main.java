@@ -104,23 +104,28 @@ public class dimension_editor_dialog_ui_main extends Stage {
     }
 
     private void setupSyncListeners() {
-        TextField rField = fieldMap.get("Radius"), dField = fieldMap.get("Diameter");
+        TextField rField = getField("Radius"), dField = getField("Diameter");
         if (rField != null && dField != null) {
             rField.textProperty().addListener((o, ov, nv) -> syncDim(nv, dField, 2.0));
             dField.textProperty().addListener((o, ov, nv) -> syncDim(nv, rField, 0.5));
         }
-        TextField brField = fieldMap.get("Base Radius"), bdField = fieldMap.get("Base Diameter");
+        TextField brField = getField("Base Radius"), bdField = getField("Base Diameter");
         if (brField != null && bdField != null) {
             brField.textProperty().addListener((o, ov, nv) -> syncDim(nv, bdField, 2.0));
             bdField.textProperty().addListener((o, ov, nv) -> syncDim(nv, brField, 0.5));
         }
         if (item.getType() == basic_shapes_ui_main.EQUILATERAL_TRIANGLE) {
-            TextField side = fieldMap.get("Side Length"), h = fieldMap.get("Height");
+            TextField side = getField("Side Length"), h = getField("Height");
             if (h != null) h.setEditable(false);
             if (side != null && h != null) {
                 side.textProperty().addListener((o, ov, nv) -> syncDim(nv, h, Math.sqrt(3.0) / 2.0));
             }
         }
+    }
+
+    private TextField getField(String name) {
+        TextField tf = fieldMap.get(name + " (mm)");
+        return tf != null ? tf : fieldMap.get(name);
     }
 
     private void syncDim(String valStr, TextField target, double factor) {
@@ -160,6 +165,7 @@ public class dimension_editor_dialog_ui_main extends Stage {
         if (editor != null) editor.recordSnapshot();
         shape_dimension_helper_ui_main.applyDimensions(item, parsed);
         if (editor != null) {
+            editor.setActiveFace(null);
             editor.getAxisDrag().updateGizmoPosition();
             editor.selectShape(item);
             editor.notifyShapesChanged();

@@ -165,7 +165,8 @@ public class shape_item_ui_main {
     public String formatDimensions() {
         double dist = p1.distance(p2), dx = Math.abs(p2.getX() - p1.getX()), dz = Math.abs(p2.getZ() - p1.getZ());
         String rotStr = (rotationY != 0 || rotationX != 0) ? String.format(" | Rot Y: %.0f° | Rot X: %.0f°", rotationY, rotationX) : "";
-        String posStr = String.format(" | Pos: X=%.1f Y=%.1f Z=%.1f", worldX, worldZ, -worldY);
+        double px = worldX + (p1 != null ? p1.getX() : 0.0), py = worldZ + (p1 != null ? p1.getZ() : 0.0), pz = -(worldY + (p1 != null ? p1.getY() : 0.0));
+        String posStr = String.format(" | Pos: X=%.1f mm Y=%.1f mm Z=%.1f mm", px, py, pz);
         return switch (type) {
             case CIRCLE    -> String.format("%s | Radius: %.1f mm%s%s", getName(), dist, posStr, rotStr);
             case SQUARE    -> String.format("%s | Side: %.1f mm%s%s", getName(), Math.max(dx, dz), posStr, rotStr);

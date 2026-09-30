@@ -104,13 +104,24 @@ public class hole_dialog_ui_main extends Stage {
                 return;
             }
 
-            if (editor != null) editor.recordSnapshot();
-
             hole_feature_ui_main hole = new hole_feature_ui_main(
                 java.util.UUID.randomUUID().toString(), shape.getId(), face.getFaceKind(),
                 u, v, dia, depth, throughCheck.isSelected()
             );
 
+            if (face.getFaceKind() == face_kind_ui_main.TOP_CAP || face.getFaceKind() == face_kind_ui_main.BOTTOM_CAP) {
+                if (!hole.fitsWithinCylinderCap(face.getFaceWidth() * 0.5)) {
+                    showError("Hole boundary extends outside the cylinder cap.");
+                    return;
+                }
+            } else {
+                if (!hole.fitsWithinFace(face.getFaceWidth(), face.getFaceHeight())) {
+                    showError("Hole boundary extends outside the selected face bounds.");
+                    return;
+                }
+            }
+
+            if (editor != null) editor.recordSnapshot();
             shape.addHole(hole);
             if (editor != null) editor.notifyShapesChanged();
             close();
