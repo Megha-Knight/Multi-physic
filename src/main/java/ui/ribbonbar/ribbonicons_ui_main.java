@@ -45,6 +45,17 @@ public final class ribbonicons_ui_main {
         return path;
     }
 
+    /** Hole feature icon with outer boundary and interior bore. */
+    public static Node createHoleIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 8 1 A 7 7 0 1 0 8 15 A 7 7 0 1 0 8 1 Z M 8 5 A 3 3 0 1 0 8 11 A 3 3 0 1 0 8 5 Z");
+        path.setFill(Color.TRANSPARENT);
+        path.setStroke(color);
+        path.setStrokeWidth(1.4);
+        scaleIcon(path, size);
+        return path;
+    }
+
     /** Dropdown down-arrow chevron. */
     public static Node createArrowDown(double size, Color color) {
         SVGPath path = new SVGPath();

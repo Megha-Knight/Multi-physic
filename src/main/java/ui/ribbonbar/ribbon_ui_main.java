@@ -30,6 +30,8 @@ public class ribbon_ui_main extends HBox {
     private final splitbutton_ui_main saveButton;
     private final splitbutton_ui_main basicShapesButton;
     private final basicshapespanel_ui_main shapesPanel;
+    private final splitbutton_ui_main holeButton;
+    private Runnable onHoleRequested;
 
     private final MenuItem menuSave     = new MenuItem("Save");
     private final MenuItem menuSaveAs   = new MenuItem("Save As...");
@@ -80,7 +82,11 @@ public class ribbon_ui_main extends HBox {
             if (onShapeSelected != null) onShapeSelected.accept(shape);
         });
 
-        getChildren().addAll(buildFilesGroup(), buildShapesGroup());
+        holeButton = new splitbutton_ui_main("Hole", ribbonicons_ui_main.createHoleIcon(iconSz, iconColor), () -> {
+            if (onHoleRequested != null) onHoleRequested.run();
+        });
+
+        getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildFeaturesGroup());
     }
 
     private VBox buildFilesGroup() {
@@ -91,6 +97,10 @@ public class ribbon_ui_main extends HBox {
         HBox shapesRow = new HBox(4, basicShapesButton, shapesPanel);
         shapesRow.setAlignment(Pos.CENTER_LEFT);
         return wrapGroup(shapesRow, "Basic Shapes");
+    }
+
+    private VBox buildFeaturesGroup() {
+        return wrapGroup(new HBox(2, holeButton), "Features");
     }
 
     private VBox wrapGroup(HBox buttonsRow, String labelText) {
@@ -126,6 +136,8 @@ public class ribbon_ui_main extends HBox {
     public splitbutton_ui_main getSaveButton()            { return saveButton; }
     public splitbutton_ui_main getBasicShapesButton()     { return basicShapesButton; }
     public basicshapespanel_ui_main getShapesPanel()       { return shapesPanel; }
+    public splitbutton_ui_main getHoleButton()            { return holeButton; }
+    public void setOnHoleRequested(Runnable r)            { this.onHoleRequested = r; }
 
     public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
 

@@ -13,6 +13,7 @@ import ui.shortcuts.viewshortcuts_ui_main;
 import ui.toolbar.tools_ui_main;
 import ui.workspace.document.document_serializer_ui_main;
 import ui.workspace.document.file_tab_ui_main;
+import ui.workspace.drafting.hole_dialog_ui_main;
 import ui.workspace.drafting.shape_editor_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.workspace_ui_main;
@@ -48,12 +49,9 @@ public class UI_Main extends BorderPane {
             if (css != null) getStylesheets().add(css.toExternalForm());
         } catch (Exception ignored) {}
 
-        tabToolbar = new tools_ui_main();
-        ribbonBar = new ribbon_ui_main();
-        breadcrumbBar = new breadcrumb_ui_main();
-        documentTabBar = new file_tab_ui_main();
-        footerBar = new footer_ui_main();
-        workspace3D = new workspace_ui_main();
+        tabToolbar = new tools_ui_main(); ribbonBar = new ribbon_ui_main();
+        breadcrumbBar = new breadcrumb_ui_main(); documentTabBar = new file_tab_ui_main();
+        footerBar = new footer_ui_main(); workspace3D = new workspace_ui_main();
 
         docHandler = new documenthandler_ui_main(
             documentTabBar, footerBar, breadcrumbBar, workspace3D,
@@ -82,9 +80,7 @@ public class UI_Main extends BorderPane {
 
         sceneProperty().addListener((obs, o, sc) -> {
             if (sc != null) {
-                shortcuts.attach(sc);
-                spaceBarShortcut.attach(sc);
-                viewShortcuts.attach(sc);
+                shortcuts.attach(sc); spaceBarShortcut.attach(sc); viewShortcuts.attach(sc);
             }
         });
 
@@ -94,10 +90,19 @@ public class UI_Main extends BorderPane {
     private void setupRibbonAndDrafting() {
         ribbonBar.getNewButton().setPrimaryAction(docHandler::onNewFile);
         ribbonBar.getOpenButton().setPrimaryAction(docHandler::onOpenFile);
-        ribbonBar.setOnSave(docHandler::onSaveFile);
-        ribbonBar.setOnSaveAs(docHandler::onSaveAsFile);
-        ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile);
-        ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
+        ribbonBar.setOnSave(docHandler::onSaveFile); ribbonBar.setOnSaveAs(docHandler::onSaveAsFile);
+        ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile); ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
+
+        ribbonBar.setOnHoleRequested(() -> {
+            var ed = workspace3D.getShapeEditor();
+            var s = ed.getSelectedShape();
+            var f = ed.getActiveFace();
+            if (s != null && f != null && f.isPlanar()) {
+                hole_dialog_ui_main.open(s, f, ed, getScene() != null ? getScene().getWindow() : null);
+            } else {
+                footerBar.setStatusText(s == null ? "Select a 3D shape first." : (f == null ? "Select a planar face on the shape to place a hole." : "Face is not planar."));
+            }
+        });
 
         ribbonBar.setOnShapeSelected(shape -> {
             workspace3D.getDrafter().setShape(shape);
@@ -171,18 +176,13 @@ public class UI_Main extends BorderPane {
     }
 
     private void initShortcuts() {
-        shape_editor_ui_main editor = workspace3D.getShapeEditor();
-        shortcuts.register(shortcuts_ui_main.NEW_FILE, docHandler::onNewFile);
-        shortcuts.register(shortcuts_ui_main.OPEN_FILE, docHandler::onOpenFile);
-        shortcuts.register(shortcuts_ui_main.SAVE_FILE, docHandler::onSaveFile);
-        shortcuts.register(shortcuts_ui_main.SAVE_AS, docHandler::onSaveAsFile);
-        shortcuts.register(shortcuts_ui_main.DELETE_ITEM, editor::deleteSelected);
-        shortcuts.register(shortcuts_ui_main.BACK_SPACE, editor::deleteSelected);
-        shortcuts.register(shortcuts_ui_main.COPY, editor::copySelected);
-        shortcuts.register(shortcuts_ui_main.CUT, editor::cutSelected);
-        shortcuts.register(shortcuts_ui_main.PASTE, editor::paste);
-        shortcuts.register(shortcuts_ui_main.UNDO, editor::undo);
-        shortcuts.register(shortcuts_ui_main.REDO, editor::redo); shortcuts.register(shortcuts_ui_main.REDO_ALT, editor::redo);
+        shape_editor_ui_main ed = workspace3D.getShapeEditor();
+        shortcuts.register(shortcuts_ui_main.NEW_FILE, docHandler::onNewFile); shortcuts.register(shortcuts_ui_main.OPEN_FILE, docHandler::onOpenFile);
+        shortcuts.register(shortcuts_ui_main.SAVE_FILE, docHandler::onSaveFile); shortcuts.register(shortcuts_ui_main.SAVE_AS, docHandler::onSaveAsFile);
+        shortcuts.register(shortcuts_ui_main.DELETE_ITEM, ed::deleteSelected); shortcuts.register(shortcuts_ui_main.BACK_SPACE, ed::deleteSelected);
+        shortcuts.register(shortcuts_ui_main.COPY, ed::copySelected); shortcuts.register(shortcuts_ui_main.CUT, ed::cutSelected);
+        shortcuts.register(shortcuts_ui_main.PASTE, ed::paste); shortcuts.register(shortcuts_ui_main.UNDO, ed::undo);
+        shortcuts.register(shortcuts_ui_main.REDO, ed::redo); shortcuts.register(shortcuts_ui_main.REDO_ALT, ed::redo);
     }
 
     public tools_ui_main getTabToolbar()              { return tabToolbar; }

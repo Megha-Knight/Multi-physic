@@ -58,6 +58,10 @@ public final class document_serializer_ui_main {
                         if (s.getFaceOwnerId() != null) pw.println("faceOwner: " + s.getFaceOwnerId());
                         if (s.getFaceKind() != null) pw.println("faceKind: " + s.getFaceKind().name());
                     }
+                    for (ui.workspace.drafting.hole_feature_ui_main h : s.getHoles()) {
+                        pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b%n",
+                            h.getId(), h.getFaceKind().name(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll());
+                    }
                     pw.println();
                 }
             }
@@ -77,6 +81,7 @@ public final class document_serializer_ui_main {
             basic_shapes_ui_main currentType = null;
             Point3D p1 = null, p2 = null, uAxis = null, vAxis = null, norm = null;
             double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0;
+            List<ui.workspace.drafting.hole_feature_ui_main> pendingHoles = new ArrayList<>();
 
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -87,12 +92,13 @@ public final class document_serializer_ui_main {
                     if (currentType != null && p1 != null && p2 != null) {
                         shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
                         if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
+                        for (ui.workspace.drafting.hole_feature_ui_main h : pendingHoles) item.addHole(h);
                         list.add(item);
                     }
                     String typeStr = line.substring(6).trim();
                     try { currentType = basic_shapes_ui_main.valueOf(typeStr); } catch (Exception ex) { currentType = null; }
                     id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0;
-                    uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null;
+                    uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null; pendingHoles.clear();
                 } else if (line.startsWith("id:")) id = line.substring(3).trim();
                 else if (line.startsWith("name:")) name = line.substring(5).trim();
                 else if (line.startsWith("p1:")) p1 = parsePoint(line.substring(3).trim());
@@ -105,16 +111,31 @@ public final class document_serializer_ui_main {
                 else if (line.startsWith("norm:")) norm = parsePoint(line.substring(5).trim());
                 else if (line.startsWith("faceOwner:")) faceOwner = line.substring(10).trim();
                 else if (line.startsWith("faceKind:")) { try { faceKind = face_kind_ui_main.valueOf(line.substring(9).trim()); } catch (Exception ignored) {} }
+                else if (line.startsWith("hole:")) parseHoleLine(line.substring(5).trim(), id, pendingHoles);
             }
             if (currentType != null && p1 != null && p2 != null) {
                 shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
                 if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
+                for (ui.workspace.drafting.hole_feature_ui_main h : pendingHoles) item.addHole(h);
                 list.add(item);
             }
         } catch (Exception e) {
             System.err.println("[Multiphysics] Error loading: " + e.getMessage());
         }
         return list;
+    }
+
+    private static void parseHoleLine(String str, String parentId, List<ui.workspace.drafting.hole_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 7) {
+                out.add(new ui.workspace.drafting.hole_feature_ui_main(
+                    p[0].trim(), parentId, face_kind_ui_main.valueOf(p[1].trim()),
+                    Double.parseDouble(p[2].trim()), Double.parseDouble(p[3].trim()),
+                    Double.parseDouble(p[4].trim()), Double.parseDouble(p[5].trim()), Boolean.parseBoolean(p[6].trim())
+                ));
+            }
+        } catch (Exception ignored) {}
     }
 
     public static List<shape_item_ui_main> cloneShapes(List<shape_item_ui_main> source) {
@@ -124,6 +145,9 @@ public final class document_serializer_ui_main {
                 shape_item_ui_main item = new shape_item_ui_main(s.getId(), s.getName(), s.getType(), s.getP1(), s.getP2(),
                     s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationX(), s.getRotationY());
                 if (s.isOnFace()) item.setFacePlane(s.getUAxis(), s.getVAxis(), s.getFaceNormal(), s.getFaceOwnerId(), s.getFaceKind());
+                for (ui.workspace.drafting.hole_feature_ui_main h : s.getHoles()) {
+                    item.addHole(new ui.workspace.drafting.hole_feature_ui_main(h.getId(), item.getId(), h.getFaceKind(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll()));
+                }
                 copy.add(item);
             }
         }

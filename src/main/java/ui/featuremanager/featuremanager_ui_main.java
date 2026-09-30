@@ -125,7 +125,12 @@ public class featuremanager_ui_main extends BorderPane {
                 setText(null);
                 setStyle("-fx-background-color: transparent;");
             } else {
-                nameLabel.setText(item.getName());
+                String lbl = item.getName();
+                if (item.hasHoles()) {
+                    int c = item.getHoles().size();
+                    lbl += " [" + c + (c == 1 ? " Hole]" : " Holes]");
+                }
+                nameLabel.setText(lbl);
                 Image img = loadShapeIcon(item.getType());
                 if (img != null) iconView.setImage(img);
                 setGraphic(row);
