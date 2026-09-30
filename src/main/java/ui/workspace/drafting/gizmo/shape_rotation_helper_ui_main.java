@@ -1,7 +1,8 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.gizmo;
 
 import javafx.geometry.Point3D;
 import ui.workspace.shapes.basic_shapes_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
 
 /**
  * shape_rotation_helper_ui_main.java

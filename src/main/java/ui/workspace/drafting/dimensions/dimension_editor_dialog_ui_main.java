@@ -1,4 +1,4 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.dimensions;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -10,6 +10,8 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import ui.framework_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
+import ui.workspace.drafting.shape_editor_ui_main;
 
 import java.util.*;
 

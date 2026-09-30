@@ -1,4 +1,4 @@
-package ui.workspace.shapes;
+package ui.workspace.shapes.primitives;
 
 import javafx.scene.Node;
 import javafx.scene.paint.Color;

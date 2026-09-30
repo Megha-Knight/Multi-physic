@@ -12,15 +12,12 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import ui.workspace.camera.camera_controller_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
-import ui.workspace.shapes.shape_geometry_3d_ui_main;
-import ui.workspace.shapes.shape_geometry_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_ui_main;
+import ui.workspace.drafting.faces.face_reference_ui_main;
 
 import java.util.function.Consumer;
 
-/**
- * shape_drafting_ui_main.java
- * Drafting mode controller for creating 2D profiles on ground plane or selected 3D planar faces.
- */
 public class shape_drafting_ui_main {
 
     private final Pane viewportPane;

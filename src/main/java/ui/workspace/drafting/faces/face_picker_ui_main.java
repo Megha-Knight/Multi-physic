@@ -1,12 +1,10 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.faces;
 
 import javafx.geometry.Point3D;
 import ui.workspace.shapes.basic_shapes_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
+import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
 
-/**
- * face_picker_ui_main.java
- * High-precision ray-to-face intersection and coordinate transformation engine for 3D CAD solids.
- */
 public final class face_picker_ui_main {
 
     private record Hit(double t, face_kind_ui_main kind, Point3D localPt, Point3D localNormal,

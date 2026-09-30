@@ -1,4 +1,4 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.gizmo;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
@@ -7,7 +7,8 @@ import javafx.scene.PerspectiveCamera;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import ui.workspace.camera.camera_controller_ui_main;
-import ui.workspace.drafting.translation_gizmo_ui_main.Axis;
+import ui.workspace.drafting.shape_item_ui_main;
+import ui.workspace.drafting.gizmo.translation_gizmo_ui_main.Axis;
 
 import java.util.function.Consumer;
 

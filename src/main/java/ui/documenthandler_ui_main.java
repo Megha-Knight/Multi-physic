@@ -4,7 +4,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import ui.breadcrumbbar.breadcrumb_ui_main;
 import ui.footerbar.footer_ui_main;
-import ui.workspace.document.document_serializer_ui_main;
+import ui.File_Types.document_serializer_ui_main;
 import ui.workspace.document.file_tab_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.workspace_ui_main;

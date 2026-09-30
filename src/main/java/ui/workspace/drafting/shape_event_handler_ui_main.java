@@ -13,15 +13,15 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import ui.workspace.camera.camera_controller_ui_main;
-import ui.workspace.drafting.translation_gizmo_ui_main.Axis;
+import ui.workspace.drafting.gizmo.translation_gizmo_ui_main.Axis;
+import ui.workspace.drafting.gizmo.axis_drag_controller_ui_main;
+import ui.workspace.drafting.gizmo.world_raycaster_ui_main;
+import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
+import ui.workspace.drafting.faces.face_picker_ui_main;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-/**
- * shape_event_handler_ui_main.java
- * Mouse and keyboard event controller for interactive 2D/3D CAD editing & 360° rotation.
- */
 public class shape_event_handler_ui_main {
 
     private enum EditMode { IDLE, AXIS_DRAG, MOVE_SHAPE, RESHAPE_HANDLE, ROTATE_SHAPE }

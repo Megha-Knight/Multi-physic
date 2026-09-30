@@ -1,12 +1,13 @@
-package ui.workspace.shapes;
+package ui.workspace.shapes.holes;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Node;
 import javafx.scene.shape.CullFace;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
-import ui.workspace.drafting.face_kind_ui_main;
-import ui.workspace.drafting.hole_feature_ui_main;
+import ui.workspace.drafting.faces.face_kind_ui_main;
+import ui.workspace.drafting.holes.hole_feature_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.gizmo;
 
 import javafx.scene.Group;
 import javafx.scene.paint.Color;

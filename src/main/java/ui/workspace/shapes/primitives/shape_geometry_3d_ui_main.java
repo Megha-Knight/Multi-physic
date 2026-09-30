@@ -1,4 +1,4 @@
-package ui.workspace.shapes;
+package ui.workspace.shapes.primitives;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;

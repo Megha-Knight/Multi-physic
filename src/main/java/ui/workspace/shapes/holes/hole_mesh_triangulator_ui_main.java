@@ -1,7 +1,7 @@
-package ui.workspace.shapes;
+package ui.workspace.shapes.holes;
 
 import javafx.geometry.Point3D;
-import ui.workspace.drafting.face_kind_ui_main;
+import ui.workspace.drafting.faces.face_kind_ui_main;
 
 import java.util.List;
 

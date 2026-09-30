@@ -1,7 +1,8 @@
-package ui.workspace.document;
+package ui.File_Types;
 
 import javafx.geometry.Point3D;
-import ui.workspace.drafting.face_kind_ui_main;
+import ui.workspace.drafting.faces.face_kind_ui_main;
+import ui.workspace.drafting.holes.hole_feature_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
 
@@ -15,8 +16,8 @@ import java.util.List;
 
 /**
  * document_serializer_ui_main.java
- * Serializes and deserializes CAD shapes to/from Multiphysics .nd files.
- * Format Version 1.4 — preserves ID, name, 3D translation, 360° rotation, and face-based sketch planes.
+ * Serializes and deserializes CAD shapes to/from Multiphysics .nd files and coordinates exports.
+ * Format Version 1.4 — preserves ID, name, 3D translation, 360° rotation, face-based sketches, and holes.
  */
 public final class document_serializer_ui_main {
 
@@ -32,11 +33,9 @@ public final class document_serializer_ui_main {
         return saveToNd(file, shapes);
     }
 
-    private static boolean saveToNd(File file, List<shape_item_ui_main> shapes) {
+    public static boolean saveToNd(File file, List<shape_item_ui_main> shapes) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            pw.println("# Multiphysics Model (.nd)");
-            pw.println("# Format Version: 1.4");
-            pw.println();
+            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.4\n");
             if (shapes != null) {
                 for (shape_item_ui_main s : shapes) {
                     pw.println("SHAPE: " + s.getType().name());
@@ -58,7 +57,7 @@ public final class document_serializer_ui_main {
                         if (s.getFaceOwnerId() != null) pw.println("faceOwner: " + s.getFaceOwnerId());
                         if (s.getFaceKind() != null) pw.println("faceKind: " + s.getFaceKind().name());
                     }
-                    for (ui.workspace.drafting.hole_feature_ui_main h : s.getHoles()) {
+                    for (hole_feature_ui_main h : s.getHoles()) {
                         pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b%n",
                             h.getId(), h.getFaceKind().name(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll());
                     }
@@ -77,11 +76,10 @@ public final class document_serializer_ui_main {
         if (file == null || !file.exists() || file.length() == 0) return list;
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line, id = null, name = null, faceOwner = null;
-            face_kind_ui_main faceKind = null;
-            basic_shapes_ui_main currentType = null;
+            face_kind_ui_main faceKind = null; basic_shapes_ui_main currentType = null;
             Point3D p1 = null, p2 = null, uAxis = null, vAxis = null, norm = null;
             double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0;
-            List<ui.workspace.drafting.hole_feature_ui_main> pendingHoles = new ArrayList<>();
+            List<hole_feature_ui_main> pendingHoles = new ArrayList<>();
 
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -92,7 +90,7 @@ public final class document_serializer_ui_main {
                     if (currentType != null && p1 != null && p2 != null) {
                         shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
                         if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
-                        for (ui.workspace.drafting.hole_feature_ui_main h : pendingHoles) item.addHole(h);
+                        for (hole_feature_ui_main h : pendingHoles) item.addHole(h);
                         list.add(item);
                     }
                     String typeStr = line.substring(6).trim();
@@ -116,7 +114,7 @@ public final class document_serializer_ui_main {
             if (currentType != null && p1 != null && p2 != null) {
                 shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
                 if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
-                for (ui.workspace.drafting.hole_feature_ui_main h : pendingHoles) item.addHole(h);
+                for (hole_feature_ui_main h : pendingHoles) item.addHole(h);
                 list.add(item);
             }
         } catch (Exception e) {
@@ -125,11 +123,11 @@ public final class document_serializer_ui_main {
         return list;
     }
 
-    private static void parseHoleLine(String str, String parentId, List<ui.workspace.drafting.hole_feature_ui_main> out) {
+    private static void parseHoleLine(String str, String parentId, List<hole_feature_ui_main> out) {
         try {
             String[] p = str.split(",");
             if (p.length >= 7) {
-                out.add(new ui.workspace.drafting.hole_feature_ui_main(
+                out.add(new hole_feature_ui_main(
                     p[0].trim(), parentId, face_kind_ui_main.valueOf(p[1].trim()),
                     Double.parseDouble(p[2].trim()), Double.parseDouble(p[3].trim()),
                     Double.parseDouble(p[4].trim()), Double.parseDouble(p[5].trim()), Boolean.parseBoolean(p[6].trim())
@@ -138,31 +136,25 @@ public final class document_serializer_ui_main {
         } catch (Exception ignored) {}
     }
 
-    public static List<shape_item_ui_main> cloneShapes(List<shape_item_ui_main> source) {
-        List<shape_item_ui_main> copy = new ArrayList<>();
-        if (source != null) {
-            for (shape_item_ui_main s : source) {
-                shape_item_ui_main item = new shape_item_ui_main(s.getId(), s.getName(), s.getType(), s.getP1(), s.getP2(),
-                    s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationX(), s.getRotationY());
-                if (s.isOnFace()) item.setFacePlane(s.getUAxis(), s.getVAxis(), s.getFaceNormal(), s.getFaceOwnerId(), s.getFaceKind());
-                for (ui.workspace.drafting.hole_feature_ui_main h : s.getHoles()) {
-                    item.addHole(new ui.workspace.drafting.hole_feature_ui_main(h.getId(), item.getId(), h.getFaceKind(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll()));
-                }
-                copy.add(item);
-            }
-        }
-        return copy;
-    }
-
     private static Point3D parsePoint(String str) {
         try {
-            String[] parts = str.split(",");
-            if (parts.length >= 3) {
-                return new Point3D(Double.parseDouble(parts[0].trim()),
-                                   Double.parseDouble(parts[1].trim()),
-                                   Double.parseDouble(parts[2].trim()));
+            String[] p = str.split(",");
+            return new Point3D(Double.parseDouble(p[0].trim()), Double.parseDouble(p[1].trim()), Double.parseDouble(p[2].trim()));
+        } catch (Exception e) { return new Point3D(0, 0, 0); }
+    }
+
+    public static List<shape_item_ui_main> cloneShapes(List<shape_item_ui_main> original) {
+        List<shape_item_ui_main> copies = new ArrayList<>();
+        if (original == null) return copies;
+        for (shape_item_ui_main s : original) {
+            shape_item_ui_main item = new shape_item_ui_main(s.getId(), s.getName(), s.getType(), s.getP1(), s.getP2(),
+                    s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationX(), s.getRotationY());
+            if (s.isOnFace()) item.setFacePlane(s.getUAxis(), s.getVAxis(), s.getFaceNormal(), s.getFaceOwnerId(), s.getFaceKind());
+            for (hole_feature_ui_main h : s.getHoles()) {
+                item.addHole(new hole_feature_ui_main(h.getId(), h.getOwnerShapeId(), h.getFaceKind(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll()));
             }
-        } catch (Exception ignored) {}
-        return new Point3D(0, 0, 0);
+            copies.add(item);
+        }
+        return copies;
     }
 }

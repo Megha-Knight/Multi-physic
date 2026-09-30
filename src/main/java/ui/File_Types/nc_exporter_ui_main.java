@@ -1,4 +1,4 @@
-package ui.workspace.document;
+package ui.File_Types;
 
 import javafx.geometry.Point3D;
 import ui.workspace.drafting.shape_item_ui_main;
@@ -14,7 +14,7 @@ import java.util.Locale;
 
 /**
  * nc_exporter_ui_main.java
- * CNC Numerical Control (G-code .nc) toolpath and legacy CAD model exporter for Astra.
+ * CNC Numerical Control (G-code .nc) toolpath and CAD model exporter.
  */
 public final class nc_exporter_ui_main {
 
@@ -29,8 +29,7 @@ public final class nc_exporter_ui_main {
             pw.printf(Locale.US, "( ASTRA CAD/CAM NUMERICAL CONTROL EXPORT: %s )%n", file.getName());
             pw.printf(Locale.US, "( GENERATED: %s )%n", timestamp);
             pw.println("( POST-PROCESSOR: GENERIC 3-AXIS CNC / ISO G-CODE )");
-            pw.println("(==================================================)");
-            pw.println();
+            pw.println("(==================================================)\n");
 
             // Machine initialization
             pw.println("G21          (Metric Units: Millimeters)");
@@ -40,14 +39,12 @@ public final class nc_exporter_ui_main {
             pw.println("G40 G80      (Cancel Cutter Radius Comp & Canned Cycles)");
             pw.println("T1 M06       (Tool #1: Flat End Mill 6mm)");
             pw.println("S6000 M03    (Spindle Clockwise: 6000 RPM)");
-            pw.println("G00 Z15.0000 (Rapid to Safety Clearance)");
-            pw.println();
+            pw.println("G00 Z15.0000 (Rapid to Safety Clearance)\n");
 
             if (shapes != null) {
                 for (shape_item_ui_main item : shapes) {
                     pw.println("(--------------------------------------------------)");
                     pw.printf(Locale.US, "( FEATURE: %s [%s] )%n", item.getName(), item.getType().name());
-                    // Embed model metadata for lossless reopening in Astra
                     pw.printf(Locale.US, "(SHAPE: %s)%n", item.getType().name());
                     pw.printf(Locale.US, "(id: %s)%n", item.getId());
                     pw.printf(Locale.US, "(name: %s)%n", item.getName());
@@ -66,7 +63,6 @@ public final class nc_exporter_ui_main {
                 }
             }
 
-            // End of program
             pw.println("(--------------------------------------------------)");
             pw.println("G00 Z25.0000 (Retract to Final Clearance)");
             pw.println("M05          (Spindle Stop)");
@@ -93,13 +89,11 @@ public final class nc_exporter_ui_main {
             pw.printf(Locale.US, "G00 X%.4f Y%.4f (Rapid to Center)%n", center.getX(), center.getZ());
             pw.printf(Locale.US, "G00 X%.4f Y%.4f (Rapid to Perimeter)%n", center.getX() + r, center.getZ());
             pw.println("G01 Z" + String.format(Locale.US, "%.4f", zCut) + " F300 (Plunge Feed)");
-            pw.printf(Locale.US, "G02 X%.4f Y%.4f I%.4f J0.0000 F1200 (Full Circular Interpolation)%n",
-                      center.getX() + r, center.getZ(), -r);
+            pw.printf(Locale.US, "G02 X%.4f Y%.4f I%.4f J0.0000 F1200 (Full Circular Interpolation)%n", center.getX() + r, center.getZ(), -r);
             pw.println("G00 Z5.0000 (Retract)");
             return;
         }
 
-        // Polygon or Box perimeter toolpath
         List<Point3D> contour;
         double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ();
         if (type == basic_shapes_ui_main.CUBE || type == basic_shapes_ui_main.SQUARE) {

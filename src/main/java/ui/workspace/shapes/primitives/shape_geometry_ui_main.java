@@ -1,6 +1,7 @@
-package ui.workspace.shapes;
+package ui.workspace.shapes.primitives;
 
 import javafx.geometry.Point3D;
+import ui.workspace.shapes.basic_shapes_ui_main;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.paint.Color;

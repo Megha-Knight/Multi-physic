@@ -1,4 +1,4 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.faces;
 
 import javafx.geometry.Point3D;
 import javafx.scene.Group;

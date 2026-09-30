@@ -9,6 +9,11 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import ui.workspace.camera.camera_controller_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
+import ui.workspace.drafting.gizmo.axis_drag_controller_ui_main;
+import ui.workspace.drafting.faces.face_overlay_ui_main;
+import ui.workspace.drafting.faces.face_reference_ui_main;
+import ui.workspace.drafting.faces.face_picker_ui_main;
+import ui.workspace.drafting.dimensions.dimension_editor_dialog_ui_main;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,10 +22,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-/**
- * shape_editor_ui_main.java
- * Manages active document shape entities, selection, undo/redo, and 3D gizmo translation.
- */
 public class shape_editor_ui_main {
 
     private final List<shape_item_ui_main> shapes = new ArrayList<>();
@@ -133,8 +134,7 @@ public class shape_editor_ui_main {
 
     public void openDimensionEditor(shape_item_ui_main shape) {
         if (shape == null) return;
-        dimension_editor_dialog_ui_main.open(shape, this,
-            container.getScene() != null ? container.getScene().getWindow() : null);
+        dimension_editor_dialog_ui_main.open(shape, this, container.getScene() != null ? container.getScene().getWindow() : null);
     }
 
     public void clearHistory() { history.clear(); }

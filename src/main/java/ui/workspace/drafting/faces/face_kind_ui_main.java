@@ -1,4 +1,4 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.faces;
 
 /**
  * face_kind_ui_main.java

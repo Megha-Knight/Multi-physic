@@ -1,4 +1,4 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.holes;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,6 +9,10 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import ui.framework_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
+import ui.workspace.drafting.shape_editor_ui_main;
+import ui.workspace.drafting.faces.face_reference_ui_main;
+import ui.workspace.drafting.faces.face_kind_ui_main;
 
 import java.util.Locale;
 

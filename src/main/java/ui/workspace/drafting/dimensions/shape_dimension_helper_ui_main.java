@@ -1,15 +1,12 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.dimensions;
 
 import javafx.geometry.Point3D;
 import ui.workspace.shapes.basic_shapes_ui_main;
+import ui.workspace.drafting.shape_item_ui_main;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * shape_dimension_helper_ui_main.java
- * Extracts, calculates, and applies geometric dimensions and world positions for CAD shapes.
- */
 public final class shape_dimension_helper_ui_main {
 
     private shape_dimension_helper_ui_main() {}

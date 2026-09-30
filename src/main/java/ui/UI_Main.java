@@ -11,9 +11,9 @@ import ui.shortcuts.shortcuts_ui_main;
 import ui.shortcuts.space_bar_ui_main;
 import ui.shortcuts.viewshortcuts_ui_main;
 import ui.toolbar.tools_ui_main;
-import ui.workspace.document.document_serializer_ui_main;
+import ui.File_Types.document_serializer_ui_main;
 import ui.workspace.document.file_tab_ui_main;
-import ui.workspace.drafting.hole_dialog_ui_main;
+import ui.workspace.drafting.holes.hole_dialog_ui_main;
 import ui.workspace.drafting.shape_editor_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.workspace_ui_main;
@@ -193,6 +193,5 @@ public class UI_Main extends BorderPane {
     public workspace_ui_main getWorkspace3D()          { return workspace3D; }
     public file_tab_ui_main getDocumentTabBar()         { return documentTabBar; }
     public shortcuts_ui_main getShortcuts()            { return shortcuts; }
-    public space_bar_ui_main getSpaceBarShortcut()     { return spaceBarShortcut; }
-    public viewshortcuts_ui_main getViewShortcuts()    { return viewShortcuts; }
+    public space_bar_ui_main getSpaceBarShortcut()     { return spaceBarShortcut; } public viewshortcuts_ui_main getViewShortcuts() { return viewShortcuts; }
 }

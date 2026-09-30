@@ -11,16 +11,15 @@ import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 import ui.framework_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
-import ui.workspace.shapes.shape_geometry_3d_ui_main;
-import ui.workspace.shapes.shape_geometry_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_ui_main;
+import ui.workspace.drafting.faces.face_kind_ui_main;
+import ui.workspace.drafting.holes.hole_feature_ui_main;
+import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
 
 import java.util.List;
 import java.util.UUID;
 
-/**
- * shape_item_ui_main.java
- * Interactive 2D/3D CAD entity with stable identifier, 3D translation, and 360° rotation.
- */
 public class shape_item_ui_main {
 
     private final String id;
@@ -115,9 +114,9 @@ public class shape_item_ui_main {
             case EQUILATERAL_TRIANGLE -> shape_geometry_ui_main.createEquilateralTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
             case RIGHT_TRIANGLE -> shape_geometry_ui_main.createRightTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
             case CUBE      -> holes.isEmpty() ? shape_geometry_3d_ui_main.createCube(p1, p2, false, selected)
-                                              : ui.workspace.shapes.hole_mesh_builder_ui_main.buildCubeWithHoles(p1, p2, holes, false, selected);
+                                              : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCubeWithHoles(p1, p2, holes, false, selected);
             case CYLINDER  -> holes.isEmpty() ? shape_geometry_3d_ui_main.createCylinder(p1, p2, false, selected)
-                                              : ui.workspace.shapes.hole_mesh_builder_ui_main.buildCylinderWithHoles(p1, p2, holes, false, selected);
+                                              : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCylinderWithHoles(p1, p2, holes, false, selected);
             case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, false, selected);
             case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, false, selected);
             default -> null;

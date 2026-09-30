@@ -1,6 +1,7 @@
-package ui.workspace.drafting;
+package ui.workspace.drafting.holes;
 
 import java.util.UUID;
+import ui.workspace.drafting.faces.face_kind_ui_main;
 
 /**
  * hole_feature_ui_main.java
