@@ -33,6 +33,9 @@ public class shape_item_ui_main {
 
     private final Group rootGroup = new Group(), shapeGroup = new Group(), handlesGroup = new Group();
     private boolean selected = false;
+    private Point3D uAxis = new Point3D(1, 0, 0), vAxis = new Point3D(0, 0, 1), normal = new Point3D(0, -1, 0);
+    private String faceOwnerId = null;
+    private face_kind_ui_main faceKind = null;
 
     public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) { this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, 0); }
@@ -78,17 +81,32 @@ public class shape_item_ui_main {
     public double getRotationAngle() { return rotationY; } public double getRotationY() { return rotationY; } public double getRotationX() { return rotationX; }
     public Point3D getCenter() { return shape_rotation_helper_ui_main.computeCenter(type, p1, p2); }
     public Point3D getWorldCenter() { Point3D c = getCenter(); return new Point3D(worldX + c.getX(), worldY + c.getY(), worldZ + c.getZ()); }
+    public Point3D getUAxis() { return uAxis; } public Point3D getVAxis() { return vAxis; } public Point3D getFaceNormal() { return normal; }
+    public String getFaceOwnerId() { return faceOwnerId; } public face_kind_ui_main getFaceKind() { return faceKind; } public boolean isOnFace() { return faceOwnerId != null; }
+
+    public boolean isFaceOwnerPresent(java.util.Collection<shape_item_ui_main> shapes) {
+        if (faceOwnerId == null) return true;
+        if (shapes == null) return false;
+        for (shape_item_ui_main s : shapes) if (s != null && faceOwnerId.equals(s.getId())) return true;
+        return false;
+    }
+
+    public void setFacePlane(Point3D u, Point3D v, Point3D n, String ownerId, face_kind_ui_main kind) {
+        if (u != null) this.uAxis = u; if (v != null) this.vAxis = v; if (n != null) this.normal = n;
+        this.faceOwnerId = ownerId; this.faceKind = kind;
+        rebuild();
+    }
 
     public void translate(double dx, double dz) { applyWorldDelta(dx, 0, dz); }
 
     public void rebuild() {
         shapeGroup.getChildren().clear(); handlesGroup.getChildren().clear();
         Node geo = switch (type) {
-            case CIRCLE    -> shape_geometry_ui_main.createCircle(p1, p2, false, selected);
-            case SQUARE    -> shape_geometry_ui_main.createSquare(p1, p2, false, selected);
-            case RECTANGLE -> shape_geometry_ui_main.createRectangle(p1, p2, false, selected);
-            case EQUILATERAL_TRIANGLE -> shape_geometry_ui_main.createEquilateralTriangle(p1, p2, false, selected);
-            case RIGHT_TRIANGLE -> shape_geometry_ui_main.createRightTriangle(p1, p2, false, selected);
+            case CIRCLE    -> shape_geometry_ui_main.createCircle(p1, p2, uAxis, vAxis, normal, false, selected);
+            case SQUARE    -> shape_geometry_ui_main.createSquare(p1, p2, uAxis, vAxis, normal, false, selected);
+            case RECTANGLE -> shape_geometry_ui_main.createRectangle(p1, p2, uAxis, vAxis, normal, false, selected);
+            case EQUILATERAL_TRIANGLE -> shape_geometry_ui_main.createEquilateralTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
+            case RIGHT_TRIANGLE -> shape_geometry_ui_main.createRightTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
             case CUBE      -> shape_geometry_3d_ui_main.createCube(p1, p2, false, selected);
             case CYLINDER  -> shape_geometry_3d_ui_main.createCylinder(p1, p2, false, selected);
             case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, false, selected);

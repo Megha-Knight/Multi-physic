@@ -19,21 +19,20 @@ import java.util.function.Consumer;
 
 /**
  * shape_drafting_ui_main.java
- * Drafting mode controller for creating 2D profiles on the horizontal XY ground plane (Z_cad = 0).
+ * Drafting mode controller for creating 2D profiles on ground plane or selected 3D planar faces.
  */
 public class shape_drafting_ui_main {
 
     private final Pane viewportPane;
     private final PerspectiveCamera camera;
     private final camera_controller_ui_main cameraController;
-    private final Group shapesGroup  = new Group();
-    private final Group previewGroup = new Group();
+    private final Group shapesGroup = new Group(), previewGroup = new Group();
     private final Label hudLabel;
     private Consumer<String> statusCallback;
     private shape_editor_ui_main editor;
-
     private basic_shapes_ui_main activeShape = basic_shapes_ui_main.NONE;
     private Point3D startPt = null;
+    private face_reference_ui_main draftingFace = null;
 
     public shape_drafting_ui_main(Pane viewportPane, PerspectiveCamera camera,
                                   camera_controller_ui_main cameraController, Label hudLabel) {
@@ -49,6 +48,8 @@ public class shape_drafting_ui_main {
     public Group getShapesGroup()                      { return shapesGroup; }
     public Group getPreviewGroup()                     { return previewGroup; }
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; }
+    public basic_shapes_ui_main getActiveShape()       { return activeShape; }
+    public face_reference_ui_main getDraftingFace()    { return draftingFace; }
 
     public void setShape(basic_shapes_ui_main shape) {
         this.activeShape = (shape != null) ? shape : basic_shapes_ui_main.NONE;
@@ -56,14 +57,23 @@ public class shape_drafting_ui_main {
         previewGroup.getChildren().clear();
 
         if (activeShape.isDrawing()) {
-            if (editor != null) editor.selectShape(null);
+            if (activeShape.is3D()) {
+                draftingFace = null;
+                if (editor != null) editor.selectShape(null);
+            } else if (editor != null && editor.getActiveFace() != null && editor.getActiveFace().isPlanar()) {
+                draftingFace = editor.getActiveFace();
+            } else {
+                draftingFace = null;
+                if (editor != null) editor.selectShape(null);
+            }
             cameraController.setEnabled(false);
+            String tgt = (draftingFace != null) ? " on " + draftingFace.getFaceKind().getLabel() : " on ground grid";
             if (statusCallback != null)
-                statusCallback.accept("Drafting " + activeShape.getLabel() + ": "
-                    + activeShape.getInstruction() + " [Esc to Cancel]");
-            hudLabel.setText(activeShape.getLabel() + ": Click on ground grid to place start point");
+                statusCallback.accept("Drafting " + activeShape.getLabel() + tgt + ": " + activeShape.getInstruction() + " [Esc to Cancel]");
+            hudLabel.setText(activeShape.getLabel() + ": Click" + tgt + " to place start point");
             hudLabel.setVisible(true);
         } else {
+            draftingFace = null;
             cameraController.setEnabled(true);
             hudLabel.setVisible(false);
             if (statusCallback != null) statusCallback.accept("Ready");
@@ -76,34 +86,32 @@ public class shape_drafting_ui_main {
     private void attachListeners() {
         viewportPane.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
             if (!activeShape.isDrawing()) return;
-            if (e.getButton() == MouseButton.SECONDARY) {
-                cancelDrafting(); e.consume(); return;
-            }
+            if (e.getButton() == MouseButton.SECONDARY) { cancelDrafting(); e.consume(); return; }
             if (e.getButton() == MouseButton.PRIMARY) {
-                Point3D hit = screenToGround(e.getX(), e.getY());
+                Point3D hit = screenToDraftingPlane(e.getX(), e.getY());
                 if (hit != null) { startPt = hit; e.consume(); }
             }
         });
 
         viewportPane.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (!activeShape.isDrawing() || startPt == null) return;
-            Point3D hit = screenToGround(e.getX(), e.getY());
+            Point3D hit = screenToDraftingPlane(e.getX(), e.getY());
             if (hit != null) { updatePreview(startPt, hit); e.consume(); }
         });
 
         viewportPane.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
             if (!activeShape.isDrawing() || startPt == null) return;
-            Point3D hit = screenToGround(e.getX(), e.getY());
+            Point3D hit = screenToDraftingPlane(e.getX(), e.getY());
             if (hit != null && hit.distance(startPt) > 0.5) {
                 shape_item_ui_main item = new shape_item_ui_main(activeShape, startPt, hit);
-                if (editor != null) {
-                    editor.addShape(item);
-                } else {
-                    shapesGroup.getChildren().add(item.getRootGroup());
+                if (draftingFace != null) {
+                    item.setFacePlane(draftingFace.getUAxis(), draftingFace.getVAxis(), draftingFace.getWorldNormal(),
+                                      draftingFace.getOwnerShapeId(), draftingFace.getFaceKind());
                 }
+                if (editor != null) editor.addShape(item);
+                else shapesGroup.getChildren().add(item.getRootGroup());
                 if (statusCallback != null)
-                    statusCallback.accept(activeShape.getLabel()
-                        + " created. Drag body to move, drag handles to reshape.");
+                    statusCallback.accept(activeShape.getLabel() + " created on " + (draftingFace != null ? draftingFace.getFaceKind().getLabel() : "ground") + ".");
             }
             previewGroup.getChildren().clear();
             startPt = null;
@@ -113,9 +121,7 @@ public class shape_drafting_ui_main {
         });
 
         viewportPane.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
-            if (e.getCode() == KeyCode.ESCAPE && activeShape.isDrawing()) {
-                cancelDrafting(); e.consume();
-            }
+            if (e.getCode() == KeyCode.ESCAPE && activeShape.isDrawing()) { cancelDrafting(); e.consume(); }
         });
     }
 
@@ -130,60 +136,59 @@ public class shape_drafting_ui_main {
     }
 
     private Node createGeometry(basic_shapes_ui_main type, Point3D p1, Point3D p2, boolean isPreview) {
-        return switch (type) {
-            case CIRCLE    -> shape_geometry_ui_main.createCircle(p1, p2, isPreview);
-            case SQUARE    -> shape_geometry_ui_main.createSquare(p1, p2, isPreview);
-            case RECTANGLE -> shape_geometry_ui_main.createRectangle(p1, p2, isPreview);
-            case EQUILATERAL_TRIANGLE -> shape_geometry_ui_main.createEquilateralTriangle(p1, p2, isPreview);
-            case RIGHT_TRIANGLE -> shape_geometry_ui_main.createRightTriangle(p1, p2, isPreview);
-            case CUBE      -> shape_geometry_3d_ui_main.createCube(p1, p2, isPreview);
-            case CYLINDER  -> shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview);
-            case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, isPreview);
-            case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, isPreview);
-            default -> null;
-        };
+        if (type.is3D()) {
+            return switch (type) {
+                case CUBE      -> shape_geometry_3d_ui_main.createCube(p1, p2, isPreview);
+                case CYLINDER  -> shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview);
+                case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, isPreview);
+                case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, isPreview);
+                default -> null;
+            };
+        }
+        Point3D u = (draftingFace != null) ? draftingFace.getUAxis() : new Point3D(1, 0, 0);
+        Point3D v = (draftingFace != null) ? draftingFace.getVAxis() : new Point3D(0, 0, 1);
+        Point3D n = (draftingFace != null) ? draftingFace.getWorldNormal() : new Point3D(0, -1, 0);
+        return shape_geometry_ui_main.createShapeOnPlane(type, p1, p2, u, v, n, isPreview, false);
     }
 
     private String formatDims(basic_shapes_ui_main type, Point3D p1, Point3D p2) {
-        double dx = Math.abs(p2.getX() - p1.getX());
-        double dz = Math.abs(p2.getZ() - p1.getZ());
-        double dist = p1.distance(p2);
+        Point3D u = (draftingFace != null) ? draftingFace.getUAxis() : new Point3D(1, 0, 0);
+        Point3D v = (draftingFace != null) ? draftingFace.getVAxis() : new Point3D(0, 0, 1);
+        Point3D delta = p2.subtract(p1);
+        double du = Math.abs(delta.dotProduct(u)), dv = Math.abs(delta.dotProduct(v)), dist = p1.distance(p2);
         return switch (type) {
-            case CIRCLE    -> String.format("Circle  |  Radius: %.1f mm  |  Dia: %.1f mm", dist, dist * 2);
-            case SQUARE    -> String.format("Square  |  Side: %.1f mm", Math.max(dx, dz));
-            case RECTANGLE -> String.format("Rectangle  |  W: %.1f mm  |  H: %.1f mm", dx, dz);
-            case EQUILATERAL_TRIANGLE -> String.format("Equilateral Triangle  |  Side: %.1f mm", dist);
-            case RIGHT_TRIANGLE -> String.format("Right Triangle  |  Base: %.1f mm  |  Height: %.1f mm", dx, dz);
-            case CUBE      -> String.format("Cube (3D)  |  Side: %.1f mm", Math.max(dx, dz));
-            case CYLINDER  -> String.format("Cylinder (3D)  |  Radius: %.1f mm  |  Height: %.1f mm", dist, dist * 2);
-            case SPHERE    -> String.format("Sphere (3D)  |  Radius: %.1f mm  |  Dia: %.1f mm", dist, dist * 2);
-            case CONE      -> String.format("Cone (3D)  |  Radius: %.1f mm  |  Height: %.1f mm", dist, dist * 2);
+            case CIRCLE    -> String.format("Circle | Radius: %.1f mm | Dia: %.1f mm", dist, dist * 2);
+            case SQUARE    -> String.format("Square | Side: %.1f mm", Math.max(du, dv));
+            case RECTANGLE -> String.format("Rectangle | W: %.1f mm | H: %.1f mm", du, dv);
+            case EQUILATERAL_TRIANGLE -> String.format("Equilateral Triangle | Side: %.1f mm", dist);
+            case RIGHT_TRIANGLE -> String.format("Right Triangle | Base: %.1f mm | Height: %.1f mm", du, dv);
+            case CUBE      -> String.format("Cube (3D) | Side: %.1f mm", Math.max(du, dv));
+            case CYLINDER  -> String.format("Cylinder (3D) | Radius: %.1f mm | Height: %.1f mm", dist, dist * 2);
+            case SPHERE    -> String.format("Sphere (3D) | Radius: %.1f mm | Dia: %.1f mm", dist, dist * 2);
+            case CONE      -> String.format("Cone (3D) | Radius: %.1f mm | Height: %.1f mm", dist, dist * 2);
             default -> "";
         };
     }
 
-    public Point3D screenToGround(double sx, double sy) {
-        double w = viewportPane.getWidth(), h = viewportPane.getHeight();
-        if (w <= 0 || h <= 0) return null;
-
-        double fovRad = Math.toRadians(camera.getFieldOfView());
-        double focalLen = (h / 2.0) / Math.tan(fovRad / 2.0);
-        double dx = sx - (w / 2.0);
-        double dy = sy - (h / 2.0);
-
-        Point3D camOriginScene = camera.localToScene(new Point3D(0, 0, 0));
-        Point3D rayPtCamScene  = camera.localToScene(new Point3D(dx / focalLen, dy / focalLen, 1.0));
-        Point3D camOrigin = shapesGroup.sceneToLocal(camOriginScene);
-        Point3D rayPtCam  = shapesGroup.sceneToLocal(rayPtCamScene);
-        Point3D rayDir    = rayPtCam.subtract(camOrigin).normalize();
-
-        if (Math.abs(rayDir.getY()) < 1e-4) return null;
-        double s = -camOrigin.getY() / rayDir.getY();
-        if (s <= 0) return null;
-
-        Point3D hit = camOrigin.add(rayDir.multiply(s));
-        return new Point3D(hit.getX(), 0, hit.getZ());
+    public Point3D screenToDraftingPlane(double sx, double sy) {
+        if (draftingFace != null) return screenToPlane(draftingFace.getFaceOrigin(), draftingFace.getWorldNormal(), sx, sy);
+        return screenToGround(sx, sy);
     }
 
-    public basic_shapes_ui_main getActiveShape() { return activeShape; }
+    public Point3D screenToPlane(Point3D pOrigin, Point3D pNorm, double sx, double sy) {
+        double w = viewportPane.getWidth(), h = viewportPane.getHeight();
+        if (w <= 0 || h <= 0) return null;
+        double fovRad = Math.toRadians(camera.getFieldOfView()), focalLen = (h / 2.0) / Math.tan(fovRad / 2.0);
+        Point3D camOrigin = shapesGroup.sceneToLocal(camera.localToScene(new Point3D(0, 0, 0)));
+        Point3D rayPtCam = shapesGroup.sceneToLocal(camera.localToScene(new Point3D((sx - w / 2.0) / focalLen, (sy - h / 2.0) / focalLen, 1.0)));
+        Point3D rayDir = rayPtCam.subtract(camOrigin).normalize();
+        double denom = rayDir.dotProduct(pNorm);
+        if (Math.abs(denom) < 1e-5) return null;
+        double s = pOrigin.subtract(camOrigin).dotProduct(pNorm) / denom;
+        return (s <= 0) ? null : camOrigin.add(rayDir.multiply(s));
+    }
+
+    public Point3D screenToGround(double sx, double sy) {
+        return screenToPlane(new Point3D(0, 0, 0), new Point3D(0, -1, 0), sx, sy);
+    }
 }

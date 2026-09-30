@@ -30,6 +30,8 @@ public class shape_editor_ui_main {
     private final Group container;
     private Consumer<String> statusCallback;
     private final axis_drag_controller_ui_main axisDrag;
+    private final face_overlay_ui_main faceOverlay = new face_overlay_ui_main();
+    private face_reference_ui_main activeFace = null;
     private Runnable onShapesChanged;
     private Consumer<shape_item_ui_main> onSelectionChanged;
 
@@ -41,6 +43,7 @@ public class shape_editor_ui_main {
         this.container = container;
         axisDrag = new axis_drag_controller_ui_main(viewport, camera, camCtrl, container);
         axisDrag.setStatusCallback(s -> { if (statusCallback != null) statusCallback.accept(s); });
+        container.getChildren().add(faceOverlay);
         new shape_event_handler_ui_main(this, viewport, subScene, camCtrl, raycaster,
                                         hudLabel, isDrawingActive, axisDrag, camera, container);
     }
@@ -48,7 +51,10 @@ public class shape_editor_ui_main {
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; }
     public void setOnShapesChanged(Runnable r) { this.onShapesChanged = r; }
     public void setOnSelectionChanged(Consumer<shape_item_ui_main> c) { this.onSelectionChanged = c; }
-    public void notifyShapesChanged() { if (onShapesChanged != null) onShapesChanged.run(); }
+    public void notifyShapesChanged() {
+        if (activeFace != null && selectedShape != null) updateActiveFace();
+        if (onShapesChanged != null) onShapesChanged.run();
+    }
 
     public void recordSnapshot() { history.pushSnapshot(shapes); }
 
@@ -68,9 +74,7 @@ public class shape_editor_ui_main {
     }
 
     public void addShape(shape_item_ui_main item) {
-        if (item.getName() == null || item.getName().isBlank()) {
-            item.setName(generateNextName(item.getType()));
-        }
+        if (item.getName() == null || item.getName().isBlank()) item.setName(generateNextName(item.getType()));
         history.pushSnapshot(shapes);
         shapes.add(item);
         container.getChildren().add(item.getRootGroup());
@@ -80,6 +84,7 @@ public class shape_editor_ui_main {
 
     public void removeShape(shape_item_ui_main item) {
         if (item == null) return;
+        if (activeFace != null && activeFace.getOwnerShapeId().equals(item.getId())) setActiveFace(null);
         shapes.remove(item);
         container.getChildren().remove(item.getRootGroup());
         if (selectedShape == item) selectShape(null);
@@ -95,52 +100,30 @@ public class shape_editor_ui_main {
         }
     }
 
-    public void copySelected() {
-        if (selectedShape != null) {
-            history.copy(selectedShape);
-            if (statusCallback != null) statusCallback.accept("Copied " + selectedShape.getName());
-        }
-    }
-
-    public void cutSelected() {
-        if (selectedShape != null) { history.copy(selectedShape); deleteSelected(); }
-    }
-
+    public void copySelected() { if (selectedShape != null) { history.copy(selectedShape); if (statusCallback != null) statusCallback.accept("Copied " + selectedShape.getName()); } }
+    public void cutSelected() { if (selectedShape != null) { history.copy(selectedShape); deleteSelected(); } }
     public void paste() {
-        if (history.hasClipboard()) {
-            history.pushSnapshot(shapes);
-            shape_item_ui_main item = history.paste(15.0);
-            if (item != null) {
-                item.setName(generateNextName(item.getType()));
-                shapes.add(item);
-                container.getChildren().add(item.getRootGroup());
-                selectShape(item);
-                notifyShapesChanged();
-                if (statusCallback != null) statusCallback.accept("Pasted " + item.getName());
-            }
+        if (!history.hasClipboard()) return;
+        history.pushSnapshot(shapes);
+        shape_item_ui_main item = history.paste(15.0);
+        if (item != null) {
+            item.setName(generateNextName(item.getType())); shapes.add(item); container.getChildren().add(item.getRootGroup());
+            selectShape(item); notifyShapesChanged(); if (statusCallback != null) statusCallback.accept("Pasted " + item.getName());
         }
     }
 
-    public void undo() {
-        List<shape_item_ui_main> prev = history.undo(shapes);
-        if (prev != null) { loadShapes(prev); if (statusCallback != null) statusCallback.accept("Undo"); }
-    }
-
-    public void redo() {
-        List<shape_item_ui_main> next = history.redo(shapes);
-        if (next != null) { loadShapes(next); if (statusCallback != null) statusCallback.accept("Redo"); }
-    }
+    public void undo() { List<shape_item_ui_main> p = history.undo(shapes); if (p != null) { loadShapes(p); if (statusCallback != null) statusCallback.accept("Undo"); } }
+    public void redo() { List<shape_item_ui_main> n = history.redo(shapes); if (n != null) { loadShapes(n); if (statusCallback != null) statusCallback.accept("Redo"); } }
 
     public void loadShapes(List<shape_item_ui_main> newShapes) {
         selectShape(null);
+        setActiveFace(null);
         container.getChildren().clear();
         shapes.clear();
-        container.getChildren().add(axisDrag.getGizmo());
+        container.getChildren().addAll(axisDrag.getGizmo(), faceOverlay);
         if (newShapes != null) {
             for (shape_item_ui_main s : newShapes) {
-                if (s.getName() == null || s.getName().isBlank()) {
-                    s.setName(generateNextName(s.getType()));
-                }
+                if (s.getName() == null || s.getName().isBlank()) s.setName(generateNextName(s.getType()));
                 shapes.add(s);
                 container.getChildren().add(s.getRootGroup());
             }
@@ -159,8 +142,29 @@ public class shape_editor_ui_main {
     public shape_item_ui_main getSelectedShape()  { return selectedShape; }
     public axis_drag_controller_ui_main getAxisDrag() { return axisDrag; }
 
+    public face_reference_ui_main getActiveFace() { return activeFace; }
+
+    public void setActiveFace(face_reference_ui_main face) {
+        this.activeFace = face;
+        faceOverlay.highlightFace(face);
+        if (statusCallback != null && face != null) {
+            String name = (selectedShape != null) ? selectedShape.getName() : "";
+            statusCallback.accept(face.getFaceKind().getLabel() + " on " + name + (face.isPlanar() ? " (Planar)" : " (Curved)"));
+        }
+    }
+
+    public void updateActiveFace() {
+        if (activeFace == null || selectedShape == null) return;
+        activeFace = face_picker_ui_main.refreshFace(activeFace, selectedShape);
+        faceOverlay.highlightFace(activeFace);
+    }
+
     public void selectShape(shape_item_ui_main item) {
-        if (selectedShape == item) return;
+        if (selectedShape == item) {
+            if (activeFace != null) updateActiveFace();
+            return;
+        }
+        setActiveFace(null);
         if (selectedShape != null) selectedShape.setSelected(false);
         selectedShape = item;
         if (selectedShape != null) {

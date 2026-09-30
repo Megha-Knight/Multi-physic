@@ -160,6 +160,7 @@ public class dimension_editor_dialog_ui_main extends Stage {
         if (editor != null) editor.recordSnapshot();
         shape_dimension_helper_ui_main.applyDimensions(item, parsed);
         if (editor != null) {
+            editor.getAxisDrag().updateGizmoPosition();
             editor.selectShape(item);
             editor.notifyShapesChanged();
         }
