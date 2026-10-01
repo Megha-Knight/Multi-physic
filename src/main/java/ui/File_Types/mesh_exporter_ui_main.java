@@ -79,9 +79,8 @@ public final class mesh_exporter_ui_main {
         switch (type) {
             case CUBE, SQUARE -> {
                 double s = Math.max(Math.abs(dx), Math.abs(dz));
-                double x1 = p1.getX(), x2 = p1.getX() + (dx >= 0 ? s : -s);
-                double z1 = p1.getZ(), z2 = p1.getZ() + (dz >= 0 ? s : -s);
-                addBox(local, Math.min(x1, x2), Math.max(x1, x2), 0, (type == basic_shapes_ui_main.CUBE) ? s : 0.5, Math.min(z1, z2), Math.max(z1, z2));
+                double x2 = p1.getX() + (dx >= 0 ? s : -s), z2 = p1.getZ() + (dz >= 0 ? s : -s);
+                addBox(local, Math.min(p1.getX(), x2), Math.max(p1.getX(), x2), 0, (type == basic_shapes_ui_main.CUBE) ? s : 0.5, Math.min(p1.getZ(), z2), Math.max(p1.getZ(), z2));
             }
             case RECTANGLE -> addBox(local, Math.min(p1.getX(), p2.getX()), Math.max(p1.getX(), p2.getX()), 0, 0.5, Math.min(p1.getZ(), p2.getZ()), Math.max(p1.getZ(), p2.getZ()));
             case CUBOID -> {
@@ -99,22 +98,23 @@ public final class mesh_exporter_ui_main {
 
     private static List<Tri> extractHoleMeshTriangles(shape_item_ui_main item) {
         List<Tri> list = new ArrayList<>();
-        Node geo = (item.getType() == basic_shapes_ui_main.CUBE)
-            ? ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCubeWithHoles(item.getP1(), item.getP2(), item.getHoles(), false, false)
+        Node geo = (item.getType() == basic_shapes_ui_main.CUBE) ? ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCubeWithHoles(item.getP1(), item.getP2(), item.getHoles(), false, false)
+            : (item.getType() == basic_shapes_ui_main.CUBOID) ? ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCuboidWithHoles(item.getP1(), item.getP2(), item.getHoles(), false, false)
             : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCylinderWithHoles(item.getP1(), item.getP2(), item.getHoles(), false, false);
-        if (geo instanceof Group g) {
-            for (Node child : g.getChildren()) {
-                if (child instanceof MeshView mv && mv.getMesh() instanceof TriangleMesh tm) {
-                    float[] pts = tm.getPoints().toArray(null); int[] faces = tm.getFaces().toArray(null);
-                    if (pts != null && faces != null) {
-                        for (int i = 0; i < faces.length; i += 6) {
-                            int i0 = faces[i] * 3, i1 = faces[i + 2] * 3, i2 = faces[i + 4] * 3;
-                            Point3D a = new Point3D(pts[i0], -pts[i0 + 1], pts[i0 + 2]);
-                            Point3D b = new Point3D(pts[i1], -pts[i1 + 1], pts[i1 + 2]);
-                            Point3D c = new Point3D(pts[i2], -pts[i2 + 1], pts[i2 + 2]);
-                            Point3D n = b.subtract(a).crossProduct(c.subtract(a));
-                            list.add(new Tri(a, b, c, n.magnitude() > 1e-5 ? n.normalize() : new Point3D(0, 1, 0)));
-                        }
+        List<MeshView> mvs = new ArrayList<>();
+        if (geo instanceof MeshView mv) mvs.add(mv);
+        else if (geo instanceof Group g) for (Node child : g.getChildren()) if (child instanceof MeshView mv) mvs.add(mv);
+        for (MeshView mv : mvs) {
+            if (mv.getMesh() instanceof TriangleMesh tm) {
+                float[] pts = tm.getPoints().toArray(null); int[] faces = tm.getFaces().toArray(null);
+                if (pts != null && faces != null) {
+                    for (int i = 0; i < faces.length; i += 6) {
+                        int i0 = faces[i] * 3, i1 = faces[i + 2] * 3, i2 = faces[i + 4] * 3;
+                        Point3D a = new Point3D(pts[i0], -pts[i0 + 1], pts[i0 + 2]);
+                        Point3D b = new Point3D(pts[i1], -pts[i1 + 1], pts[i1 + 2]);
+                        Point3D c = new Point3D(pts[i2], -pts[i2 + 1], pts[i2 + 2]);
+                        Point3D n = b.subtract(a).crossProduct(c.subtract(a));
+                        list.add(new Tri(a, b, c, n.magnitude() > 1e-5 ? n.normalize() : new Point3D(0, 1, 0)));
                     }
                 }
             }

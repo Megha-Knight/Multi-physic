@@ -28,6 +28,11 @@ public final class hole_mesh_builder_ui_main {
         return hole_cylinder_builder_ui_main.buildCylinderWithHoles(p1, p2, holes, isPreview, isSelected);
     }
 
+    public static Node buildCuboidWithHoles(Point3D p1, Point3D p2, List<hole_feature_ui_main> holes,
+                                            boolean isPreview, boolean isSelected) {
+        return hole_cuboid_builder_ui_main.buildCuboidWithHoles(p1, p2, holes, isPreview, isSelected);
+    }
+
     public static Node buildCubeWithHoles(Point3D p1, Point3D p2, List<hole_feature_ui_main> holes,
                                          boolean isPreview, boolean isSelected) {
         double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ(), s = Math.max(Math.abs(dx), Math.abs(dz));
