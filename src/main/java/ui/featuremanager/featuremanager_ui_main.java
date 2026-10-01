@@ -173,6 +173,7 @@ public class featuremanager_ui_main extends BorderPane {
             case EQUILATERAL_TRIANGLE -> "/icons/triangle_equilateral.png";
             case RIGHT_TRIANGLE -> "/icons/triangle_right.png";
             case CUBE -> "/icons/cube_3d.png";
+            case CUBOID -> "/icons/cuboid_3d.png";
             case CYLINDER -> "/icons/cylinder_3d.png";
             case SPHERE -> "/icons/sphere_3d.png";
             case CONE -> "/icons/cone_3d.png";

@@ -138,7 +138,7 @@ public class fileexplorer_ui_main extends BorderPane {
 
     public void refresh() {
         TreeItem<File> root = treeView.getRoot();
-        if (root instanceof filetreeitem_ui_main item) item.refresh();
+        if (root instanceof filetreeitem_ui_main) ((filetreeitem_ui_main) root).refresh();
     }
     public void refresh(String path) { refresh(); }
 

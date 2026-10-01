@@ -136,6 +136,7 @@ public class shape_drafting_ui_main {
         if (type.is3D()) {
             return switch (type) {
                 case CUBE      -> shape_geometry_3d_ui_main.createCube(p1, p2, isPreview);
+                case CUBOID    -> shape_geometry_3d_ui_main.createCuboid(p1, p2, isPreview);
                 case CYLINDER  -> shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview);
                 case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, isPreview);
                 case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, isPreview);
@@ -160,6 +161,7 @@ public class shape_drafting_ui_main {
             case EQUILATERAL_TRIANGLE -> String.format("Equilateral Triangle | Side: %.1f mm", dist);
             case RIGHT_TRIANGLE -> String.format("Right Triangle | Base: %.1f mm | Height: %.1f mm", du, dv);
             case CUBE      -> String.format("Cube (3D) | Side: %.1f mm", Math.max(du, dv));
+            case CUBOID    -> String.format("Cuboid (3D) | W: %.1f mm | D: %.1f mm", du, dv);
             case CYLINDER  -> String.format("Cylinder (3D) | Radius: %.1f mm | Height: %.1f mm", dist, dist * 2);
             case SPHERE    -> String.format("Sphere (3D) | Radius: %.1f mm | Dia: %.1f mm", dist, dist * 2);
             case CONE      -> String.format("Cone (3D) | Radius: %.1f mm | Height: %.1f mm", dist, dist * 2);

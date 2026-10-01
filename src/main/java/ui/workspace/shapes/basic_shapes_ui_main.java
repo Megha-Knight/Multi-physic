@@ -13,6 +13,7 @@ public enum basic_shapes_ui_main {
     EQUILATERAL_TRIANGLE("Equilateral Triangle", "Click base point, drag for equal sides, click to place"),
     RIGHT_TRIANGLE("Right Triangle", "Click 90° corner point, drag base/height, click to place"),
     CUBE("Cube (3D)", "Click base point, drag for width & height, click to place"),
+    CUBOID("Cuboid (3D)", "Click corner point, drag for width & depth, click to place"),
     CYLINDER("Cylinder (3D)", "Click center point, drag for radius & height, click to place"),
     SPHERE("Sphere (3D)", "Click center point, drag for radius, click to place"),
     CONE("Cone (3D)", "Click center point, drag for base radius & height, click to place");
@@ -29,6 +30,6 @@ public enum basic_shapes_ui_main {
     public String getInstruction() { return instruction; }
     public boolean isDrawing() { return this != NONE; }
     public boolean is3D() {
-        return this == CUBE || this == CYLINDER || this == SPHERE || this == CONE;
+        return this == CUBE || this == CUBOID || this == CYLINDER || this == SPHERE || this == CONE;
     }
 }

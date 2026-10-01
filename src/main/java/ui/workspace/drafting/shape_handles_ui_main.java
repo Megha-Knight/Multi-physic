@@ -42,11 +42,16 @@ public final class shape_handles_ui_main {
             list.add(new Point3D(p1.getX(), 0, z1));
             if (type == basic_shapes_ui_main.CUBE)
                 list.add(new Point3D((p1.getX() + x1) * 0.5, -s, (p1.getZ() + z1) * 0.5));
-        } else if (type == basic_shapes_ui_main.RECTANGLE) {
+        } else if (type == basic_shapes_ui_main.RECTANGLE || type == basic_shapes_ui_main.CUBOID) {
             list.add(p1);
             list.add(new Point3D(p2.getX(), 0, p1.getZ()));
-            list.add(p2);
+            list.add(new Point3D(p2.getX(), p1.getY(), p2.getZ()));
             list.add(new Point3D(p1.getX(), 0, p2.getZ()));
+            if (type == basic_shapes_ui_main.CUBOID) {
+                double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
+                double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
+                list.add(new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY() - h, (p1.getZ() + p2.getZ()) * 0.5));
+            }
         } else if (type == basic_shapes_ui_main.EQUILATERAL_TRIANGLE) {
             double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ();
             double s = Math.sqrt(dx * dx + dz * dz), h = s * Math.sqrt(3.0) / 2.0;
@@ -89,11 +94,17 @@ public final class shape_handles_ui_main {
                 double s = Math.max(1.0, Math.abs(newPos.getZ() - p1.getZ()));
                 newP2 = new Point3D(p2.getX(), 0, p1.getZ() + dirZ * s);
             }
-        } else if (type == basic_shapes_ui_main.RECTANGLE) {
-            if (index == 0) newP1 = new Point3D(newPos.getX(), 0, newPos.getZ());
-            else if (index == 2) newP2 = new Point3D(newPos.getX(), 0, newPos.getZ());
-            else if (index == 1) { newP2 = new Point3D(newPos.getX(), 0, p2.getZ()); newP1 = new Point3D(p1.getX(), 0, newPos.getZ()); }
-            else if (index == 3) { newP1 = new Point3D(newPos.getX(), 0, p1.getZ()); newP2 = new Point3D(p2.getX(), 0, newPos.getZ()); }
+        } else if (type == basic_shapes_ui_main.RECTANGLE || type == basic_shapes_ui_main.CUBOID) {
+            if (index == 0) newP1 = new Point3D(newPos.getX(), p1.getY(), newPos.getZ());
+            else if (index == 2) newP2 = new Point3D(newPos.getX(), p2.getY(), newPos.getZ());
+            else if (index == 1) { newP2 = new Point3D(newPos.getX(), p2.getY(), p2.getZ()); newP1 = new Point3D(p1.getX(), p1.getY(), newPos.getZ()); }
+            else if (index == 3) { newP1 = new Point3D(newPos.getX(), p1.getY(), p1.getZ()); newP2 = new Point3D(p2.getX(), p2.getY(), newPos.getZ()); }
+            else if (index == 4 && type == basic_shapes_ui_main.CUBOID) {
+                double cx = (p1.getX() + p2.getX()) * 0.5, cz = (p1.getZ() + p2.getZ()) * 0.5;
+                double dy = Math.abs(newPos.getY() - p1.getY()), dist = Math.hypot(newPos.getX() - cx, newPos.getZ() - cz);
+                double newH = dy > 0.1 ? dy : Math.max(1.0, dist * 2.0);
+                newP2 = new Point3D(p2.getX(), p1.getY() - newH, p2.getZ());
+            }
         } else if (type == basic_shapes_ui_main.EQUILATERAL_TRIANGLE) {
             if (index == 0) newP1 = new Point3D(newPos.getX(), 0, newPos.getZ());
             else if (index == 1) newP2 = new Point3D(newPos.getX(), 0, newPos.getZ());

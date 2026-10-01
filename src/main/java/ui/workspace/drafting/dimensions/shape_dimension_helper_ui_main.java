@@ -22,44 +22,25 @@ public final class shape_dimension_helper_ui_main {
         double dz = (p1 != null && p2 != null) ? Math.abs(p2.getZ() - p1.getZ()) : 0.0;
 
         switch (type) {
-            case CIRCLE -> {
-                map.put("Radius (mm)", dist);
-                map.put("Diameter (mm)", dist * 2.0);
+            case CIRCLE -> { map.put("Radius (mm)", dist); map.put("Diameter (mm)", dist * 2.0); }
+            case SQUARE, CUBE -> map.put("Side Length (mm)", Math.max(1.0, Math.max(dx, dz)));
+            case RECTANGLE -> { map.put("Width (mm)", Math.max(1.0, dx)); map.put("Height (mm)", Math.max(1.0, dz)); }
+            case CUBOID -> {
+                double h = (p2 != null && Math.abs(p2.getY()) > 0.1) ? Math.abs(p2.getY()) : Math.max(6.0, Math.min(dx, dz) * 0.5);
+                map.put("Width (mm)", Math.max(1.0, dx)); map.put("Depth (mm)", Math.max(1.0, dz)); map.put("Height (mm)", Math.max(1.0, h));
             }
-            case SQUARE, CUBE -> {
-                double s = Math.max(dx, dz);
-                map.put("Side Length (mm)", Math.max(1.0, s));
-            }
-            case RECTANGLE -> {
-                map.put("Width (mm)", Math.max(1.0, dx));
-                map.put("Height (mm)", Math.max(1.0, dz));
-            }
-            case EQUILATERAL_TRIANGLE -> {
-                map.put("Side Length (mm)", Math.max(1.0, dist));
-                map.put("Height (mm)", Math.max(1.0, dist) * Math.sqrt(3.0) / 2.0);
-            }
-            case RIGHT_TRIANGLE -> {
-                map.put("Base (mm)", Math.max(1.0, dx));
-                map.put("Height (mm)", Math.max(1.0, dz));
-            }
+            case EQUILATERAL_TRIANGLE -> { map.put("Side Length (mm)", Math.max(1.0, dist)); map.put("Height (mm)", Math.max(1.0, dist) * Math.sqrt(3.0) / 2.0); }
+            case RIGHT_TRIANGLE -> { map.put("Base (mm)", Math.max(1.0, dx)); map.put("Height (mm)", Math.max(1.0, dz)); }
             case CYLINDER -> {
                 double r = (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 0.0;
                 double h = (p2 != null && Math.abs(p2.getY()) > 0.1) ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-                map.put("Radius (mm)", r);
-                map.put("Diameter (mm)", r * 2.0);
-                map.put("Height (mm)", h);
+                map.put("Radius (mm)", r); map.put("Diameter (mm)", r * 2.0); map.put("Height (mm)", h);
             }
-            case SPHERE -> {
-                double r = (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 0.0;
-                map.put("Radius (mm)", r);
-                map.put("Diameter (mm)", r * 2.0);
-            }
+            case SPHERE -> { double r = (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 0.0; map.put("Radius (mm)", r); map.put("Diameter (mm)", r * 2.0); }
             case CONE -> {
                 double r = (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 0.0;
                 double h = (p2 != null && Math.abs(p2.getY()) > 0.1) ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-                map.put("Base Radius (mm)", r);
-                map.put("Base Diameter (mm)", r * 2.0);
-                map.put("Height (mm)", h);
+                map.put("Base Radius (mm)", r); map.put("Base Diameter (mm)", r * 2.0); map.put("Height (mm)", h);
             }
             default -> {}
         }
@@ -150,6 +131,12 @@ public final class shape_dimension_helper_ui_main {
                 case CUBE -> {
                     double s = getVal(vals, "Side Length", (p1 != null && p2 != null) ? Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) : 10.0);
                     np1 = new Point3D(0, 0, 0); np2 = new Point3D(s, 0, s);
+                }
+                case CUBOID -> {
+                    double w = getVal(vals, "Width", (p1 != null && p2 != null) ? Math.abs(p2.getX() - p1.getX()) : 10.0);
+                    double d = getVal(vals, "Depth", (p1 != null && p2 != null) ? Math.abs(p2.getZ() - p1.getZ()) : 10.0);
+                    double h = getVal(vals, "Height", (p1 != null && p2 != null && Math.abs(p2.getY()) > 0.1) ? Math.abs(p2.getY()) : Math.max(6.0, Math.min(w, d) * 0.5));
+                    np1 = new Point3D(0, 0, 0); np2 = new Point3D(w, -h, d);
                 }
                 case CYLINDER -> {
                     double r = getRadiusVal(vals, (p1 != null && p2 != null) ? p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) : 10.0);

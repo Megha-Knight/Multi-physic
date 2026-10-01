@@ -116,6 +116,7 @@ public class basicshapespanel_ui_main extends HBox {
     private HBox build3DShapesPane() {
         return new HBox(4,
             createShapeItem("Cube", "/icons/cube_3d.png", basic_shapes_ui_main.CUBE),
+            createShapeItem("Cuboid", "/icons/cuboid_3d.png", basic_shapes_ui_main.CUBOID),
             createShapeItem("Cylinder", "/icons/cylinder_3d.png", basic_shapes_ui_main.CYLINDER),
             createShapeItem("Sphere", "/icons/sphere_3d.png", basic_shapes_ui_main.SPHERE),
             createShapeItem("Cone", "/icons/cone_3d.png", basic_shapes_ui_main.CONE)

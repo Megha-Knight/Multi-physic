@@ -47,6 +47,22 @@ public final class shape_geometry_3d_ui_main {
         return new Group(box);
     }
 
+    public static Node createCuboid(Point3D p1, Point3D p2, boolean isPreview) {
+        return createCuboid(p1, p2, isPreview, false);
+    }
+
+    public static Node createCuboid(Point3D p1, Point3D p2, boolean isPreview, boolean isSelected) {
+        double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
+        if (w < 0.2 || d < 0.2) return new Group();
+        double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
+        Box box = new Box(w, h, d);
+        box.setMaterial(createMaterial(isPreview, isSelected));
+        box.setTranslateX((p1.getX() + p2.getX()) * 0.5);
+        box.setTranslateY(p1.getY() - h * 0.5);
+        box.setTranslateZ((p1.getZ() + p2.getZ()) * 0.5);
+        return new Group(box);
+    }
+
     public static Node createCylinder(Point3D center, Point3D current, boolean isPreview) {
         return createCylinder(center, current, isPreview, false);
     }

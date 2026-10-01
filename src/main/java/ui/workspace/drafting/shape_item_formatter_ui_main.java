@@ -21,6 +21,7 @@ public final class shape_item_formatter_ui_main {
             case EQUILATERAL_TRIANGLE -> String.format("%s | Side: %.1f mm%s%s", item.getName(), dist, posStr, rotStr);
             case RIGHT_TRIANGLE -> String.format("%s | Base: %.1f H: %.1f mm%s%s", item.getName(), dx, dz, posStr, rotStr);
             case CUBE      -> String.format("%s | Side: %.1f mm%s%s", item.getName(), Math.max(dx, dz), posStr, rotStr);
+            case CUBOID    -> String.format("%s | W: %.1f D: %.1f H: %.1f mm%s%s", item.getName(), dx, dz, (p2 != null && Math.abs(p2.getY() - p1.getY()) > 0.1) ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(dx, dz) * 0.5), posStr, rotStr);
             case CYLINDER  -> String.format("%s | R: %.1f H: %.1f mm%s%s", item.getName(), dist, Math.max(6.0, dist*2), posStr, rotStr);
             case SPHERE    -> String.format("%s | Radius: %.1f mm%s%s", item.getName(), dist, posStr, rotStr);
             case CONE      -> String.format("%s | R: %.1f H: %.1f mm%s%s", item.getName(), dist, Math.max(6.0, dist*2), posStr, rotStr);

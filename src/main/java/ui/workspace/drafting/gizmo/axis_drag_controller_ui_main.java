@@ -174,6 +174,10 @@ public class axis_drag_controller_ui_main {
                 double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ()));
                 yield new Point3D(c.getX(), -s, c.getZ());
             }
+            case CUBOID -> {
+                double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) * 0.5);
+                yield new Point3D(c.getX(), p1.getY() - h, c.getZ());
+            }
             case CYLINDER, CONE -> {
                 double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.max(6.0, r * 2.0);
                 yield new Point3D(c.getX(), -h, c.getZ());

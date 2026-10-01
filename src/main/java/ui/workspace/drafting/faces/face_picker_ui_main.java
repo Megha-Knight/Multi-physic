@@ -7,8 +7,7 @@ import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
 
 public final class face_picker_ui_main {
 
-    private record Hit(double t, face_kind_ui_main kind, Point3D localPt, Point3D localNormal,
-                       Point3D localOrigin, Point3D localU, Point3D localV, double w, double h) {}
+    private record Hit(double t, face_kind_ui_main kind, Point3D localPt, Point3D localNormal, Point3D localOrigin, Point3D localU, Point3D localV, double w, double h) {}
 
     private face_picker_ui_main() {}
 
@@ -29,8 +28,7 @@ public final class face_picker_ui_main {
         Point3D worldHit = shape_rotation_helper_ui_main.transformPoint(best.localPt, c, rx, ry, wx, wy, wz);
         Point3D worldNorm = shape_rotation_helper_ui_main.transformNormal(best.localNormal, rx, ry).normalize();
         Point3D worldOrigin = shape_rotation_helper_ui_main.transformPoint(best.localOrigin, c, rx, ry, wx, wy, wz);
-        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(best.localU, rx, ry).normalize();
-        Point3D worldV = shape_rotation_helper_ui_main.transformNormal(best.localV, rx, ry).normalize();
+        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(best.localU, rx, ry).normalize(), worldV = shape_rotation_helper_ui_main.transformNormal(best.localV, rx, ry).normalize();
         Point3D delta = worldHit.subtract(worldOrigin);
         return new face_reference_ui_main(shape.getId(), best.kind, worldHit, worldNorm,
             worldOrigin, worldU, worldV, delta.dotProduct(worldU), delta.dotProduct(worldV), best.w, best.h);
@@ -44,8 +42,7 @@ public final class face_picker_ui_main {
         double rx = shape.getRotationX(), ry = shape.getRotationY(), wx = shape.getWorldX(), wy = shape.getWorldY(), wz = shape.getWorldZ();
         Point3D worldOrigin = shape_rotation_helper_ui_main.transformPoint(h.localOrigin, c, rx, ry, wx, wy, wz);
         Point3D worldNorm = shape_rotation_helper_ui_main.transformNormal(h.localNormal, rx, ry).normalize();
-        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(h.localU, rx, ry).normalize();
-        Point3D worldV = shape_rotation_helper_ui_main.transformNormal(h.localV, rx, ry).normalize();
+        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(h.localU, rx, ry).normalize(), worldV = shape_rotation_helper_ui_main.transformNormal(h.localV, rx, ry).normalize();
         Point3D worldHit = worldOrigin.add(worldU.multiply(prev.getLocalHitU())).add(worldV.multiply(prev.getLocalHitV()));
         return new face_reference_ui_main(shape.getId(), prev.getFaceKind(), worldHit, worldNorm,
             worldOrigin, worldU, worldV, prev.getLocalHitU(), prev.getLocalHitV(), h.w, h.h);
@@ -53,7 +50,7 @@ public final class face_picker_ui_main {
 
     private static Hit getFaceLocal(shape_item_ui_main s, face_kind_ui_main kind) {
         Point3D p1 = s.getP1(), p2 = s.getP2();
-        if (s.getType() == basic_shapes_ui_main.CUBE) return getCubeFace(p1, p2, kind);
+        if (s.getType() == basic_shapes_ui_main.CUBE || s.getType() == basic_shapes_ui_main.CUBOID) return getBoxFace(p1, p2, kind, s.getType() == basic_shapes_ui_main.CUBE);
         if (s.getType() == basic_shapes_ui_main.CYLINDER) {
             double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
             if (kind == face_kind_ui_main.TOP_CAP) return new Hit(0, kind, null, new Point3D(0, -1, 0), new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(1, 0, 0), new Point3D(0, 0, 1), r * 2, r * 2);
@@ -66,17 +63,24 @@ public final class face_picker_ui_main {
         return null;
     }
 
-    private static Hit getCubeFace(Point3D p1, Point3D p2, face_kind_ui_main kind) {
-        double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ(), s = Math.max(Math.abs(dx), Math.abs(dz));
-        double cx = p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5), cz = p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5);
-        double minX = cx - s * 0.5, maxX = cx + s * 0.5, minZ = cz - s * 0.5, maxZ = cz + s * 0.5;
+    private static Hit getBoxFace(Point3D p1, Point3D p2, face_kind_ui_main kind, boolean isCube) {
+        double w, h, d, cx, cz;
+        if (isCube) {
+            double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ(), s = Math.max(Math.abs(dx), Math.abs(dz));
+            w = s; h = s; d = s; cx = p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5); cz = p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5);
+        } else {
+            w = Math.abs(p2.getX() - p1.getX()); d = Math.abs(p2.getZ() - p1.getZ());
+            h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
+            cx = (p1.getX() + p2.getX()) * 0.5; cz = (p1.getZ() + p2.getZ()) * 0.5;
+        }
+        double minX = cx - w * 0.5, maxX = cx + w * 0.5, minZ = cz - d * 0.5, maxZ = cz + d * 0.5;
         return switch (kind) {
-            case TOP -> new Hit(0, kind, null, new Point3D(0, -1, 0), new Point3D(cx, -s, cz), new Point3D(1, 0, 0), new Point3D(0, 0, 1), s, s);
-            case BOTTOM -> new Hit(0, kind, null, new Point3D(0, 1, 0), new Point3D(cx, 0, cz), new Point3D(1, 0, 0), new Point3D(0, 0, -1), s, s);
-            case FRONT -> new Hit(0, kind, null, new Point3D(0, 0, 1), new Point3D(cx, -s * 0.5, maxZ), new Point3D(1, 0, 0), new Point3D(0, -1, 0), s, s);
-            case BACK -> new Hit(0, kind, null, new Point3D(0, 0, -1), new Point3D(cx, -s * 0.5, minZ), new Point3D(-1, 0, 0), new Point3D(0, -1, 0), s, s);
-            case RIGHT -> new Hit(0, kind, null, new Point3D(1, 0, 0), new Point3D(maxX, -s * 0.5, cz), new Point3D(0, 0, -1), new Point3D(0, -1, 0), s, s);
-            case LEFT -> new Hit(0, kind, null, new Point3D(-1, 0, 0), new Point3D(minX, -s * 0.5, cz), new Point3D(0, 0, 1), new Point3D(0, -1, 0), s, s);
+            case TOP -> new Hit(0, kind, null, new Point3D(0, -1, 0), new Point3D(cx, -h, cz), new Point3D(1, 0, 0), new Point3D(0, 0, 1), w, d);
+            case BOTTOM -> new Hit(0, kind, null, new Point3D(0, 1, 0), new Point3D(cx, 0, cz), new Point3D(1, 0, 0), new Point3D(0, 0, -1), w, d);
+            case FRONT -> new Hit(0, kind, null, new Point3D(0, 0, 1), new Point3D(cx, -h * 0.5, maxZ), new Point3D(1, 0, 0), new Point3D(0, -1, 0), w, h);
+            case BACK -> new Hit(0, kind, null, new Point3D(0, 0, -1), new Point3D(cx, -h * 0.5, minZ), new Point3D(-1, 0, 0), new Point3D(0, -1, 0), w, h);
+            case RIGHT -> new Hit(0, kind, null, new Point3D(1, 0, 0), new Point3D(maxX, -h * 0.5, cz), new Point3D(0, 0, -1), new Point3D(0, -1, 0), d, h);
+            case LEFT -> new Hit(0, kind, null, new Point3D(-1, 0, 0), new Point3D(minX, -h * 0.5, cz), new Point3D(0, 0, 1), new Point3D(0, -1, 0), d, h);
             default -> null;
         };
     }
@@ -84,7 +88,8 @@ public final class face_picker_ui_main {
     private static Hit intersectShapeLocal(shape_item_ui_main s, Point3D ro, Point3D rd) {
         Point3D p1 = s.getP1(), p2 = s.getP2();
         return switch (s.getType()) {
-            case CUBE -> intersectCube(p1, p2, ro, rd);
+            case CUBE -> intersectBox(p1, p2, ro, rd, true);
+            case CUBOID -> intersectBox(p1, p2, ro, rd, false);
             case CYLINDER -> intersectCylinder(p1, p2, ro, rd);
             case CONE -> intersectCone(p1, p2, ro, rd);
             case SPHERE -> intersectSphere(p1, p2, ro, rd);
@@ -92,12 +97,10 @@ public final class face_picker_ui_main {
         };
     }
 
-    private static Hit intersectCube(Point3D p1, Point3D p2, Point3D ro, Point3D rd) {
+    private static Hit intersectBox(Point3D p1, Point3D p2, Point3D ro, Point3D rd, boolean isCube) {
         Hit best = null;
-        for (face_kind_ui_main k : new face_kind_ui_main[]{
-            face_kind_ui_main.TOP, face_kind_ui_main.BOTTOM, face_kind_ui_main.FRONT,
-            face_kind_ui_main.BACK, face_kind_ui_main.RIGHT, face_kind_ui_main.LEFT
-        }) { best = checkQuad(ro, rd, getCubeFace(p1, p2, k), best); }
+        for (face_kind_ui_main k : new face_kind_ui_main[]{face_kind_ui_main.TOP, face_kind_ui_main.BOTTOM, face_kind_ui_main.FRONT, face_kind_ui_main.BACK, face_kind_ui_main.RIGHT, face_kind_ui_main.LEFT})
+            best = checkQuad(ro, rd, getBoxFace(p1, p2, k, isCube), best);
         return best;
     }
 
@@ -193,4 +196,3 @@ public final class face_picker_ui_main {
         return len < 1e-9 ? new Point3D(0, 0, 1) : new Point3D(dx1 / len, dy2 / len, dz2 / len);
     }
 }
-

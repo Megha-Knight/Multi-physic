@@ -101,7 +101,7 @@ public final class nc_exporter_ui_main {
             double x1 = p1.getX(), x2 = p1.getX() + (dx >= 0 ? s : -s);
             double z1 = p1.getZ(), z2 = p1.getZ() + (dz >= 0 ? s : -s);
             contour = List.of(new Point3D(x1, 0, z1), new Point3D(x2, 0, z1), new Point3D(x2, 0, z2), new Point3D(x1, 0, z2));
-        } else if (type == basic_shapes_ui_main.RECTANGLE) {
+        } else if (type == basic_shapes_ui_main.RECTANGLE || type == basic_shapes_ui_main.CUBOID) {
             contour = List.of(p1, new Point3D(p2.getX(), 0, p1.getZ()), p2, new Point3D(p1.getX(), 0, p2.getZ()));
         } else if (type == basic_shapes_ui_main.EQUILATERAL_TRIANGLE) {
             double s = Math.sqrt(dx * dx + dz * dz), h = s * Math.sqrt(3.0) / 2.0;

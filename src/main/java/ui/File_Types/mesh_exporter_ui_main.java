@@ -33,11 +33,8 @@ public final class mesh_exporter_ui_main {
             pw.println("solid AstraModel");
             for (Tri t : triangles) {
                 pw.printf(Locale.US, "  facet normal %.6f %.6f %.6f%n", t.n.getX(), t.n.getY(), t.n.getZ());
-                pw.println("    outer loop");
-                pw.printf(Locale.US, "      vertex %.6f %.6f %.6f%n", t.a.getX(), t.a.getY(), t.a.getZ());
-                pw.printf(Locale.US, "      vertex %.6f %.6f %.6f%n", t.b.getX(), t.b.getY(), t.b.getZ());
-                pw.printf(Locale.US, "      vertex %.6f %.6f %.6f%n", t.c.getX(), t.c.getY(), t.c.getZ());
-                pw.println("    endloop\n  endfacet");
+                pw.printf(Locale.US, "    outer loop%n      vertex %.6f %.6f %.6f%n      vertex %.6f %.6f %.6f%n      vertex %.6f %.6f %.6f%n    endloop%n  endfacet%n",
+                    t.a.getX(), t.a.getY(), t.a.getZ(), t.b.getX(), t.b.getY(), t.b.getZ(), t.c.getX(), t.c.getY(), t.c.getZ());
             }
             pw.println("endsolid AstraModel");
             return true;
@@ -48,8 +45,7 @@ public final class mesh_exporter_ui_main {
         if (file == null) return false;
         List<Tri> triangles = generateAllTriangles(shapes);
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            pw.println("# Astra CAD Wavefront OBJ Export");
-            pw.println("o AstraModel");
+            pw.println("# Astra CAD Wavefront OBJ Export\no AstraModel");
             int vIdx = 1;
             for (Tri t : triangles) {
                 pw.printf(Locale.US, "v %.6f %.6f %.6f%n", t.a.getX(), t.a.getY(), t.a.getZ());
@@ -88,6 +84,10 @@ public final class mesh_exporter_ui_main {
                 addBox(local, Math.min(x1, x2), Math.max(x1, x2), 0, (type == basic_shapes_ui_main.CUBE) ? s : 0.5, Math.min(z1, z2), Math.max(z1, z2));
             }
             case RECTANGLE -> addBox(local, Math.min(p1.getX(), p2.getX()), Math.max(p1.getX(), p2.getX()), 0, 0.5, Math.min(p1.getZ(), p2.getZ()), Math.max(p1.getZ(), p2.getZ()));
+            case CUBOID -> {
+                double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(Math.abs(dx), Math.abs(dz)) * 0.5);
+                addBox(local, Math.min(p1.getX(), p2.getX()), Math.max(p1.getX(), p2.getX()), 0, h, Math.min(p1.getZ(), p2.getZ()), Math.max(p1.getZ(), p2.getZ()));
+            }
             case CYLINDER -> addCyl(local, p1.getX(), p1.getZ(), r, Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0));
             case CONE -> addCone(local, p1.getX(), p1.getZ(), r, Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0));
             case SPHERE -> addSphere(local, p1.getX(), p1.getZ(), r);

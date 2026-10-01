@@ -24,6 +24,11 @@ public final class shape_rotation_helper_ui_main {
                 yield new Point3D(cx, (type == basic_shapes_ui_main.CUBE) ? -s * 0.5 : 0, cz);
             }
             case RECTANGLE -> new Point3D((p1.getX() + p2.getX()) * 0.5, 0, (p1.getZ() + p2.getZ()) * 0.5);
+            case CUBOID -> {
+                double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
+                double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
+                yield new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY() - h * 0.5, (p1.getZ() + p2.getZ()) * 0.5);
+            }
             case EQUILATERAL_TRIANGLE -> {
                 double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ();
                 double s = Math.sqrt(dx * dx + dz * dz), h = s * Math.sqrt(3.0) / 2.0;
@@ -45,7 +50,7 @@ public final class shape_rotation_helper_ui_main {
         Point3D p1 = item.getP1(), p2 = item.getP2();
         return switch (item.getType()) {
             case CUBE, SQUARE -> Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) * 0.5;
-            case RECTANGLE -> Math.abs(p2.getZ() - p1.getZ()) * 0.5;
+            case RECTANGLE, CUBOID -> Math.abs(p2.getZ() - p1.getZ()) * 0.5;
             case CIRCLE, CYLINDER, SPHERE, CONE -> p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
             case EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE -> p1.distance(p2) * 0.5;
             default -> 20.0;
@@ -58,6 +63,7 @@ public final class shape_rotation_helper_ui_main {
         double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
         return switch (item.getType()) {
             case CUBE -> Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) * 0.5;
+            case CUBOID -> (Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) * 0.5)) * 0.5;
             case CYLINDER, CONE -> (Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0)) * 0.5;
             case SPHERE -> r;
             default -> 12.0;
@@ -122,7 +128,7 @@ public final class shape_rotation_helper_ui_main {
             double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ())) * 0.5;
             return Math.abs(lx - c.getX()) <= s + threshold && Math.abs(lz - c.getZ()) <= s + threshold;
         }
-        if (type == basic_shapes_ui_main.RECTANGLE) {
+        if (type == basic_shapes_ui_main.RECTANGLE || type == basic_shapes_ui_main.CUBOID) {
             double hw = Math.abs(p2.getX() - p1.getX()) * 0.5, hd = Math.abs(p2.getZ() - p1.getZ()) * 0.5;
             return Math.abs(lx - c.getX()) <= hw + threshold && Math.abs(lz - c.getZ()) <= hd + threshold;
         }
