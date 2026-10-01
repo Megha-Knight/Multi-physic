@@ -7,6 +7,7 @@ import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
 import ui.workspace.drafting.faces.face_kind_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
+import ui.workspace.drafting.holes.hole_feature_ui_main.HoleType;
 import ui.workspace.shapes.holes.hole_mesh_triangulator_ui_main.Frame;
 import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 
@@ -16,7 +17,7 @@ import java.util.List;
 
 /**
  * hole_cuboid_builder_ui_main.java
- * High-precision CSG mesh subtraction engine for Cuboids/Slabs with parametric holes.
+ * High-precision CSG mesh subtraction engine for Cuboids/Slabs with intersecting parametric holes.
  */
 public final class hole_cuboid_builder_ui_main {
 
@@ -27,6 +28,7 @@ public final class hole_cuboid_builder_ui_main {
     private record CuboidFace(face_kind_ui_main kind, Frame frame, double fw, double fh, double thick, face_kind_ui_main opp) {}
     private record LocalHole(hole_feature_ui_main h, double u, double v, Point3D center) {}
     private record Box(double uMin, double uMax, double vMin, double vMax) {}
+    private record CuboidContext(Point3D c, double w, double h, double d, List<hole_feature_ui_main> allHoles) {}
 
     public static Node buildCuboidWithHoles(Point3D p1, Point3D p2, List<hole_feature_ui_main> holes,
                                             boolean isPreview, boolean isSelected) {
@@ -35,6 +37,7 @@ public final class hole_cuboid_builder_ui_main {
         double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
 
         Point3D c = new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY() - h * 0.5, (p1.getZ() + p2.getZ()) * 0.5);
+        CuboidContext ctx = new CuboidContext(c, w, h, d, holes);
         double hw = w * 0.5, hh = h * 0.5, hd = d * 0.5;
 
         CuboidFace[] faces = new CuboidFace[]{
@@ -55,8 +58,8 @@ public final class hole_cuboid_builder_ui_main {
             List<hole_feature_ui_main> faceHoles = findHoles(holes, cf.kind, cf.fw, cf.fh);
             List<hole_feature_ui_main> oppHoles = findThroughHoles(holes, cf.opp, cf.fw, cf.fh);
 
-            if (!faceHoles.isEmpty()) partitionAndBuildFace(cf, faceHoles, pts, fcs, false, null);
-            else if (!oppHoles.isEmpty()) partitionAndBuildFace(cf, oppHoles, pts, fcs, true, getOppFace(faces, cf.opp));
+            if (!faceHoles.isEmpty()) partitionAndBuildFace(cf, ctx, faceHoles, pts, fcs, false, null);
+            else if (!oppHoles.isEmpty()) partitionAndBuildFace(cf, ctx, oppHoles, pts, fcs, true, getOppFace(faces, cf.opp));
             else buildStandardQuad(cf.frame, cf.fw, cf.fh, pts, fcs);
         }
 
@@ -69,7 +72,7 @@ public final class hole_cuboid_builder_ui_main {
         return mv;
     }
 
-    private static void partitionAndBuildFace(CuboidFace cf, List<hole_feature_ui_main> holes,
+    private static void partitionAndBuildFace(CuboidFace cf, CuboidContext ctx, List<hole_feature_ui_main> holes,
                                               List<Float> pts, List<Integer> fcs, boolean isExit, CuboidFace oppFace) {
         List<LocalHole> locals = new ArrayList<>(holes.size());
         for (hole_feature_ui_main h : holes) {
@@ -83,10 +86,10 @@ public final class hole_cuboid_builder_ui_main {
                 locals.add(new LocalHole(h, toExit.dotProduct(cf.frame.u()), toExit.dotProduct(cf.frame.v()), hc));
             }
         }
-        partitionBox(new Box(-cf.fw * 0.5, cf.fw * 0.5, -cf.fh * 0.5, cf.fh * 0.5), locals, cf, pts, fcs, isExit);
+        partitionBox(new Box(-cf.fw * 0.5, cf.fw * 0.5, -cf.fh * 0.5, cf.fh * 0.5), locals, cf, ctx, pts, fcs, isExit);
     }
 
-    private static void partitionBox(Box b, List<LocalHole> holes, CuboidFace cf,
+    private static void partitionBox(Box b, List<LocalHole> holes, CuboidFace cf, CuboidContext ctx,
                                      List<Float> pts, List<Integer> fcs, boolean isExit) {
         if (holes == null || holes.isEmpty()) return;
         if (holes.size() == 1) {
@@ -95,7 +98,7 @@ public final class hole_cuboid_builder_ui_main {
             if (!isExit) {
                 Point3D[] entry = hole_mesh_triangulator_ui_main.getCirclePoints(lh.center, cf.frame.u(), cf.frame.v(), lh.h.getOuterRadius(), SEGS);
                 hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, false);
-                buildCavity(cf.frame, cf.thick, lh.h, lh.center, entry, pts, fcs);
+                buildCavity(cf, ctx, lh.h, lh.center, entry, pts, fcs);
             } else {
                 Point3D[] exit = hole_mesh_triangulator_ui_main.getCirclePoints(lh.center, cf.frame.u(), cf.frame.v(), lh.h.getRadius(), SEGS);
                 hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, exit, pts, fcs, true);
@@ -123,47 +126,40 @@ public final class hole_cuboid_builder_ui_main {
         List<LocalHole> left = new ArrayList<>(holes.subList(0, bestK)), right = new ArrayList<>(holes.subList(bestK, holes.size()));
         if (splitU) {
             double splitVal = (holes.get(bestK - 1).u + holes.get(bestK).u) * 0.5;
-            partitionBox(new Box(b.uMin, splitVal, b.vMin, b.vMax), left, cf, pts, fcs, isExit);
-            partitionBox(new Box(splitVal, b.uMax, b.vMin, b.vMax), right, cf, pts, fcs, isExit);
+            partitionBox(new Box(b.uMin, splitVal, b.vMin, b.vMax), left, cf, ctx, pts, fcs, isExit);
+            partitionBox(new Box(splitVal, b.uMax, b.vMin, b.vMax), right, cf, ctx, pts, fcs, isExit);
         } else {
             double splitVal = (holes.get(bestK - 1).v + holes.get(bestK).v) * 0.5;
-            partitionBox(new Box(b.uMin, b.uMax, b.vMin, splitVal), left, cf, pts, fcs, isExit);
-            partitionBox(new Box(b.uMin, b.uMax, splitVal, b.vMax), right, cf, pts, fcs, isExit);
+            partitionBox(new Box(b.uMin, b.uMax, b.vMin, splitVal), left, cf, ctx, pts, fcs, isExit);
+            partitionBox(new Box(b.uMin, b.uMax, splitVal, b.vMax), right, cf, ctx, pts, fcs, isExit);
         }
     }
 
-    private static void buildCavity(Frame f, double depth, hole_feature_ui_main h, Point3D hc,
+    private static void buildCavity(CuboidFace cf, CuboidContext ctx, hole_feature_ui_main h, Point3D hc,
                                     Point3D[] entry, List<Float> pts, List<Integer> fcs) {
-        double rBore = h.getRadius(), totalDepth = h.isThroughAll() ? depth : Math.min(depth, h.getDepth());
-        switch (h.getHoleType()) {
-            case COUNTERSINK -> {
-                double coneDepth = Math.min(totalDepth, h.getConeDepth());
-                Point3D transCenter = hc.subtract(f.n().multiply(coneDepth));
-                Point3D[] transCirc = hole_mesh_triangulator_ui_main.getCirclePoints(transCenter, f.u(), f.v(), rBore, SEGS);
-                hole_advanced_mesh_helper_ui_main.buildFrustumWall(entry, transCirc, pts, fcs);
-                Point3D endCenter = hc.subtract(f.n().multiply(totalDepth));
-                Point3D[] boreEnd = hole_mesh_triangulator_ui_main.getCirclePoints(endCenter, f.u(), f.v(), rBore, SEGS);
-                hole_mesh_triangulator_ui_main.buildCylindricalWall(transCirc, boreEnd, pts, fcs);
-                if (!h.isThroughAll()) hole_mesh_triangulator_ui_main.buildCircleCap(endCenter, boreEnd, pts, fcs, true);
-            }
-            case COUNTERBORE -> {
-                double cbDepth = Math.min(totalDepth, h.getCbDepth());
-                Point3D recessCenter = hc.subtract(f.n().multiply(cbDepth));
-                Point3D[] recessBottom = hole_mesh_triangulator_ui_main.getCirclePoints(recessCenter, f.u(), f.v(), h.getOuterRadius(), SEGS);
-                hole_mesh_triangulator_ui_main.buildCylindricalWall(entry, recessBottom, pts, fcs);
-                Point3D[] shoulderInner = hole_mesh_triangulator_ui_main.getCirclePoints(recessCenter, f.u(), f.v(), rBore, SEGS);
-                hole_advanced_mesh_helper_ui_main.buildPlanarAnnulus(recessBottom, shoulderInner, pts, fcs);
-                Point3D endCenter = hc.subtract(f.n().multiply(totalDepth));
-                Point3D[] boreEnd = hole_mesh_triangulator_ui_main.getCirclePoints(endCenter, f.u(), f.v(), rBore, SEGS);
-                hole_mesh_triangulator_ui_main.buildCylindricalWall(shoulderInner, boreEnd, pts, fcs);
-                if (!h.isThroughAll()) hole_mesh_triangulator_ui_main.buildCircleCap(endCenter, boreEnd, pts, fcs, true);
-            }
-            default -> {
-                Point3D endCenter = hc.subtract(f.n().multiply(totalDepth));
-                Point3D[] boreEnd = hole_mesh_triangulator_ui_main.getCirclePoints(endCenter, f.u(), f.v(), rBore, SEGS);
-                hole_mesh_triangulator_ui_main.buildCylindricalWall(entry, boreEnd, pts, fcs);
-                if (!h.isThroughAll()) hole_mesh_triangulator_ui_main.buildCircleCap(endCenter, boreEnd, pts, fcs, true);
-            }
+        Frame f = cf.frame;
+        double rBore = h.getRadius(), totalDepth = h.isThroughAll() ? cf.thick : Math.min(cf.thick, h.getDepth());
+        Point3D endCenter = hc.subtract(f.n().multiply(totalDepth)), boreStart = hc;
+
+        if (h.getHoleType() == HoleType.COUNTERSINK) {
+            double coneDepth = Math.min(totalDepth, h.getConeDepth());
+            boreStart = hc.subtract(f.n().multiply(coneDepth));
+            Point3D[] transCirc = hole_mesh_triangulator_ui_main.getCirclePoints(boreStart, f.u(), f.v(), rBore, SEGS);
+            hole_advanced_mesh_helper_ui_main.buildFrustumWall(entry, transCirc, pts, fcs);
+        } else if (h.getHoleType() == HoleType.COUNTERBORE) {
+            double cbDepth = Math.min(totalDepth, h.getCbDepth());
+            boreStart = hc.subtract(f.n().multiply(cbDepth));
+            Point3D[] recessBottom = hole_mesh_triangulator_ui_main.getCirclePoints(boreStart, f.u(), f.v(), h.getOuterRadius(), SEGS);
+            hole_mesh_triangulator_ui_main.buildCylindricalWall(entry, recessBottom, pts, fcs);
+            Point3D[] shoulderInner = hole_mesh_triangulator_ui_main.getCirclePoints(boreStart, f.u(), f.v(), rBore, SEGS);
+            hole_advanced_mesh_helper_ui_main.buildPlanarAnnulus(recessBottom, shoulderInner, pts, fcs);
+        }
+
+        hole_intersection_helper_ui_main.buildCylindricalWallTrimmed(boreStart, endCenter, f.u(), f.v(), rBore,
+                ctx.allHoles, h, ctx.c, ctx.w, ctx.h, ctx.d, pts, fcs);
+        if (!h.isThroughAll() && !hole_intersection_helper_ui_main.isInsideAnyOtherHole(endCenter, ctx.allHoles, h, ctx.c, ctx.w, ctx.h, ctx.d)) {
+            Point3D[] boreEnd = hole_mesh_triangulator_ui_main.getCirclePoints(endCenter, f.u(), f.v(), rBore, SEGS);
+            hole_mesh_triangulator_ui_main.buildCircleCap(endCenter, boreEnd, pts, fcs, true);
         }
     }
 

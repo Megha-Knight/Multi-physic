@@ -16,75 +16,75 @@ public final class hole_intersection_helper_ui_main {
 
     private hole_intersection_helper_ui_main() {}
 
-    public static boolean isInsideHole(Point3D p, hole_feature_ui_main h, Point3D cubeCenter, double s) {
-        if (h == null) return false;
-        Frame f = hole_mesh_triangulator_ui_main.getCubeFaceFrame(cubeCenter, s, h.getFaceKind());
+    public static boolean isInsideHole(Point3D p, hole_feature_ui_main h, Point3D center, double w, double hDim, double d) {
+        if (h == null || center == null) return false;
+        Frame f = hole_mesh_triangulator_ui_main.getCuboidFaceFrame(center, w, hDim, d, h.getFaceKind());
         Point3D hc = f.origin().add(f.u().multiply(h.getU())).add(f.v().multiply(h.getV()));
         Point3D drillDir = f.n().multiply(-1.0);
-        double totalDepth = h.isThroughAll() ? s : Math.min(s, h.getDepth());
+        double thick = hole_mesh_triangulator_ui_main.getFaceThickness(w, hDim, d, h.getFaceKind());
+        double totalDepth = h.isThroughAll() ? thick : Math.min(thick, h.getDepth());
 
         Point3D v = p.subtract(hc);
         double t = v.dotProduct(drillDir);
         if (t < -0.1 || t > totalDepth + 0.1) return false;
 
         Point3D vPerp = v.subtract(drillDir.multiply(t));
-        double r = vPerp.magnitude();
-
-        double holeR = h.getRadius();
+        double r = vPerp.magnitude(), holeR = h.getRadius();
         if (h.getHoleType() == HoleType.COUNTERSINK) {
             double cd = Math.min(totalDepth, h.getConeDepth());
-            if (t <= cd && cd > 1e-4) {
-                holeR = h.getOuterRadius() - (t / cd) * (h.getOuterRadius() - h.getRadius());
-            }
+            if (t <= cd && cd > 1e-4) holeR = h.getOuterRadius() - (t / cd) * (h.getOuterRadius() - h.getRadius());
         } else if (h.getHoleType() == HoleType.COUNTERBORE) {
-            double cd = Math.min(totalDepth, h.getCbDepth());
-            if (t <= cd) holeR = h.getOuterRadius();
+            if (t <= Math.min(totalDepth, h.getCbDepth())) holeR = h.getOuterRadius();
         }
-
         return r < (holeR - 0.05);
     }
 
+    public static boolean isInsideHole(Point3D p, hole_feature_ui_main h, Point3D cubeCenter, double s) {
+        return isInsideHole(p, h, cubeCenter, s, s, s);
+    }
+
     public static boolean isInsideAnyOtherHole(Point3D p, List<hole_feature_ui_main> allHoles,
-                                               hole_feature_ui_main cur, Point3D cubeCenter, double s) {
-        if (allHoles == null || cubeCenter == null) return false;
+                                               hole_feature_ui_main cur, Point3D center, double w, double hDim, double d) {
+        if (allHoles == null || center == null) return false;
         for (hole_feature_ui_main other : allHoles) {
             if (other != null && other != cur && !other.getId().equals(cur.getId())) {
-                if (isInsideHole(p, other, cubeCenter, s)) return true;
+                if (isInsideHole(p, other, center, w, hDim, d)) return true;
             }
         }
         return false;
     }
 
+    public static boolean isInsideAnyOtherHole(Point3D p, List<hole_feature_ui_main> allHoles,
+                                               hole_feature_ui_main cur, Point3D cubeCenter, double s) {
+        return isInsideAnyOtherHole(p, allHoles, cur, cubeCenter, s, s, s);
+    }
+
     public static double[] getIntersectionInterval(Point3D hc, Point3D drillDir, Point3D rayRadial,
                                                    List<hole_feature_ui_main> allHoles, hole_feature_ui_main cur,
-                                                   Point3D cubeCenter, double s) {
-        if (allHoles == null || cubeCenter == null) return null;
+                                                   Point3D center, double w, double hDim, double d) {
+        if (allHoles == null || center == null) return null;
         double bestT1 = Double.MAX_VALUE, bestT2 = -Double.MAX_VALUE;
         boolean found = false;
 
         for (hole_feature_ui_main other : allHoles) {
             if (other == null || other == cur || other.getId().equals(cur.getId())) continue;
-            Frame fOther = hole_mesh_triangulator_ui_main.getCubeFaceFrame(cubeCenter, s, other.getFaceKind());
+            Frame fOther = hole_mesh_triangulator_ui_main.getCuboidFaceFrame(center, w, hDim, d, other.getFaceKind());
             Point3D hcOther = fOther.origin().add(fOther.u().multiply(other.getU())).add(fOther.v().multiply(other.getV()));
             Point3D otherDir = fOther.n().multiply(-1.0);
-            double otherR = other.getRadius();
-            double otherDepth = other.isThroughAll() ? s : Math.min(s, other.getDepth());
+            double otherR = other.getRadius(), thick = hole_mesh_triangulator_ui_main.getFaceThickness(w, hDim, d, other.getFaceKind());
+            double otherDepth = other.isThroughAll() ? thick : Math.min(thick, other.getDepth());
 
             Point3D w0 = hc.add(rayRadial).subtract(hcOther);
-            double dDotO = drillDir.dotProduct(otherDir);
-            double wDotO = w0.dotProduct(otherDir);
-            Point3D dPerp = drillDir.subtract(otherDir.multiply(dDotO));
-            Point3D wPerp = w0.subtract(otherDir.multiply(wDotO));
+            double dDotO = drillDir.dotProduct(otherDir), wDotO = w0.dotProduct(otherDir);
+            Point3D dPerp = drillDir.subtract(otherDir.multiply(dDotO)), wPerp = w0.subtract(otherDir.multiply(wDotO));
 
             double A = dPerp.dotProduct(dPerp);
             if (A < 1e-6) continue;
-            double B = wPerp.dotProduct(dPerp);
-            double C = wPerp.dotProduct(wPerp) - otherR * otherR;
+            double B = wPerp.dotProduct(dPerp), C = wPerp.dotProduct(wPerp) - otherR * otherR;
             double disc = B * B - A * C;
             if (disc < 0) continue;
 
-            double sqrtDisc = Math.sqrt(disc);
-            double t1 = (-B - sqrtDisc) / A, t2 = (-B + sqrtDisc) / A;
+            double sqrtDisc = Math.sqrt(disc), t1 = (-B - sqrtDisc) / A, t2 = (-B + sqrtDisc) / A;
             if (t1 > t2) { double tmp = t1; t1 = t2; t2 = tmp; }
 
             double lam1 = wDotO + t1 * dDotO, lam2 = wDotO + t2 * dDotO;
@@ -97,12 +97,19 @@ public final class hole_intersection_helper_ui_main {
         return found ? new double[]{ bestT1, bestT2 } : null;
     }
 
+    public static double[] getIntersectionInterval(Point3D hc, Point3D drillDir, Point3D rayRadial,
+                                                   List<hole_feature_ui_main> allHoles, hole_feature_ui_main cur,
+                                                   Point3D cubeCenter, double s) {
+        return getIntersectionInterval(hc, drillDir, rayRadial, allHoles, cur, cubeCenter, s, s, s);
+    }
+
     public static void buildCylindricalWallTrimmed(Point3D c1, Point3D c2, Point3D u, Point3D v, double radius,
                                                    List<hole_feature_ui_main> allHoles, hole_feature_ui_main cur,
-                                                   Point3D cubeCenter, double s, List<Float> pts, List<Integer> fcs) {
+                                                   Point3D center, double w, double hDim, double d,
+                                                   List<Float> pts, List<Integer> fcs) {
         int segs = hole_mesh_triangulator_ui_main.CIRCLE_SEGS;
         double H = c1.distance(c2);
-        boolean hasOthers = (allHoles != null && allHoles.size() > 1 && cubeCenter != null);
+        boolean hasOthers = (allHoles != null && allHoles.size() > 1 && center != null);
         if (!hasOthers || H < 1e-4) {
             Point3D[] r1 = hole_mesh_triangulator_ui_main.getCirclePoints(c1, u, v, radius, segs);
             Point3D[] r2 = hole_mesh_triangulator_ui_main.getCirclePoints(c2, u, v, radius, segs);
@@ -118,7 +125,7 @@ public final class hole_intersection_helper_ui_main {
         for (int i = 0; i < segs; i++) {
             double angle = i * 2.0 * Math.PI / segs;
             rVec[i] = u.multiply(radius * Math.cos(angle)).add(v.multiply(radius * Math.sin(angle)));
-            double[] inter = getIntersectionInterval(c1, drillDir, rVec[i], allHoles, cur, cubeCenter, s);
+            double[] inter = getIntersectionInterval(c1, drillDir, rVec[i], allHoles, cur, center, w, hDim, d);
             if (inter != null && inter[0] < H && inter[1] > 0) {
                 tA[i] = Math.max(0.0, Math.min(H, inter[0]));
                 tB[i] = Math.max(0.0, Math.min(H, inter[1]));
@@ -154,5 +161,11 @@ public final class hole_intersection_helper_ui_main {
                 hole_mesh_triangulator_ui_main.addTriIdx(cutB_Idx[i], botIdx[next], botIdx[i], fcs, false);
             }
         }
+    }
+
+    public static void buildCylindricalWallTrimmed(Point3D c1, Point3D c2, Point3D u, Point3D v, double radius,
+                                                   List<hole_feature_ui_main> allHoles, hole_feature_ui_main cur,
+                                                   Point3D cubeCenter, double s, List<Float> pts, List<Integer> fcs) {
+        buildCylindricalWallTrimmed(c1, c2, u, v, radius, allHoles, cur, cubeCenter, s, s, s, pts, fcs);
     }
 }
