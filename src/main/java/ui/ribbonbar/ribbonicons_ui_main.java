@@ -56,6 +56,28 @@ public final class ribbonicons_ui_main {
         return path;
     }
 
+    /** Linear pattern icon. */
+    public static Node createLinearPatternIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 3 8 A 2 2 0 1 0 3 8.01 M 8 8 A 2 2 0 1 0 8 8.01 M 13 8 A 2 2 0 1 0 13 8.01");
+        path.setFill(Color.TRANSPARENT);
+        path.setStroke(color);
+        path.setStrokeWidth(1.4);
+        scaleIcon(path, size);
+        return path;
+    }
+
+    /** Circular pattern icon. */
+    public static Node createCircularPatternIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 8 3 A 1.5 1.5 0 1 0 8 3.01 M 13 8 A 1.5 1.5 0 1 0 13 8.01 M 8 13 A 1.5 1.5 0 1 0 8 13.01 M 3 8 A 1.5 1.5 0 1 0 3 8.01");
+        path.setFill(Color.TRANSPARENT);
+        path.setStroke(color);
+        path.setStrokeWidth(1.4);
+        scaleIcon(path, size);
+        return path;
+    }
+
     /** Dropdown down-arrow chevron. */
     public static Node createArrowDown(double size, Color color) {
         SVGPath path = new SVGPath();

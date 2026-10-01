@@ -56,7 +56,7 @@ public final class shape_geometry_3d_ui_main {
         if (r < 0.2) return new Group();
 
         double height = Math.abs(current.getY()) > 0.1 ? Math.abs(current.getY()) : Math.max(6.0, r * 2.0);
-        Cylinder cyl = new Cylinder(r, height);
+        Cylinder cyl = new Cylinder(r, height, 64);
         cyl.setMaterial(createMaterial(isPreview, isSelected));
         cyl.setTranslateX(center.getX());
         cyl.setTranslateY(-height * 0.5);
@@ -72,7 +72,7 @@ public final class shape_geometry_3d_ui_main {
         double r = center.distance(new Point3D(current.getX(), 0, current.getZ()));
         if (r < 0.2) return new Group();
 
-        Sphere sph = new Sphere(r);
+        Sphere sph = new Sphere(r, 64);
         sph.setMaterial(createMaterial(isPreview, isSelected));
         sph.setTranslateX(center.getX());
         sph.setTranslateY(-r);

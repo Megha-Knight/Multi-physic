@@ -50,15 +50,21 @@ public final class hole_mesh_builder_ui_main {
 
             if (!faceHoles.isEmpty()) {
                 if (faceHoles.size() == 1) {
-                    buildFaceWithSingleHole(center, s, face, faceHoles.get(0), pts, fcs);
+                    buildFaceWithSingleHole(center, s, face, faceHoles.get(0), holes, pts, fcs);
+                } else if (faceHoles.size() == 2) {
+                    buildFaceWithTwoHoles(center, s, face, faceHoles.get(0), faceHoles.get(1), holes, pts, fcs);
                 } else {
-                    buildFaceWithTwoHoles(center, s, face, faceHoles.get(0), faceHoles.get(1), pts, fcs);
+                    Frame f = hole_mesh_triangulator_ui_main.getCubeFaceFrame(center, s, face);
+                    hole_pattern_mesh_helper_ui_main.partitionAndBuildCubeFace(f, s, faceHoles, holes, center, pts, fcs, false);
                 }
             } else if (!oppHoles.isEmpty()) {
                 if (oppHoles.size() == 1) {
                     buildExitFaceWithSingleHole(center, s, face, oppHoles.get(0), pts, fcs);
-                } else {
+                } else if (oppHoles.size() == 2) {
                     buildExitFaceWithTwoHoles(center, s, face, oppHoles.get(0), oppHoles.get(1), pts, fcs);
+                } else {
+                    Frame f = hole_mesh_triangulator_ui_main.getCubeFaceFrame(center, s, face);
+                    hole_pattern_mesh_helper_ui_main.partitionAndBuildCubeFace(f, s, oppHoles, holes, center, pts, fcs, true);
                 }
             } else {
                 buildStandardQuadFace(center, s, face, pts, fcs);
@@ -72,6 +78,9 @@ public final class hole_mesh_builder_ui_main {
 
         mesh.getPoints().setAll(pa);
         mesh.getFaces().setAll(fa);
+        int[] sga = new int[fa.length / 6];
+        java.util.Arrays.fill(sga, 1);
+        mesh.getFaceSmoothingGroups().setAll(sga);
         MeshView mv = new MeshView(mesh);
         mv.setCullFace(CullFace.NONE);
         mv.setMaterial(shape_geometry_3d_ui_main.createMaterial(isPreview, isSelected));
@@ -99,14 +108,16 @@ public final class hole_mesh_builder_ui_main {
     }
 
     private static void buildFaceWithSingleHole(Point3D c, double s, face_kind_ui_main kind,
-                                                hole_feature_ui_main hole, List<Float> pts, List<Integer> fcs) {
+                                                hole_feature_ui_main hole, List<hole_feature_ui_main> allHoles,
+                                                List<Float> pts, List<Integer> fcs) {
         Frame f = hole_mesh_triangulator_ui_main.getCubeFaceFrame(c, s, kind);
         double hw = s * 0.5;
-        buildHoleSubRegion(f, s, hole, -hw, hw, -hw, hw, pts, fcs);
+        buildHoleSubRegion(f, s, hole, allHoles, c, -hw, hw, -hw, hw, pts, fcs);
     }
 
     private static void buildFaceWithTwoHoles(Point3D c, double s, face_kind_ui_main kind,
                                               hole_feature_ui_main h1, hole_feature_ui_main h2,
+                                              List<hole_feature_ui_main> allHoles,
                                               List<Float> pts, List<Integer> fcs) {
         Frame f = hole_mesh_triangulator_ui_main.getCubeFaceFrame(c, s, kind);
         double hw = s * 0.5;
@@ -116,27 +127,21 @@ public final class hole_mesh_builder_ui_main {
 
         double uMaxA = splitU ? (hA.getU() + hB.getU()) * 0.5 : hw;
         double vMaxA = splitU ? hw : (hA.getV() + hB.getV()) * 0.5;
-        buildHoleSubRegion(f, s, hA, -hw, uMaxA, -hw, vMaxA, pts, fcs);
-        buildHoleSubRegion(f, s, hB, splitU ? uMaxA : -hw, hw, splitU ? -hw : vMaxA, hw, pts, fcs);
+        buildHoleSubRegion(f, s, hA, allHoles, c, -hw, uMaxA, -hw, vMaxA, pts, fcs);
+        buildHoleSubRegion(f, s, hB, allHoles, c, splitU ? uMaxA : -hw, hw, splitU ? -hw : vMaxA, hw, pts, fcs);
     }
 
     private static void buildHoleSubRegion(Frame f, double s, hole_feature_ui_main h,
+                                           List<hole_feature_ui_main> allHoles, Point3D cubeCenter,
                                            double uMin, double uMax, double vMin, double vMax,
                                            List<Float> pts, List<Integer> fcs) {
-        double r = h.getRadius();
+        double rEntry = h.getOuterRadius();
         Point3D hc = f.origin().add(f.u().multiply(h.getU())).add(f.v().multiply(h.getV()));
-        double depth = h.isThroughAll() ? s : Math.min(s, h.getDepth());
-
         Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, uMin, uMax, vMin, vMax);
-        Point3D[] entry = hole_mesh_triangulator_ui_main.getCirclePoints(hc, f.u(), f.v(), r, SEGS);
-        Point3D[] boreEnd = new Point3D[SEGS];
-        for (int i = 0; i < SEGS; i++) boreEnd[i] = entry[i].subtract(f.n().multiply(depth));
+        Point3D[] entry = hole_mesh_triangulator_ui_main.getCirclePoints(hc, f.u(), f.v(), rEntry, SEGS);
 
         hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, false);
-        hole_mesh_triangulator_ui_main.buildCylindricalWall(entry, boreEnd, pts, fcs);
-        if (!h.isThroughAll()) {
-            hole_mesh_triangulator_ui_main.buildCircleCap(hc.subtract(f.n().multiply(depth)), boreEnd, pts, fcs, true);
-        }
+        hole_advanced_mesh_helper_ui_main.buildCubeHoleCavity(f, s, h, hc, entry, allHoles, cubeCenter, pts, fcs);
     }
 
     private static void buildExitFaceWithSingleHole(Point3D c, double s, face_kind_ui_main kind,

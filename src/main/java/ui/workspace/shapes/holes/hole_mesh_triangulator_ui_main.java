@@ -11,7 +11,7 @@ import java.util.List;
  */
 public final class hole_mesh_triangulator_ui_main {
 
-    public static final int CIRCLE_SEGS = 24;
+    public static final int CIRCLE_SEGS = 64;
 
     private hole_mesh_triangulator_ui_main() {}
 
@@ -62,27 +62,41 @@ public final class hole_mesh_triangulator_ui_main {
     }
 
     public static void triangulateAnnularFace(Point3D[] oct, Point3D[] circ, List<Float> pts, List<Integer> fcs, boolean reverse) {
+        int segsPerOct = circ.length / 8;
         for (int k = 0; k < 8; k++) {
             Point3D o1 = oct[k], o2 = oct[(k + 1) % 8];
-            int arcStart = k * 3;
-            addTri(o1, o2, circ[(arcStart + 3) % CIRCLE_SEGS], pts, fcs, reverse);
-            for (int j = 0; j < 3; j++) {
-                addTri(o1, circ[(arcStart + j + 1) % CIRCLE_SEGS], circ[(arcStart + j) % CIRCLE_SEGS], pts, fcs, reverse);
+            int arcStart = k * segsPerOct;
+            addTri(o1, o2, circ[(arcStart + segsPerOct) % circ.length], pts, fcs, reverse);
+            for (int j = 0; j < segsPerOct; j++) {
+                addTri(o1, circ[(arcStart + j + 1) % circ.length], circ[(arcStart + j) % circ.length], pts, fcs, reverse);
             }
         }
     }
 
     public static void buildCylindricalWall(Point3D[] top, Point3D[] bot, List<Float> pts, List<Integer> fcs) {
-        for (int i = 0; i < CIRCLE_SEGS; i++) {
-            int next = (i + 1) % CIRCLE_SEGS;
-            addTri(top[i], top[next], bot[next], pts, fcs, false);
-            addTri(top[i], bot[next], bot[i], pts, fcs, false);
+        int segs = top.length;
+        int[] topIdx = new int[segs], botIdx = new int[segs];
+        for (int i = 0; i < segs; i++) {
+            topIdx[i] = addVertex(top[i], pts);
+            botIdx[i] = addVertex(bot[i], pts);
+        }
+        for (int i = 0; i < segs; i++) {
+            int next = (i + 1) % segs;
+            addTriIdx(topIdx[i], topIdx[next], botIdx[next], fcs, false);
+            addTriIdx(topIdx[i], botIdx[next], botIdx[i], fcs, false);
         }
     }
 
+    public static void addTriIdx(int i0, int i1, int i2, List<Integer> fcs, boolean rev) {
+        fcs.add(rev ? i2 : i0); fcs.add(0);
+        fcs.add(i1);            fcs.add(0);
+        fcs.add(rev ? i0 : i2); fcs.add(0);
+    }
+
     public static void buildCircleCap(Point3D center, Point3D[] circ, List<Float> pts, List<Integer> fcs, boolean facingEntry) {
-        for (int i = 0; i < CIRCLE_SEGS; i++) {
-            int next = (i + 1) % CIRCLE_SEGS;
+        int segs = circ.length;
+        for (int i = 0; i < segs; i++) {
+            int next = (i + 1) % segs;
             addTri(center, circ[next], circ[i], pts, fcs, !facingEntry);
         }
     }

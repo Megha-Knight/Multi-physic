@@ -93,16 +93,9 @@ public class UI_Main extends BorderPane {
         ribbonBar.setOnSave(docHandler::onSaveFile); ribbonBar.setOnSaveAs(docHandler::onSaveAsFile);
         ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile); ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
 
-        ribbonBar.setOnHoleRequested(() -> {
-            var ed = workspace3D.getShapeEditor();
-            var s = ed.getSelectedShape();
-            var f = ed.getActiveFace();
-            if (s != null && f != null && f.isPlanar()) {
-                hole_dialog_ui_main.open(s, f, ed, getScene() != null ? getScene().getWindow() : null);
-            } else {
-                footerBar.setStatusText(s == null ? "Select a 3D shape first." : (f == null ? "Select a planar face on the shape to place a hole." : "Face is not planar."));
-            }
-        });
+        ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this));
+        ribbonBar.setOnLinearPatternRequested(() -> ui_feature_action_helper_ui_main.handleLinearPattern(this));
+        ribbonBar.setOnCircularPatternRequested(() -> ui_feature_action_helper_ui_main.handleCircularPattern(this));
 
         ribbonBar.setOnShapeSelected(shape -> {
             workspace3D.getDrafter().setShape(shape);

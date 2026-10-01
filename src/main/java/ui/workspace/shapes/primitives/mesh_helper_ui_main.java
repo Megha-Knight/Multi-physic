@@ -27,7 +27,7 @@ public final class mesh_helper_ui_main {
      */
     public static Node createUpwardCone(double radius, double height, PhongMaterial material) {
         TriangleMesh mesh = new TriangleMesh();
-        int sides = 24;
+        int sides = 64;
 
         float[] points = new float[(sides + 2) * 3];
         // Apex at (0, -height, 0)

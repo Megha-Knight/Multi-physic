@@ -31,7 +31,11 @@ public class ribbon_ui_main extends HBox {
     private final splitbutton_ui_main basicShapesButton;
     private final basicshapespanel_ui_main shapesPanel;
     private final splitbutton_ui_main holeButton;
+    private final splitbutton_ui_main linearPatternButton;
+    private final splitbutton_ui_main circularPatternButton;
     private Runnable onHoleRequested;
+    private Runnable onLinearPatternRequested;
+    private Runnable onCircularPatternRequested;
 
     private final MenuItem menuSave     = new MenuItem("Save");
     private final MenuItem menuSaveAs   = new MenuItem("Save As...");
@@ -86,6 +90,14 @@ public class ribbon_ui_main extends HBox {
             if (onHoleRequested != null) onHoleRequested.run();
         });
 
+        linearPatternButton = new splitbutton_ui_main("Linear", ribbonicons_ui_main.createLinearPatternIcon(iconSz, iconColor), () -> {
+            if (onLinearPatternRequested != null) onLinearPatternRequested.run();
+        });
+
+        circularPatternButton = new splitbutton_ui_main("Circular", ribbonicons_ui_main.createCircularPatternIcon(iconSz, iconColor), () -> {
+            if (onCircularPatternRequested != null) onCircularPatternRequested.run();
+        });
+
         getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildFeaturesGroup());
     }
 
@@ -100,7 +112,7 @@ public class ribbon_ui_main extends HBox {
     }
 
     private VBox buildFeaturesGroup() {
-        return wrapGroup(new HBox(2, holeButton), "Features");
+        return wrapGroup(new HBox(2, holeButton, linearPatternButton, circularPatternButton), "Features");
     }
 
     private VBox wrapGroup(HBox buttonsRow, String labelText) {
@@ -137,7 +149,11 @@ public class ribbon_ui_main extends HBox {
     public splitbutton_ui_main getBasicShapesButton()     { return basicShapesButton; }
     public basicshapespanel_ui_main getShapesPanel()       { return shapesPanel; }
     public splitbutton_ui_main getHoleButton()            { return holeButton; }
+    public splitbutton_ui_main getLinearPatternButton()   { return linearPatternButton; }
+    public splitbutton_ui_main getCircularPatternButton() { return circularPatternButton; }
     public void setOnHoleRequested(Runnable r)            { this.onHoleRequested = r; }
+    public void setOnLinearPatternRequested(Runnable r)   { this.onLinearPatternRequested = r; }
+    public void setOnCircularPatternRequested(Runnable r) { this.onCircularPatternRequested = r; }
 
     public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
 

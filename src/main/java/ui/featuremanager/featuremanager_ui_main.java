@@ -82,6 +82,28 @@ public class featuremanager_ui_main extends BorderPane {
         }
     }
 
+    public ListView<shape_item_ui_main> getListView() { return listView; }
+
+    public static String formatItemLabel(shape_item_ui_main item) {
+        if (item == null) return "";
+        String lbl = item.getName();
+        boolean hasH = item.hasHoles(), hasP = item.hasPatterns();
+        if (hasH || hasP) {
+            lbl += " [";
+            if (hasH) {
+                int c = item.getHoles().size();
+                lbl += c + (c == 1 ? " Hole" : " Holes");
+            }
+            if (hasH && hasP) lbl += ", ";
+            if (hasP) {
+                int p = item.getPatterns().size();
+                lbl += p + (p == 1 ? " Pattern" : " Patterns");
+            }
+            lbl += "]";
+        }
+        return lbl;
+    }
+
     private void updateSelectionFromCanvas(shape_item_ui_main sel) {
         if (syncLock) return;
         syncLock = true;
@@ -125,12 +147,7 @@ public class featuremanager_ui_main extends BorderPane {
                 setText(null);
                 setStyle("-fx-background-color: transparent;");
             } else {
-                String lbl = item.getName();
-                if (item.hasHoles()) {
-                    int c = item.getHoles().size();
-                    lbl += " [" + c + (c == 1 ? " Hole]" : " Holes]");
-                }
-                nameLabel.setText(lbl);
+                nameLabel.setText(formatItemLabel(item));
                 Image img = loadShapeIcon(item.getType());
                 if (img != null) iconView.setImage(img);
                 setGraphic(row);

@@ -15,6 +15,7 @@ import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 import ui.workspace.shapes.primitives.shape_geometry_ui_main;
 import ui.workspace.drafting.faces.face_kind_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
+import ui.workspace.drafting.holes.hole_pattern_ui_main;
 import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
 
 import java.util.List;
@@ -36,6 +37,7 @@ public class shape_item_ui_main {
     private String faceOwnerId = null;
     private face_kind_ui_main faceKind = null;
     private final List<hole_feature_ui_main> holes = new java.util.ArrayList<>();
+    private final List<hole_pattern_ui_main> patterns = new java.util.ArrayList<>();
 
     public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) { this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, 0); }
@@ -87,8 +89,30 @@ public class shape_item_ui_main {
     public List<hole_feature_ui_main> getHoles() { return holes; }
     public boolean hasHoles() { return !holes.isEmpty(); }
     public void addHole(hole_feature_ui_main h) { if (h != null) { holes.add(h); rebuild(); } }
-    public void removeHole(String hId) { holes.removeIf(h -> h.getId().equals(hId)); rebuild(); }
-    public void clearHoles() { holes.clear(); rebuild(); }
+    public void removeHole(String hId) {
+        holes.removeIf(h -> h.getId().equals(hId));
+        patterns.removeIf(p -> hId.equals(p.getSeedHoleId()));
+        rebuild();
+    }
+    public void clearHoles() { holes.clear(); patterns.clear(); rebuild(); }
+
+    public List<hole_pattern_ui_main> getPatterns() { return patterns; }
+    public boolean hasPatterns() { return !patterns.isEmpty(); }
+    public void addPattern(hole_pattern_ui_main p) { if (p != null) { patterns.add(p); rebuild(); } }
+    public void removePattern(String pId) { patterns.removeIf(p -> p.getId().equals(pId)); rebuild(); }
+    public void clearPatterns() { patterns.clear(); rebuild(); }
+
+    public List<hole_feature_ui_main> getAllEffectiveHoles() {
+        List<hole_feature_ui_main> eff = new java.util.ArrayList<>(holes);
+        for (hole_pattern_ui_main pat : patterns) {
+            hole_feature_ui_main seed = null;
+            for (hole_feature_ui_main h : holes) {
+                if (h.getId().equals(pat.getSeedHoleId())) { seed = h; break; }
+            }
+            if (seed != null) eff.addAll(pat.generateDerivedHoles(seed));
+        }
+        return eff;
+    }
 
     public boolean isFaceOwnerPresent(java.util.Collection<shape_item_ui_main> shapes) {
         if (faceOwnerId == null) return true;
@@ -107,16 +131,17 @@ public class shape_item_ui_main {
 
     public void rebuild() {
         shapeGroup.getChildren().clear(); handlesGroup.getChildren().clear();
+        List<hole_feature_ui_main> eff = getAllEffectiveHoles();
         Node geo = switch (type) {
             case CIRCLE    -> shape_geometry_ui_main.createCircle(p1, p2, uAxis, vAxis, normal, false, selected);
             case SQUARE    -> shape_geometry_ui_main.createSquare(p1, p2, uAxis, vAxis, normal, false, selected);
             case RECTANGLE -> shape_geometry_ui_main.createRectangle(p1, p2, uAxis, vAxis, normal, false, selected);
             case EQUILATERAL_TRIANGLE -> shape_geometry_ui_main.createEquilateralTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
             case RIGHT_TRIANGLE -> shape_geometry_ui_main.createRightTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
-            case CUBE      -> holes.isEmpty() ? shape_geometry_3d_ui_main.createCube(p1, p2, false, selected)
-                                              : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCubeWithHoles(p1, p2, holes, false, selected);
-            case CYLINDER  -> holes.isEmpty() ? shape_geometry_3d_ui_main.createCylinder(p1, p2, false, selected)
-                                              : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCylinderWithHoles(p1, p2, holes, false, selected);
+            case CUBE      -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCube(p1, p2, false, selected)
+                                            : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCubeWithHoles(p1, p2, eff, false, selected);
+            case CYLINDER  -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCylinder(p1, p2, false, selected)
+                                            : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCylinderWithHoles(p1, p2, eff, false, selected);
             case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, false, selected);
             case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, false, selected);
             default -> null;
@@ -161,24 +186,7 @@ public class shape_item_ui_main {
 
     public boolean isNear(Point3D groundPt, double threshold) { return shape_rotation_helper_ui_main.isPointNearShape(this, groundPt, threshold); }
 
-    public String formatDimensions() {
-        double dist = p1.distance(p2), dx = Math.abs(p2.getX() - p1.getX()), dz = Math.abs(p2.getZ() - p1.getZ());
-        String rotStr = (rotationY != 0 || rotationX != 0) ? String.format(" | Rot Y: %.0f° | Rot X: %.0f°", rotationY, rotationX) : "";
-        double px = worldX + (p1 != null ? p1.getX() : 0.0), py = worldZ + (p1 != null ? p1.getZ() : 0.0), pz = -(worldY + (p1 != null ? p1.getY() : 0.0));
-        String posStr = String.format(" | Pos: X=%.1f mm Y=%.1f mm Z=%.1f mm", px, py, pz);
-        return switch (type) {
-            case CIRCLE    -> String.format("%s | Radius: %.1f mm%s%s", getName(), dist, posStr, rotStr);
-            case SQUARE    -> String.format("%s | Side: %.1f mm%s%s", getName(), Math.max(dx, dz), posStr, rotStr);
-            case RECTANGLE -> String.format("%s | W: %.1f H: %.1f mm%s%s", getName(), dx, dz, posStr, rotStr);
-            case EQUILATERAL_TRIANGLE -> String.format("%s | Side: %.1f mm%s%s", getName(), dist, posStr, rotStr);
-            case RIGHT_TRIANGLE -> String.format("%s | Base: %.1f H: %.1f mm%s%s", getName(), dx, dz, posStr, rotStr);
-            case CUBE      -> String.format("%s | Side: %.1f mm%s%s", getName(), Math.max(dx, dz), posStr, rotStr);
-            case CYLINDER  -> String.format("%s | R: %.1f H: %.1f mm%s%s", getName(), dist, Math.max(6.0, dist*2), posStr, rotStr);
-            case SPHERE    -> String.format("%s | Radius: %.1f mm%s%s", getName(), dist, posStr, rotStr);
-            case CONE      -> String.format("%s | R: %.1f H: %.1f mm%s%s", getName(), dist, Math.max(6.0, dist*2), posStr, rotStr);
-            default -> getName() + posStr + rotStr;
-        };
-    }
+    public String formatDimensions() { return shape_item_formatter_ui_main.formatDimensions(this); }
 
     public String getId() { return id; } public String getName() { return name != null ? name : ""; }
     public void setName(String name) { this.name = name; }

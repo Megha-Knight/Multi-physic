@@ -3,6 +3,7 @@ package ui.File_Types;
 import javafx.geometry.Point3D;
 import ui.workspace.drafting.faces.face_kind_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
+import ui.workspace.drafting.holes.hole_pattern_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
 
@@ -14,11 +15,6 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * document_serializer_ui_main.java
- * Serializes and deserializes CAD shapes to/from Multiphysics .nd files and coordinates exports.
- * Format Version 1.4 — preserves ID, name, 3D translation, 360° rotation, face-based sketches, and holes.
- */
 public final class document_serializer_ui_main {
 
     private document_serializer_ui_main() {}
@@ -35,7 +31,7 @@ public final class document_serializer_ui_main {
 
     public static boolean saveToNd(File file, List<shape_item_ui_main> shapes) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.4\n");
+            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.5\n");
             if (shapes != null) {
                 for (shape_item_ui_main s : shapes) {
                     pw.println("SHAPE: " + s.getType().name());
@@ -58,8 +54,16 @@ public final class document_serializer_ui_main {
                         if (s.getFaceKind() != null) pw.println("faceKind: " + s.getFaceKind().name());
                     }
                     for (hole_feature_ui_main h : s.getHoles()) {
-                        pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b%n",
-                            h.getId(), h.getFaceKind().name(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll());
+                        pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b, %s, %.4f, %.4f, %.4f, %.4f%n",
+                            h.getId(), h.getFaceKind().name(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(),
+                            h.getHoleType().name(), h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth());
+                    }
+                    for (hole_pattern_ui_main p : s.getPatterns()) {
+                        pw.printf(java.util.Locale.US, "pattern: %s, %s, %s, %s, %d, %s, %.4f, %.4f, %.4f, %.4f, %b, %b%n",
+                            p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType().name(),
+                            p.getInstanceCount(), p.getLinearDirection().name(), p.getLinearSpacing(),
+                            p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(),
+                            p.isClockwise(), p.isFullCircle());
                     }
                     pw.println();
                 }
@@ -80,6 +84,7 @@ public final class document_serializer_ui_main {
             Point3D p1 = null, p2 = null, uAxis = null, vAxis = null, norm = null;
             double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0;
             List<hole_feature_ui_main> pendingHoles = new ArrayList<>();
+            List<hole_pattern_ui_main> pendingPatterns = new ArrayList<>();
 
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -87,60 +92,45 @@ public final class document_serializer_ui_main {
                 if (line.startsWith("(") && line.endsWith(")")) line = line.substring(1, line.length() - 1).trim();
 
                 if (line.startsWith("SHAPE:")) {
-                    if (currentType != null && p1 != null && p2 != null) {
-                        shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
-                        if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
-                        for (hole_feature_ui_main h : pendingHoles) item.addHole(h);
-                        list.add(item);
-                    }
+                    commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns);
                     String typeStr = line.substring(6).trim();
                     try { currentType = basic_shapes_ui_main.valueOf(typeStr); } catch (Exception ex) { currentType = null; }
                     id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0;
-                    uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null; pendingHoles.clear();
+                    uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null;
+                    pendingHoles.clear(); pendingPatterns.clear();
                 } else if (line.startsWith("id:")) id = line.substring(3).trim();
                 else if (line.startsWith("name:")) name = line.substring(5).trim();
-                else if (line.startsWith("p1:")) p1 = parsePoint(line.substring(3).trim());
-                else if (line.startsWith("p2:")) p2 = parsePoint(line.substring(3).trim());
-                else if (line.startsWith("tx:")) { Point3D p = parsePoint(line.substring(3).trim()); tx = p.getX(); ty = p.getY(); tz = p.getZ(); }
+                else if (line.startsWith("p1:")) p1 = document_parse_helper_ui_main.parsePoint(line.substring(3).trim());
+                else if (line.startsWith("p2:")) p2 = document_parse_helper_ui_main.parsePoint(line.substring(3).trim());
+                else if (line.startsWith("tx:")) { Point3D p = document_parse_helper_ui_main.parsePoint(line.substring(3).trim()); tx = p.getX(); ty = p.getY(); tz = p.getZ(); }
                 else if (line.startsWith("rot:")) { try { rotY = Double.parseDouble(line.substring(4).trim()); } catch (Exception ignored) {} }
                 else if (line.startsWith("rotX:")) { try { rotX = Double.parseDouble(line.substring(5).trim()); } catch (Exception ignored) {} }
-                else if (line.startsWith("uAxis:")) uAxis = parsePoint(line.substring(6).trim());
-                else if (line.startsWith("vAxis:")) vAxis = parsePoint(line.substring(6).trim());
-                else if (line.startsWith("norm:")) norm = parsePoint(line.substring(5).trim());
+                else if (line.startsWith("uAxis:")) uAxis = document_parse_helper_ui_main.parsePoint(line.substring(6).trim());
+                else if (line.startsWith("vAxis:")) vAxis = document_parse_helper_ui_main.parsePoint(line.substring(6).trim());
+                else if (line.startsWith("norm:")) norm = document_parse_helper_ui_main.parsePoint(line.substring(5).trim());
                 else if (line.startsWith("faceOwner:")) faceOwner = line.substring(10).trim();
                 else if (line.startsWith("faceKind:")) { try { faceKind = face_kind_ui_main.valueOf(line.substring(9).trim()); } catch (Exception ignored) {} }
-                else if (line.startsWith("hole:")) parseHoleLine(line.substring(5).trim(), id, pendingHoles);
+                else if (line.startsWith("hole:")) document_parse_helper_ui_main.parseHoleLine(line.substring(5).trim(), id, pendingHoles);
+                else if (line.startsWith("pattern:")) document_parse_helper_ui_main.parsePatternLine(line.substring(8).trim(), id, pendingPatterns);
             }
-            if (currentType != null && p1 != null && p2 != null) {
-                shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
-                if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
-                for (hole_feature_ui_main h : pendingHoles) item.addHole(h);
-                list.add(item);
-            }
+            commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns);
         } catch (Exception e) {
             System.err.println("[Multiphysics] Error loading: " + e.getMessage());
         }
         return list;
     }
 
-    private static void parseHoleLine(String str, String parentId, List<hole_feature_ui_main> out) {
-        try {
-            String[] p = str.split(",");
-            if (p.length >= 7) {
-                out.add(new hole_feature_ui_main(
-                    p[0].trim(), parentId, face_kind_ui_main.valueOf(p[1].trim()),
-                    Double.parseDouble(p[2].trim()), Double.parseDouble(p[3].trim()),
-                    Double.parseDouble(p[4].trim()), Double.parseDouble(p[5].trim()), Boolean.parseBoolean(p[6].trim())
-                ));
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private static Point3D parsePoint(String str) {
-        try {
-            String[] p = str.split(",");
-            return new Point3D(Double.parseDouble(p[0].trim()), Double.parseDouble(p[1].trim()), Double.parseDouble(p[2].trim()));
-        } catch (Exception e) { return new Point3D(0, 0, 0); }
+    private static void commitShape(List<shape_item_ui_main> list, basic_shapes_ui_main currentType, String id, String name,
+                                    Point3D p1, Point3D p2, double tx, double ty, double tz, double rotX, double rotY,
+                                    Point3D uAxis, Point3D vAxis, Point3D norm, String faceOwner, face_kind_ui_main faceKind,
+                                    List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns) {
+        if (currentType != null && p1 != null && p2 != null) {
+            shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
+            if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
+            for (hole_feature_ui_main h : holes) item.addHole(h);
+            for (hole_pattern_ui_main p : patterns) item.addPattern(p);
+            list.add(item);
+        }
     }
 
     public static List<shape_item_ui_main> cloneShapes(List<shape_item_ui_main> original) {
@@ -151,7 +141,19 @@ public final class document_serializer_ui_main {
                     s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationX(), s.getRotationY());
             if (s.isOnFace()) item.setFacePlane(s.getUAxis(), s.getVAxis(), s.getFaceNormal(), s.getFaceOwnerId(), s.getFaceKind());
             for (hole_feature_ui_main h : s.getHoles()) {
-                item.addHole(new hole_feature_ui_main(h.getId(), h.getOwnerShapeId(), h.getFaceKind(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll()));
+                item.addHole(new hole_feature_ui_main(
+                    h.getId(), h.getOwnerShapeId(), h.getHoleType(), h.getFaceKind(),
+                    h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(),
+                    h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth()
+                ));
+            }
+            for (hole_pattern_ui_main p : s.getPatterns()) {
+                item.addPattern(new hole_pattern_ui_main(
+                    p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType(),
+                    p.getInstanceCount(), p.getLinearDirection(), p.getLinearSpacing(),
+                    p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(),
+                    p.isClockwise(), p.isFullCircle()
+                ));
             }
             copies.add(item);
         }
