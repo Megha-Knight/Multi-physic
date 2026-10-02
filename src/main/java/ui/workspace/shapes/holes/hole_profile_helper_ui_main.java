@@ -88,16 +88,16 @@ public final class hole_profile_helper_ui_main {
 
     public static boolean isInside2DProfile(double du, double dv, hole_feature_ui_main h) {
         if (h == null || h.getCutoutShape() == CutoutShape.CIRCLE) {
-            return (du * du + dv * dv) < (h.getRadius() - 1e-3) * (h.getRadius() - 1e-3);
+            return (du * du + dv * dv) <= (h.getRadius() + 1e-2) * (h.getRadius() + 1e-2);
         }
         double dim1 = h.getDiameter();
         double dim2 = (h.getWidth2() > 0.1) ? h.getWidth2() : dim1 * 0.6;
         return switch (h.getCutoutShape()) {
-            case SQUARE -> Math.abs(du) < (dim1 * 0.5 - 1e-3) && Math.abs(dv) < (dim1 * 0.5 - 1e-3);
-            case RECTANGLE -> Math.abs(du) < (dim1 * 0.5 - 1e-3) && Math.abs(dv) < (dim2 * 0.5 - 1e-3);
+            case SQUARE -> Math.abs(du) <= (dim1 * 0.5 + 1e-2) && Math.abs(dv) <= (dim1 * 0.5 + 1e-2);
+            case RECTANGLE -> Math.abs(du) <= (dim1 * 0.5 + 1e-2) && Math.abs(dv) <= (dim2 * 0.5 + 1e-2);
             case EQUILATERAL_TRIANGLE -> isPointInPoly(du, dv, getEquilateralVertices(dim1));
             case RIGHT_TRIANGLE -> isPointInPoly(du, dv, getRightTriangleVertices(dim1, (h.getWidth2() > 0.1) ? h.getWidth2() : dim1));
-            default -> (du * du + dv * dv) < (h.getRadius() - 1e-3) * (h.getRadius() - 1e-3);
+            default -> (du * du + dv * dv) <= (h.getRadius() + 1e-2) * (h.getRadius() + 1e-2);
         };
     }
 

@@ -85,7 +85,7 @@ public final class hole_intersection_helper_ui_main {
         } else if (h.getHoleType() == HoleType.COUNTERBORE) {
             if (t <= Math.min(totalDepth, h.getCbDepth())) holeR = h.getOuterRadius();
         }
-        return r < (holeR - 1e-3);
+        return r <= (holeR + 1e-2);
     }
 
     public static boolean isInsideHole(Point3D p, hole_feature_ui_main h, Point3D cubeCenter, double s) {
@@ -123,7 +123,7 @@ public final class hole_intersection_helper_ui_main {
             return;
         }
 
-        int K = Math.max(2, (int) Math.ceil(H / 1.5));
+        int K = Math.max(4, (int) Math.ceil(H / 0.75));
         int[][] vIdx = new int[K + 1][segs];
         Point3D[][] rings = new Point3D[K + 1][segs];
         for (int j = 0; j <= K; j++) {
@@ -136,9 +136,13 @@ public final class hole_intersection_helper_ui_main {
         for (int j = 0; j < K; j++) {
             for (int i = 0; i < segs; i++) {
                 int next = (i + 1) % segs;
-                Point3D mid = rings[j][i].add(rings[j][next]).add(rings[j + 1][next]).add(rings[j + 1][i]).multiply(0.25);
-                if (!isInsideAnyOtherHole(mid, allHoles, cur, center, w, hDim, d)) {
+                Point3D p0 = rings[j][i], p1 = rings[j][next], p2 = rings[j + 1][next], p3 = rings[j + 1][i];
+                Point3D midA = p0.add(p1).add(p2).multiply(1.0 / 3.0);
+                if (!isInsideAnyOtherHole(midA, allHoles, cur, center, w, hDim, d)) {
                     hole_mesh_triangulator_ui_main.addTriIdx(vIdx[j][i], vIdx[j][next], vIdx[j + 1][next], fcs, false);
+                }
+                Point3D midB = p0.add(p2).add(p3).multiply(1.0 / 3.0);
+                if (!isInsideAnyOtherHole(midB, allHoles, cur, center, w, hDim, d)) {
                     hole_mesh_triangulator_ui_main.addTriIdx(vIdx[j][i], vIdx[j + 1][next], vIdx[j + 1][i], fcs, false);
                 }
             }
