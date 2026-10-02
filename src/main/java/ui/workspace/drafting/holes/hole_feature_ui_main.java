@@ -52,75 +52,83 @@ public class hole_feature_ui_main {
     private CutoutShape cutoutShape = CutoutShape.CIRCLE;
     private double width2 = 0.0;
 
+    private String name;
+
     public hole_feature_ui_main(String id, String ownerShapeId, face_kind_ui_main faceKind,
                                 double u, double v, double diameter, double depth, boolean throughAll) {
-        this(id, ownerShapeId, HoleType.SIMPLE, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0);
+        this(id, ownerShapeId, null, HoleType.SIMPLE, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0, CutoutShape.CIRCLE, 0.0);
     }
 
     public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
                                 double u, double v, double diameter, double depth, boolean throughAll) {
-        this(id, ownerShapeId, holeType, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0);
+        this(id, ownerShapeId, null, holeType, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0, CutoutShape.CIRCLE, 0.0);
     }
 
     public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
                                 double u, double v, double diameter, double depth, boolean throughAll,
                                 double csDiameter, double csAngle, double cbDiameter, double cbDepth) {
-        this(id, ownerShapeId, holeType, faceKind, u, v, diameter, depth, throughAll, csDiameter, csAngle, cbDiameter, cbDepth, CutoutShape.CIRCLE, 0.0);
+        this(id, ownerShapeId, null, holeType, faceKind, u, v, diameter, depth, throughAll, csDiameter, csAngle, cbDiameter, cbDepth, CutoutShape.CIRCLE, 0.0);
     }
 
     public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
                                 double u, double v, double diameter, double depth, boolean throughAll,
                                 double csDiameter, double csAngle, double cbDiameter, double cbDepth,
                                 CutoutShape cutoutShape, double width2) {
+        this(id, ownerShapeId, null, holeType, faceKind, u, v, diameter, depth, throughAll, csDiameter, csAngle, cbDiameter, cbDepth, cutoutShape, width2);
+    }
+
+    public hole_feature_ui_main(String id, String ownerShapeId, String name, HoleType holeType, face_kind_ui_main faceKind,
+                                double u, double v, double diameter, double depth, boolean throughAll,
+                                double csDiameter, double csAngle, double cbDiameter, double cbDepth,
+                                CutoutShape cutoutShape, double width2) {
         this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
         this.ownerShapeId = ownerShapeId;
+        this.name = name;
         this.holeType = (holeType != null) ? holeType : HoleType.SIMPLE;
         this.faceKind = (faceKind != null) ? faceKind : face_kind_ui_main.TOP;
-        this.u = u;
-        this.v = v;
-        this.diameter = diameter;
-        this.depth = depth;
-        this.throughAll = throughAll;
-        this.csDiameter = csDiameter;
-        this.csAngle = csAngle;
-        this.cbDiameter = cbDiameter;
-        this.cbDepth = cbDepth;
+        this.u = u; this.v = v; this.diameter = diameter; this.depth = depth; this.throughAll = throughAll;
+        this.csDiameter = csDiameter; this.csAngle = csAngle; this.cbDiameter = cbDiameter; this.cbDepth = cbDepth;
         this.cutoutShape = (cutoutShape != null) ? cutoutShape : CutoutShape.CIRCLE;
         this.width2 = width2;
     }
 
     public String getId()                  { return id; }
-    public String getOwnerShapeId()         { return ownerShapeId; }
-    public HoleType getHoleType()           { return holeType; }
-    public face_kind_ui_main getFaceKind()  { return faceKind; }
+    public String getOwnerShapeId()        { return ownerShapeId; }
+    public String getName()                { return (name != null && !name.isBlank()) ? name : getDefaultName(); }
+    public void setName(String name)       { this.name = name; }
+    public HoleType getHoleType()          { return holeType; }
+    public face_kind_ui_main getFaceKind() { return faceKind; }
 
     public double getU()                   { return u; }
     public void setU(double u)             { this.u = u; }
-
     public double getV()                   { return v; }
     public void setV(double v)             { this.v = v; }
-
     public double getDiameter()            { return diameter; }
     public void setDiameter(double d)      { this.diameter = d; }
     public double getRadius()              { return Math.max(0.05, diameter * 0.5); }
-
     public double getDepth()               { return depth; }
     public void setDepth(double d)         { this.depth = d; }
-
     public boolean isThroughAll()          { return throughAll; }
     public void setThroughAll(boolean b)   { this.throughAll = b; }
-
     public double getCsDiameter()          { return csDiameter; }
     public void setCsDiameter(double d)    { this.csDiameter = d; }
-
     public double getCsAngle()             { return csAngle; }
     public void setCsAngle(double a)       { this.csAngle = a; }
-
     public double getCbDiameter()          { return cbDiameter; }
     public void setCbDiameter(double d)    { this.cbDiameter = d; }
-
     public double getCbDepth()             { return cbDepth; }
     public void setCbDepth(double d)       { this.cbDepth = d; }
+
+    public String getDefaultName() {
+        if (cutoutShape != null && cutoutShape != CutoutShape.CIRCLE) {
+            return String.format(Locale.US, "%s (%.1f mm)", cutoutShape.getLabel(), diameter);
+        }
+        return switch (holeType) {
+            case COUNTERSINK -> String.format(Locale.US, "Countersink (Ø%.1f)", diameter);
+            case COUNTERBORE -> String.format(Locale.US, "Counterbore (Ø%.1f)", diameter);
+            default -> String.format(Locale.US, "Hole (Ø%.1f)", diameter);
+        };
+    }
 
     public double getConeDepth() {
         if (holeType != HoleType.COUNTERSINK || csAngle <= 0.0 || csAngle >= 180.0) return 0.0;

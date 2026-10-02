@@ -27,65 +27,68 @@ public final class hole_pattern_mesh_helper_ui_main {
     public static void partitionAndBuildCubeFace(Frame f, double s, List<hole_feature_ui_main> faceHoles,
                                                  List<hole_feature_ui_main> allHoles, Point3D cubeCenter,
                                                  List<Float> pts, List<Integer> fcs, boolean isExit) {
-        double hw = s * 0.5;
-        Box root = new Box(-hw, hw, -hw, hw);
-        partitionBox(root, new ArrayList<>(faceHoles), allHoles, cubeCenter, f, s, pts, fcs, isExit);
+        List<hole_stepped_helper_ui_main.HoleCluster> clusters = hole_stepped_helper_ui_main.clusterHoles(faceHoles, f, isExit);
+        partitionAndBuildCubeFace(f, s, clusters, allHoles, cubeCenter, pts, fcs);
     }
 
-    private static void partitionBox(Box b, List<hole_feature_ui_main> holes,
-                                     List<hole_feature_ui_main> allHoles, Point3D cubeCenter,
-                                     Frame f, double s, List<Float> pts, List<Integer> fcs, boolean isExit) {
-        if (holes == null || holes.isEmpty()) return;
-        if (holes.size() == 1) {
-            hole_feature_ui_main h = holes.get(0);
-            if (!isExit) {
-                double rEntry = h.getOuterRadius();
-                Point3D hc = f.origin().add(f.u().multiply(h.getU())).add(f.v().multiply(h.getV()));
-                Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, b.uMin, b.uMax, b.vMin, b.vMax);
-                Point3D[] entry = hole_profile_helper_ui_main.getProfilePoints(hc, f.u(), f.v(), h, rEntry, SEGS);
-                hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, false);
-                hole_advanced_mesh_helper_ui_main.buildCubeHoleCavity(f, s, h, hc, entry, allHoles, cubeCenter, pts, fcs);
-            } else {
-                Point3D hc = f.origin().add(f.u().multiply(h.getU())).add(f.v().multiply(-h.getV()));
-                Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, b.uMin, b.uMax, b.vMin, b.vMax);
-                Point3D[] exit = hole_profile_helper_ui_main.getProfilePoints(hc, f.u(), f.v(), h, h.getRadius(), SEGS);
-                hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, exit, pts, fcs, true);
+    public static void partitionAndBuildCubeFace(Frame f, double s,
+                                                 List<hole_stepped_helper_ui_main.HoleCluster> clusters,
+                                                 List<hole_feature_ui_main> allHoles, Point3D cubeCenter,
+                                                 List<Float> pts, List<Integer> fcs) {
+        double hw = s * 0.5;
+        partitionClusterBox(new Box(-hw, hw, -hw, hw), new ArrayList<>(clusters), allHoles, cubeCenter, f, s, pts, fcs);
+    }
+
+    private static void partitionClusterBox(Box b, List<hole_stepped_helper_ui_main.HoleCluster> clusters,
+                                            List<hole_feature_ui_main> allHoles, Point3D cubeCenter,
+                                            Frame f, double s, List<Float> pts, List<Integer> fcs) {
+        if (clusters == null || clusters.isEmpty()) return;
+        if (clusters.size() == 1) {
+            hole_stepped_helper_ui_main.HoleCluster cl = clusters.get(0);
+            Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, b.uMin, b.uMax, b.vMin, b.vMax);
+            Point3D[] entry = hole_profile_helper_ui_main.getProfilePoints(cl.center, f.u(), f.v(), cl.primaryHole, cl.cutoutRadius, SEGS);
+            hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, cl.isExitOnly());
+            if (cl.hasEntry()) {
+                if (cl.faceHoles.size() == 1) {
+                    hole_advanced_mesh_helper_ui_main.buildCubeHoleCavity(f, s, cl.faceHoles.get(0), cl.center, entry, allHoles, cubeCenter, pts, fcs);
+                } else {
+                    hole_stepped_helper_ui_main.buildSteppedCavity(f, cl.center, cl.faceHoles, s, pts, fcs);
+                }
             }
             return;
         }
 
         double minU = Double.MAX_VALUE, maxU = -Double.MAX_VALUE;
         double minV = Double.MAX_VALUE, maxV = -Double.MAX_VALUE;
-        for (hole_feature_ui_main h : holes) {
-            minU = Math.min(minU, h.getU()); maxU = Math.max(maxU, h.getU());
-            minV = Math.min(minV, h.getV()); maxV = Math.max(maxV, h.getV());
+        for (hole_stepped_helper_ui_main.HoleCluster cl : clusters) {
+            minU = Math.min(minU, cl.u); maxU = Math.max(maxU, cl.u);
+            minV = Math.min(minV, cl.v); maxV = Math.max(maxV, cl.v);
         }
 
         boolean splitU = (maxU - minU >= maxV - minV);
         if (splitU && maxU - minU < 1e-4) splitU = false;
         if (!splitU && maxV - minV < 1e-4) splitU = true;
 
-        if (splitU) holes.sort(Comparator.comparingDouble(hole_feature_ui_main::getU));
-        else holes.sort(Comparator.comparingDouble(hole_feature_ui_main::getV));
+        if (splitU) clusters.sort(Comparator.comparingDouble(c -> c.u));
+        else clusters.sort(Comparator.comparingDouble(c -> c.v));
 
         int bestK = 1; double maxGap = -1;
-        for (int k = 1; k < holes.size(); k++) {
-            double gap = splitU ? (holes.get(k).getU() - holes.get(k - 1).getU())
-                                : (holes.get(k).getV() - holes.get(k - 1).getV());
+        for (int k = 1; k < clusters.size(); k++) {
+            double gap = splitU ? (clusters.get(k).u - clusters.get(k - 1).u) : (clusters.get(k).v - clusters.get(k - 1).v);
             if (gap > maxGap) { maxGap = gap; bestK = k; }
         }
 
-        List<hole_feature_ui_main> left = new ArrayList<>(holes.subList(0, bestK));
-        List<hole_feature_ui_main> right = new ArrayList<>(holes.subList(bestK, holes.size()));
+        List<hole_stepped_helper_ui_main.HoleCluster> left = new ArrayList<>(clusters.subList(0, bestK));
+        List<hole_stepped_helper_ui_main.HoleCluster> right = new ArrayList<>(clusters.subList(bestK, clusters.size()));
 
         if (splitU) {
-            double splitVal = (holes.get(bestK - 1).getU() + holes.get(bestK).getU()) * 0.5;
-            partitionBox(new Box(b.uMin, splitVal, b.vMin, b.vMax), left, allHoles, cubeCenter, f, s, pts, fcs, isExit);
-            partitionBox(new Box(splitVal, b.uMax, b.vMin, b.vMax), right, allHoles, cubeCenter, f, s, pts, fcs, isExit);
+            double splitVal = (clusters.get(bestK - 1).u + clusters.get(bestK).u) * 0.5;
+            partitionClusterBox(new Box(b.uMin, splitVal, b.vMin, b.vMax), left, allHoles, cubeCenter, f, s, pts, fcs);
+            partitionClusterBox(new Box(splitVal, b.uMax, b.vMin, b.vMax), right, allHoles, cubeCenter, f, s, pts, fcs);
         } else {
-            double splitVal = (holes.get(bestK - 1).getV() + holes.get(bestK).getV()) * 0.5;
-            partitionBox(new Box(b.uMin, b.uMax, b.vMin, splitVal), left, allHoles, cubeCenter, f, s, pts, fcs, isExit);
-            partitionBox(new Box(b.uMin, b.uMax, splitVal, b.vMax), right, allHoles, cubeCenter, f, s, pts, fcs, isExit);
+            double splitVal = (clusters.get(bestK - 1).v + clusters.get(bestK).v) * 0.5;
+            partitionClusterBox(new Box(b.uMin, b.uMax, b.vMin, splitVal), left, allHoles, cubeCenter, f, s, pts, fcs);
+            partitionClusterBox(new Box(b.uMin, b.uMax, splitVal, b.vMax), right, allHoles, cubeCenter, f, s, pts, fcs);
         }
     }
 

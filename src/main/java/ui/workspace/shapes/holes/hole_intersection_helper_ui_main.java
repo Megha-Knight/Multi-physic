@@ -34,7 +34,7 @@ public final class hole_intersection_helper_ui_main {
         if (cur == null) return 0.0;
         double thick = hole_mesh_triangulator_ui_main.getFaceThickness(w, hDim, d, cur.getFaceKind());
         double curDepth = cur.isThroughAll() ? thick : Math.min(thick, cur.getDepth());
-        if (cur.isThroughAll() || allHoles == null || center == null) return curDepth;
+        if (allHoles == null || center == null) return curDepth;
 
         Frame fCur = hole_mesh_triangulator_ui_main.getCuboidFaceFrame(center, w, hDim, d, cur.getFaceKind());
         Point3D hcCur = fCur.origin().add(fCur.u().multiply(cur.getU())).add(fCur.v().multiply(cur.getV()));
@@ -115,7 +115,8 @@ public final class hole_intersection_helper_ui_main {
         int segs = hole_mesh_triangulator_ui_main.CIRCLE_SEGS;
         double H = c1.distance(c2);
         boolean hasOthers = (allHoles != null && allHoles.size() > 1 && center != null);
-        if (!hasOthers || H < 1e-4) {
+        if (H < 1e-4) return;
+        if (!hasOthers) {
             Point3D[] r1 = hole_profile_helper_ui_main.getProfilePoints(c1, u, v, cur, radius, segs);
             Point3D[] r2 = hole_profile_helper_ui_main.getProfilePoints(c2, u, v, cur, radius, segs);
             hole_mesh_triangulator_ui_main.buildCylindricalWall(r1, r2, pts, fcs);

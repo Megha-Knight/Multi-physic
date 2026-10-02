@@ -9,6 +9,7 @@ import ui.workspace.drafting.faces.face_kind_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main.HoleType;
 import ui.workspace.shapes.holes.hole_mesh_triangulator_ui_main.Frame;
+import ui.workspace.shapes.holes.hole_stepped_helper_ui_main.HoleCluster;
 import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 
 import java.util.ArrayList;
@@ -26,7 +27,6 @@ public final class hole_cuboid_builder_ui_main {
     private hole_cuboid_builder_ui_main() {}
 
     private record CuboidFace(face_kind_ui_main kind, Frame frame, double fw, double fh, double thick, face_kind_ui_main opp) {}
-    private record LocalHole(hole_feature_ui_main h, double u, double v, Point3D center, List<hole_feature_ui_main> group) {}
     private record Box(double uMin, double uMax, double vMin, double vMax) {}
     private record CuboidContext(Point3D c, double w, double h, double d, List<hole_feature_ui_main> allHoles) {}
 
@@ -57,10 +57,13 @@ public final class hole_cuboid_builder_ui_main {
         for (CuboidFace cf : faces) {
             List<hole_feature_ui_main> faceHoles = findHoles(holes, cf.kind, cf.fw, cf.fh);
             List<hole_feature_ui_main> oppHoles = findThroughHoles(holes, cf.opp, cf.fw, cf.fh);
+            CuboidFace oppFace = getOppFace(faces, cf.opp);
 
-            if (!faceHoles.isEmpty()) partitionAndBuildFace(cf, ctx, faceHoles, pts, fcs, false, null);
-            else if (!oppHoles.isEmpty()) partitionAndBuildFace(cf, ctx, oppHoles, pts, fcs, true, getOppFace(faces, cf.opp));
-            else buildStandardQuad(cf.frame, cf.fw, cf.fh, pts, fcs);
+            if (!faceHoles.isEmpty() || !oppHoles.isEmpty()) {
+                partitionAndBuildFace(cf, ctx, faceHoles, oppHoles, pts, fcs, oppFace);
+            } else {
+                buildStandardQuad(cf.frame, cf.fw, cf.fh, pts, fcs);
+            }
         }
 
         float[] pa = new float[pts.size()]; for (int i = 0; i < pts.size(); i++) pa[i] = pts.get(i);
@@ -72,73 +75,48 @@ public final class hole_cuboid_builder_ui_main {
         return mv;
     }
 
-    private static void partitionAndBuildFace(CuboidFace cf, CuboidContext ctx, List<hole_feature_ui_main> holes,
-                                              List<Float> pts, List<Integer> fcs, boolean isExit, CuboidFace oppFace) {
-        List<LocalHole> locals = new ArrayList<>();
-        for (hole_feature_ui_main h : holes) {
-            Point3D hc; double u, v;
-            if (!isExit) {
-                u = h.getU(); v = h.getV();
-                hc = cf.frame.origin().add(cf.frame.u().multiply(u)).add(cf.frame.v().multiply(v));
-            } else {
-                Point3D ep = oppFace.frame.origin().add(oppFace.frame.u().multiply(h.getU())).add(oppFace.frame.v().multiply(h.getV()));
-                hc = ep.subtract(oppFace.frame.n().multiply(cf.thick));
-                Point3D te = hc.subtract(cf.frame.origin());
-                u = te.dotProduct(cf.frame.u()); v = te.dotProduct(cf.frame.v());
-            }
-            LocalHole match = null;
-            for (LocalHole lh : locals) if (Math.hypot(u - lh.u, v - lh.v) < 0.5) { match = lh; break; }
-            if (match == null) {
-                List<hole_feature_ui_main> grp = new ArrayList<>(); grp.add(h);
-                locals.add(new LocalHole(h, u, v, hc, grp));
-            } else { match.group.add(h); }
-        }
-        partitionBox(new Box(-cf.fw * 0.5, cf.fw * 0.5, -cf.fh * 0.5, cf.fh * 0.5), locals, cf, ctx, pts, fcs, isExit);
+    private static void partitionAndBuildFace(CuboidFace cf, CuboidContext ctx,
+                                              List<hole_feature_ui_main> faceHoles,
+                                              List<hole_feature_ui_main> oppHoles,
+                                              List<Float> pts, List<Integer> fcs, CuboidFace oppFace) {
+        List<HoleCluster> clusters = hole_stepped_helper_ui_main.clusterFaceHoles(cf.frame, oppFace.frame, cf.thick, faceHoles, oppHoles);
+        partitionBox(new Box(-cf.fw * 0.5, cf.fw * 0.5, -cf.fh * 0.5, cf.fh * 0.5), clusters, cf, ctx, pts, fcs);
     }
 
-    private static void partitionBox(Box b, List<LocalHole> holes, CuboidFace cf, CuboidContext ctx,
-                                     List<Float> pts, List<Integer> fcs, boolean isExit) {
-        if (holes == null || holes.isEmpty()) return;
-        if (holes.size() == 1) {
-            LocalHole lh = holes.get(0);
+    private static void partitionBox(Box b, List<HoleCluster> clusters, CuboidFace cf, CuboidContext ctx,
+                                     List<Float> pts, List<Integer> fcs) {
+        if (clusters == null || clusters.isEmpty()) return;
+        if (clusters.size() == 1) {
+            HoleCluster cl = clusters.get(0);
             Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(cf.frame, b.uMin, b.uMax, b.vMin, b.vMax);
-            if (!isExit) {
-                double rEntry = 0;
-                for (hole_feature_ui_main x : lh.group) rEntry = Math.max(rEntry, x.getOuterRadius());
-                Point3D[] entry = hole_profile_helper_ui_main.getProfilePoints(lh.center, cf.frame.u(), cf.frame.v(), lh.h, rEntry, SEGS);
-                hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, false);
-                if (lh.group.size() == 1) buildCavity(cf, ctx, lh.h, lh.center, entry, pts, fcs);
-                else hole_stepped_helper_ui_main.buildSteppedCavity(cf.frame, lh.center, lh.group, cf.thick, pts, fcs);
-            } else {
-                double rExit = Double.MAX_VALUE;
-                for (hole_feature_ui_main x : lh.group) if (x.isThroughAll()) rExit = Math.min(rExit, x.getRadius());
-                if (rExit < Double.MAX_VALUE) {
-                    Point3D[] exit = hole_profile_helper_ui_main.getProfilePoints(lh.center, cf.frame.u(), cf.frame.v(), lh.h, rExit, SEGS);
-                    hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, exit, pts, fcs, true);
-                }
+            Point3D[] entry = hole_profile_helper_ui_main.getProfilePoints(cl.center, cf.frame.u(), cf.frame.v(), cl.primaryHole, cl.cutoutRadius, SEGS);
+            hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, cl.isExitOnly());
+            if (cl.hasEntry()) {
+                if (cl.faceHoles.size() == 1) buildCavity(cf, ctx, cl.faceHoles.get(0), cl.center, entry, pts, fcs);
+                else hole_stepped_helper_ui_main.buildSteppedCavity(cf.frame, cl.center, cl.faceHoles, cf.thick, pts, fcs);
             }
             return;
         }
 
         double minU = Double.MAX_VALUE, maxU = -Double.MAX_VALUE, minV = Double.MAX_VALUE, maxV = -Double.MAX_VALUE;
-        for (LocalHole lh : holes) { minU = Math.min(minU, lh.u); maxU = Math.max(maxU, lh.u); minV = Math.min(minV, lh.v); maxV = Math.max(maxV, lh.v); }
+        for (HoleCluster cl : clusters) { minU = Math.min(minU, cl.u); maxU = Math.max(maxU, cl.u); minV = Math.min(minV, cl.v); maxV = Math.max(maxV, cl.v); }
         boolean splitU = (maxU - minU >= maxV - minV);
         if (splitU && maxU - minU < 1e-4) splitU = false;
         if (!splitU && maxV - minV < 1e-4) splitU = true;
 
-        if (splitU) holes.sort(Comparator.comparingDouble(lh -> lh.u));
-        else holes.sort(Comparator.comparingDouble(lh -> lh.v));
+        if (splitU) clusters.sort(Comparator.comparingDouble(c -> c.u));
+        else clusters.sort(Comparator.comparingDouble(c -> c.v));
 
         int bestK = 1; double maxGap = -1;
-        for (int k = 1; k < holes.size(); k++) {
-            double gap = splitU ? (holes.get(k).u - holes.get(k - 1).u) : (holes.get(k).v - holes.get(k - 1).v);
+        for (int k = 1; k < clusters.size(); k++) {
+            double gap = splitU ? (clusters.get(k).u - clusters.get(k - 1).u) : (clusters.get(k).v - clusters.get(k - 1).v);
             if (gap > maxGap) { maxGap = gap; bestK = k; }
         }
 
-        List<LocalHole> left = new ArrayList<>(holes.subList(0, bestK)), right = new ArrayList<>(holes.subList(bestK, holes.size()));
-        double sVal = splitU ? (holes.get(bestK - 1).u + holes.get(bestK).u) * 0.5 : (holes.get(bestK - 1).v + holes.get(bestK).v) * 0.5;
-        partitionBox(new Box(b.uMin, splitU ? sVal : b.uMax, b.vMin, splitU ? b.vMax : sVal), left, cf, ctx, pts, fcs, isExit);
-        partitionBox(new Box(splitU ? sVal : b.uMin, b.uMax, splitU ? b.vMin : sVal, b.vMax), right, cf, ctx, pts, fcs, isExit);
+        List<HoleCluster> left = new ArrayList<>(clusters.subList(0, bestK)), right = new ArrayList<>(clusters.subList(bestK, clusters.size()));
+        double sVal = splitU ? (clusters.get(bestK - 1).u + clusters.get(bestK).u) * 0.5 : (clusters.get(bestK - 1).v + clusters.get(bestK).v) * 0.5;
+        partitionBox(new Box(b.uMin, splitU ? sVal : b.uMax, b.vMin, splitU ? b.vMax : sVal), left, cf, ctx, pts, fcs);
+        partitionBox(new Box(splitU ? sVal : b.uMin, b.uMax, splitU ? b.vMin : sVal, b.vMax), right, cf, ctx, pts, fcs);
     }
 
     private static void buildCavity(CuboidFace cf, CuboidContext ctx, hole_feature_ui_main h, Point3D hc,
@@ -146,6 +124,7 @@ public final class hole_cuboid_builder_ui_main {
         Frame f = cf.frame;
         double rBore = h.getRadius();
         double totalDepth = hole_intersection_helper_ui_main.getEffectiveDepth(h, ctx.allHoles, ctx.c, ctx.w, ctx.h, ctx.d);
+        if (totalDepth <= 1e-4) return;
         Point3D endCenter = hc.subtract(f.n().multiply(totalDepth)), boreStart = hc;
 
         if (h.getHoleType() == HoleType.COUNTERSINK) {

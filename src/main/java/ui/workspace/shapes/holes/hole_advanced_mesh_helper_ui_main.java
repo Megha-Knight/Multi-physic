@@ -27,6 +27,7 @@ public final class hole_advanced_mesh_helper_ui_main {
                                            Point3D cubeCenter, List<Float> pts, List<Integer> fcs) {
         double rBore = h.getRadius();
         double totalDepth = hole_intersection_helper_ui_main.getEffectiveDepth(h, allHoles, cubeCenter, s, s, s);
+        if (totalDepth <= 1e-4) return;
 
         switch (h.getHoleType()) {
             case COUNTERSINK -> {
@@ -72,6 +73,7 @@ public final class hole_advanced_mesh_helper_ui_main {
                                                double rCyl, List<Float> pts, List<Integer> fcs) {
         Point3D shapeCenter = new Point3D(cx, -h * 0.5, cz);
         double totalDepth = hole_intersection_helper_ui_main.getEffectiveDepth(hole, allHoles, shapeCenter, 2 * rCyl, h, 2 * rCyl);
+        if (totalDepth <= 1e-4) return;
         Point3D hc = new Point3D(hx, entryY, hz);
         Point3D dir = isTop ? new Point3D(0, 1, 0) : new Point3D(0, -1, 0);
         Point3D u = new Point3D(1, 0, 0), v = isTop ? new Point3D(0, 0, 1) : new Point3D(0, 0, -1);

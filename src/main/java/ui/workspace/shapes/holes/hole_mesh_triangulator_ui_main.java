@@ -47,6 +47,17 @@ public final class hole_mesh_triangulator_ui_main {
              : (kind == face_kind_ui_main.FRONT || kind == face_kind_ui_main.BACK) ? d : w;
     }
 
+    public static Point3D computeExitPoint(Frame fEntry, double u, double v, double thickness) {
+        Point3D p = fEntry.origin().add(fEntry.u().multiply(u)).add(fEntry.v().multiply(v));
+        return p.subtract(fEntry.n().multiply(thickness));
+    }
+
+    public static double[] computeExitUV(Frame fExit, Frame fEntry, double u, double v, double thickness) {
+        Point3D exitP = computeExitPoint(fEntry, u, v, thickness);
+        Point3D d = exitP.subtract(fExit.origin());
+        return new double[]{ d.dotProduct(fExit.u()), d.dotProduct(fExit.v()) };
+    }
+
     public static Point3D[] getOctagonalPerimeter(Frame f, double uMin, double uMax, double vMin, double vMax) {
         double uMid = (uMin + uMax) * 0.5, vMid = (vMin + vMax) * 0.5;
         Point3D c = f.origin, u = f.u, v = f.v;

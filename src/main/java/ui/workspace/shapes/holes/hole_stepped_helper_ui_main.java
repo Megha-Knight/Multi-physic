@@ -22,42 +22,64 @@ public final class hole_stepped_helper_ui_main {
     public static final class HoleCluster {
         public final double u, v;
         public final Point3D center;
-        public final List<hole_feature_ui_main> holes = new ArrayList<>();
-        public HoleCluster(double u, double v, Point3D center) { this.u = u; this.v = v; this.center = center; }
-        public double getMaxOuterRadius() {
-            double maxR = 0; for (hole_feature_ui_main h : holes) maxR = Math.max(maxR, h.getOuterRadius()); return maxR;
+        public final List<hole_feature_ui_main> faceHoles = new ArrayList<>();
+        public final List<hole_feature_ui_main> oppHoles = new ArrayList<>();
+        public final List<hole_feature_ui_main> holes = faceHoles;
+        public hole_feature_ui_main primaryHole;
+        public double cutoutRadius;
+
+        public HoleCluster(double u, double v, Point3D center) {
+            this.u = u; this.v = v; this.center = center;
         }
-        public double getMinExitRadius() {
-            double minR = Double.MAX_VALUE;
-            for (hole_feature_ui_main h : holes) if (h.isThroughAll()) minR = Math.min(minR, h.getRadius());
-            return minR == Double.MAX_VALUE ? 0 : minR;
+
+        public HoleCluster(double u, double v, Point3D center, hole_feature_ui_main h, double r, boolean isExit) {
+            this(u, v, center); this.primaryHole = h; this.cutoutRadius = r;
+            if (isExit) oppHoles.add(h); else faceHoles.add(h);
         }
-        public boolean hasThroughAll() {
-            for (hole_feature_ui_main h : holes) if (h.isThroughAll()) return true; return false;
+        public void addEntry(hole_feature_ui_main h) {
+            faceHoles.add(h);
+            if (h.getOuterRadius() > cutoutRadius) { cutoutRadius = h.getOuterRadius(); primaryHole = h; }
         }
-        public hole_feature_ui_main getPrimaryHole() { return holes.isEmpty() ? null : holes.get(0); }
+        public void addExit(hole_feature_ui_main h) {
+            oppHoles.add(h);
+            if (h.getRadius() > cutoutRadius) { cutoutRadius = h.getRadius(); primaryHole = h; }
+        }
+        public boolean hasEntry() { return !faceHoles.isEmpty(); }
+        public boolean isExitOnly() { return faceHoles.isEmpty(); }
+        public double getMaxOuterRadius() { return cutoutRadius; }
+        public hole_feature_ui_main getPrimaryHole() { return primaryHole; }
+        public List<hole_feature_ui_main> getHoles() { return faceHoles; }
+    }
+
+    public static List<HoleCluster> clusterFaceHoles(Frame f, Frame fOpp, double thick,
+                                                     List<hole_feature_ui_main> faceHoles,
+                                                     List<hole_feature_ui_main> oppHoles) {
+        List<HoleCluster> clusters = new ArrayList<>();
+        if (faceHoles != null) for (hole_feature_ui_main h : faceHoles) {
+            double u = h.getU(), v = h.getV(); HoleCluster m = findMatch(clusters, u, v);
+            if (m == null) {
+                Point3D hc = f.origin().add(f.u().multiply(u)).add(f.v().multiply(v));
+                clusters.add(new HoleCluster(u, v, hc, h, h.getOuterRadius(), false));
+            } else m.addEntry(h);
+        }
+        if (oppHoles != null && fOpp != null) for (hole_feature_ui_main h : oppHoles) {
+            double[] uv = hole_mesh_triangulator_ui_main.computeExitUV(f, fOpp, h.getU(), h.getV(), thick);
+            double u = uv[0], v = uv[1]; HoleCluster m = findMatch(clusters, u, v);
+            if (m == null) {
+                Point3D hc = f.origin().add(f.u().multiply(u)).add(f.v().multiply(v));
+                clusters.add(new HoleCluster(u, v, hc, h, h.getRadius(), true));
+            } else m.addExit(h);
+        }
+        return clusters;
+    }
+
+    private static HoleCluster findMatch(List<HoleCluster> clusters, double u, double v) {
+        for (HoleCluster c : clusters) if (Math.hypot(u - c.u, v - c.v) < 0.5) return c;
+        return null;
     }
 
     public static List<HoleCluster> clusterHoles(List<hole_feature_ui_main> holes, Frame f, boolean isExit) {
-        List<HoleCluster> clusters = new ArrayList<>();
-        if (holes == null || holes.isEmpty()) return clusters;
-        for (hole_feature_ui_main h : holes) {
-            double u = h.getU(), v = isExit ? -h.getV() : h.getV();
-            HoleCluster match = null;
-            for (HoleCluster c : clusters) {
-                if (Math.hypot(u - c.u, v - c.v) < 0.5) {
-                    match = c;
-                    break;
-                }
-            }
-            if (match == null) {
-                Point3D hc = f.origin().add(f.u().multiply(u)).add(f.v().multiply(v));
-                match = new HoleCluster(u, v, hc);
-                clusters.add(match);
-            }
-            match.holes.add(h);
-        }
-        return clusters;
+        return clusterFaceHoles(f, null, 0, isExit ? null : holes, null);
     }
 
     public static List<Step> computeSteps(List<hole_feature_ui_main> holes, double maxThick) {
@@ -111,41 +133,35 @@ public final class hole_stepped_helper_ui_main {
         }
     }
 
-    public static void buildCubeFaceWithClusters(Frame f, double s, List<hole_feature_ui_main> faceHoles,
+    public static void buildCubeFaceWithClusters(Frame f, Frame fOpp, double s,
+                                                 List<hole_feature_ui_main> faceHoles,
+                                                 List<hole_feature_ui_main> oppHoles,
                                                  List<hole_feature_ui_main> allHoles, Point3D center,
                                                  List<Float> pts, List<Integer> fcs) {
-        List<HoleCluster> clusters = clusterHoles(faceHoles, f, false);
+        List<HoleCluster> clusters = clusterFaceHoles(f, fOpp, s, faceHoles, oppHoles);
         if (clusters.size() == 1) {
-            HoleCluster cl = clusters.get(0);
-            double hw = s * 0.5;
+            HoleCluster cl = clusters.get(0); double hw = s * 0.5;
             Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, -hw, hw, -hw, hw);
-            Point3D[] entry = hole_profile_helper_ui_main.getProfilePoints(cl.center, f.u(), f.v(), cl.getPrimaryHole(), cl.getMaxOuterRadius(), SEGS);
-            hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, false);
-            if (cl.holes.size() == 1) {
-                hole_advanced_mesh_helper_ui_main.buildCubeHoleCavity(f, s, cl.holes.get(0), cl.center, entry, allHoles, center, pts, fcs);
-            } else {
-                buildSteppedCavity(f, cl.center, cl.holes, s, pts, fcs);
+            Point3D[] entry = hole_profile_helper_ui_main.getProfilePoints(cl.center, f.u(), f.v(), cl.primaryHole, cl.cutoutRadius, SEGS);
+            hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, cl.isExitOnly());
+            if (cl.hasEntry()) {
+                if (cl.faceHoles.size() == 1) {
+                    hole_advanced_mesh_helper_ui_main.buildCubeHoleCavity(f, s, cl.faceHoles.get(0), cl.center, entry, allHoles, center, pts, fcs);
+                } else buildSteppedCavity(f, cl.center, cl.faceHoles, s, pts, fcs);
             }
         } else {
-            hole_pattern_mesh_helper_ui_main.partitionAndBuildCubeFace(f, s, faceHoles, allHoles, center, pts, fcs, false);
+            hole_pattern_mesh_helper_ui_main.partitionAndBuildCubeFace(f, s, clusters, allHoles, center, pts, fcs);
         }
     }
 
+    public static void buildCubeFaceWithClusters(Frame f, double s, List<hole_feature_ui_main> faceHoles,
+                                                 List<hole_feature_ui_main> allHoles, Point3D center,
+                                                 List<Float> pts, List<Integer> fcs) {
+        buildCubeFaceWithClusters(f, null, s, faceHoles, null, allHoles, center, pts, fcs);
+    }
     public static void buildCubeExitFaceWithClusters(Frame f, double s, List<hole_feature_ui_main> oppHoles,
                                                      Point3D center, List<Float> pts, List<Integer> fcs) {
-        List<HoleCluster> clusters = clusterHoles(oppHoles, f, true);
-        if (clusters.size() == 1) {
-            HoleCluster cl = clusters.get(0);
-            double rExit = cl.getMinExitRadius();
-            if (rExit > 0) {
-                double hw = s * 0.5;
-                Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, -hw, hw, -hw, hw);
-                Point3D[] exit = hole_profile_helper_ui_main.getProfilePoints(cl.center, f.u(), f.v(), cl.getPrimaryHole(), rExit, SEGS);
-                hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, exit, pts, fcs, true);
-            }
-        } else {
-            hole_pattern_mesh_helper_ui_main.partitionAndBuildCubeFace(f, s, oppHoles, oppHoles, center, pts, fcs, true);
-        }
+        buildCubeFaceWithClusters(f, null, s, null, oppHoles, null, center, pts, fcs);
     }
 
     public static void buildCylinderSteppedCavity(double cx, double cz, double hx, double hz, double y,
@@ -153,24 +169,17 @@ public final class hole_stepped_helper_ui_main {
                                                   List<Float> pts, List<Integer> fcs) {
         List<Step> steps = computeSteps(holes, maxH);
         if (steps.isEmpty()) return;
-
         boolean throughAll = false;
         for (hole_feature_ui_main h : holes) if (h.isThroughAll()) throughAll = true;
 
         for (int k = 0; k < steps.size(); k++) {
             Step curr = steps.get(k);
-            double zStart = (k == 0) ? 0.0 : steps.get(k - 1).depth();
-            double zEnd = curr.depth();
-            double r = curr.radius();
-
-            double y1 = isTop ? (y + zStart) : (y - zStart);
-            double y2 = isTop ? (y + zEnd) : (y - zEnd);
-
+            double zStart = (k == 0) ? 0.0 : steps.get(k - 1).depth(), zEnd = curr.depth(), r = curr.radius();
+            double y1 = isTop ? (y + zStart) : (y - zStart), y2 = isTop ? (y + zEnd) : (y - zEnd);
             Point3D c1 = new Point3D(hx, y1, hz), c2 = new Point3D(hx, y2, hz);
             Point3D u = new Point3D(1, 0, 0), v = new Point3D(0, 0, 1);
             Point3D[] tCirc = hole_mesh_triangulator_ui_main.getCirclePoints(c1, u, v, r, SEGS);
             Point3D[] bCirc = hole_mesh_triangulator_ui_main.getCirclePoints(c2, u, v, r, SEGS);
-
             if (isTop) hole_mesh_triangulator_ui_main.buildCylindricalWall(tCirc, bCirc, pts, fcs);
             else hole_mesh_triangulator_ui_main.buildCylindricalWall(bCirc, tCirc, pts, fcs);
 

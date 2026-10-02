@@ -53,12 +53,11 @@ public final class hole_mesh_builder_ui_main {
             List<hole_feature_ui_main> faceHoles = findHolesForFace(holes, face, s);
             List<hole_feature_ui_main> oppHoles = findThroughHolesForOppositeFace(holes, face, s);
 
-            if (!faceHoles.isEmpty()) {
+            if (!faceHoles.isEmpty() || !oppHoles.isEmpty()) {
                 Frame f = hole_mesh_triangulator_ui_main.getCubeFaceFrame(center, s, face);
-                hole_stepped_helper_ui_main.buildCubeFaceWithClusters(f, s, faceHoles, holes, center, pts, fcs);
-            } else if (!oppHoles.isEmpty()) {
-                Frame f = hole_mesh_triangulator_ui_main.getCubeFaceFrame(center, s, face);
-                hole_stepped_helper_ui_main.buildCubeExitFaceWithClusters(f, s, oppHoles, center, pts, fcs);
+                face_kind_ui_main opp = getOppositeFace(face);
+                Frame fOpp = hole_mesh_triangulator_ui_main.getCubeFaceFrame(center, s, opp);
+                hole_stepped_helper_ui_main.buildCubeFaceWithClusters(f, fOpp, s, faceHoles, oppHoles, holes, center, pts, fcs);
             } else {
                 buildStandardQuadFace(center, s, face, pts, fcs);
             }
@@ -108,5 +107,17 @@ public final class hole_mesh_builder_ui_main {
         Point3D p2 = f.origin().add(f.u().multiply(hw)).add(f.v().multiply(hw));
         Point3D p3 = f.origin().subtract(f.u().multiply(hw)).add(f.v().multiply(hw));
         hole_mesh_triangulator_ui_main.addQuad(p0, p1, p2, p3, pts, fcs);
+    }
+
+    private static face_kind_ui_main getOppositeFace(face_kind_ui_main f) {
+        return switch (f) {
+            case TOP, TOP_CAP -> face_kind_ui_main.BOTTOM;
+            case BOTTOM, BOTTOM_CAP -> face_kind_ui_main.TOP;
+            case FRONT -> face_kind_ui_main.BACK;
+            case BACK -> face_kind_ui_main.FRONT;
+            case RIGHT -> face_kind_ui_main.LEFT;
+            case LEFT -> face_kind_ui_main.RIGHT;
+            default -> face_kind_ui_main.TOP;
+        };
     }
 }

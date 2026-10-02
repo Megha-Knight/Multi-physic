@@ -131,7 +131,7 @@ public class hole_dialog_ui_main extends Stage {
     private void applyHole() {
         try {
             double dia = Double.parseDouble(diaField.getText().trim());
-            double depth = throughCheck.isSelected() ? 50.0 : Double.parseDouble(depthField.getText().trim());
+            double depth = throughCheck.isSelected() ? 1000.0 : Double.parseDouble(depthField.getText().trim());
             double u = Double.parseDouble(uField.getText().trim()), v = Double.parseDouble(vField.getText().trim());
             HoleType type = (cutoutShape == CutoutShape.CIRCLE) ? typeCombo.getValue() : HoleType.SIMPLE;
             double csDia = 0, csAngle = 90.0, cbDia = 0, cbDepth = 0, w2 = 0;

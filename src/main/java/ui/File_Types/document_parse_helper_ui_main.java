@@ -34,8 +34,18 @@ public final class document_parse_helper_ui_main {
                     cbDia = Double.parseDouble(p[10].trim());
                     cbDepth = Double.parseDouble(p[11].trim());
                 }
+                hole_feature_ui_main.CutoutShape cShape = hole_feature_ui_main.CutoutShape.CIRCLE;
+                double w2 = 0.0;
+                String hName = null;
+                if (p.length >= 14) {
+                    try { cShape = hole_feature_ui_main.CutoutShape.valueOf(p[12].trim()); } catch (Exception ignored) {}
+                    try { w2 = Double.parseDouble(p[13].trim()); } catch (Exception ignored) {}
+                }
+                if (p.length >= 15) {
+                    try { hName = java.net.URLDecoder.decode(p[14].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { hName = p[14].trim(); }
+                }
                 out.add(new hole_feature_ui_main(
-                    id, parentId, type, kind, u, v, dia, depth, through, csDia, csAngle, cbDia, cbDepth
+                    id, parentId, hName, type, kind, u, v, dia, depth, through, csDia, csAngle, cbDia, cbDepth, cShape, w2
                 ));
             }
         } catch (Exception ignored) {}

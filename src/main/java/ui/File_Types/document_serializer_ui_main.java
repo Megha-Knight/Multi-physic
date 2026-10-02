@@ -54,9 +54,12 @@ public final class document_serializer_ui_main {
                         if (s.getFaceKind() != null) pw.println("faceKind: " + s.getFaceKind().name());
                     }
                     for (hole_feature_ui_main h : s.getHoles()) {
-                        pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b, %s, %.4f, %.4f, %.4f, %.4f%n",
+                        String enc = "";
+                        try { enc = java.net.URLEncoder.encode(h.getName(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                        pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b, %s, %.4f, %.4f, %.4f, %.4f, %s, %.4f, %s%n",
                             h.getId(), h.getFaceKind().name(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(),
-                            h.getHoleType().name(), h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth());
+                            h.getHoleType().name(), h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth(),
+                            h.getCutoutShape().name(), h.getWidth2(), enc);
                     }
                     for (hole_pattern_ui_main p : s.getPatterns()) {
                         pw.printf(java.util.Locale.US, "pattern: %s, %s, %s, %s, %d, %s, %.4f, %.4f, %.4f, %.4f, %b, %b%n",
@@ -142,9 +145,10 @@ public final class document_serializer_ui_main {
             if (s.isOnFace()) item.setFacePlane(s.getUAxis(), s.getVAxis(), s.getFaceNormal(), s.getFaceOwnerId(), s.getFaceKind());
             for (hole_feature_ui_main h : s.getHoles()) {
                 item.addHole(new hole_feature_ui_main(
-                    h.getId(), h.getOwnerShapeId(), h.getHoleType(), h.getFaceKind(),
+                    h.getId(), h.getOwnerShapeId(), h.getName(), h.getHoleType(), h.getFaceKind(),
                     h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(),
-                    h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth()
+                    h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth(),
+                    h.getCutoutShape(), h.getWidth2()
                 ));
             }
             for (hole_pattern_ui_main p : s.getPatterns()) {
