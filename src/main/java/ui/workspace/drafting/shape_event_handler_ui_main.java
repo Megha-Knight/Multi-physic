@@ -44,9 +44,8 @@ public class shape_event_handler_ui_main {
                                        Label hudLabel, BooleanSupplier isDrawingActive, axis_drag_controller_ui_main axisDrag,
                                        PerspectiveCamera camera, Group container) {
         this.editor = editor; this.viewport = viewport; this.subScene = subScene;
-        this.cameraController = camCtrl; this.groundRaycaster = raycaster;
-        this.hudLabel = hudLabel; this.isDrawingActive = isDrawingActive;
-        this.axisDrag = axisDrag; this.camera = camera; this.container = container;
+        this.cameraController = camCtrl; this.groundRaycaster = raycaster; this.hudLabel = hudLabel;
+        this.isDrawingActive = isDrawingActive; this.axisDrag = axisDrag; this.camera = camera; this.container = container;
         viewport.setFocusTraversable(true); if (subScene != null) subScene.setFocusTraversable(true);
         Node target = (subScene != null) ? subScene : viewport;
         target.addEventFilter(MouseEvent.MOUSE_MOVED, this::handleMoved); target.addEventFilter(MouseEvent.MOUSE_PRESSED, this::handlePressed);
@@ -97,7 +96,6 @@ public class shape_event_handler_ui_main {
         }
         if (e.getButton() != MouseButton.PRIMARY) return;
         editor.recordSnapshot();
-
         if (sel != null && sel.getType().is3D() && axisDrag.onAxisPressed(hitNode, e)) { startMode(EditMode.AXIS_DRAG, -1, e); return; }
         int hIdx;
         if (sel != null && (hIdx = sel.findHandleByNode(hitNode)) >= 0) { startMode(EditMode.RESHAPE_HANDLE, hIdx, e); return; }
@@ -110,14 +108,21 @@ public class shape_event_handler_ui_main {
         if (hitShape == null) { Point3D hit = raycastPlane(e, 0); if (hit != null) hitShape = editor.findShapeNear(hit, 8.0); }
         if (hitShape != null) {
             editor.selectShape(hitShape);
-            if (hitShape.getType().is3D()) {
-                double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, container);
-                face_reference_ui_main face = face_picker_ui_main.pickFace(ray, hitShape);
-                editor.setActiveFace(face);
-                if (face != null) editor.checkHoleHit(face, hitShape);
-            } else editor.setActiveFace(null);
+            var hitExt = ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.findExtrudeFromNode(hitNode);
+            if (hitExt != null) {
+                editor.selectExtrude(hitShape, hitExt);
+            } else {
+                editor.selectExtrude(hitShape, null);
+                if (hitShape.getType().is3D()) {
+                    double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, container);
+                    face_reference_ui_main face = face_picker_ui_main.pickFace(ray, hitShape);
+                    editor.setActiveFace(face);
+                    if (face != null) editor.checkHoleHit(face, hitShape);
+                } else editor.setActiveFace(null);
+            }
             if (e.getClickCount() == 2) {
-                if (editor.getSelectedHole() != null) editor.openHoleEditor(hitShape, editor.getSelectedHole());
+                if (editor.getSelectedExtrude() != null) editor.openExtrudeEditor(hitShape, editor.getSelectedExtrude());
+                else if (editor.getSelectedHole() != null) editor.openHoleEditor(hitShape, editor.getSelectedHole());
                 else editor.openDimensionEditor(hitShape);
                 e.consume(); return;
             }
@@ -128,7 +133,7 @@ public class shape_event_handler_ui_main {
         if (sel != null) {
             Point3D hit = raycastPlane(e, sel.getWorldCenter().getY());
             if (hit != null && (hIdx = sel.findHandleNear(hit, 6.0)) >= 0) { startMode(EditMode.RESHAPE_HANDLE, hIdx, e); return; }
-            editor.setActiveFace(null); editor.selectHole(null, null); editor.selectShape(null); cameraController.setEnabled(true);
+            editor.setActiveFace(null); editor.selectExtrude(null, null); editor.selectHole(null, null); editor.selectShape(null); cameraController.setEnabled(true);
         }
     }
 
@@ -152,22 +157,18 @@ public class shape_event_handler_ui_main {
         }
         if (mode == EditMode.MOVE_SHAPE) {
             if (e.isShiftDown()) {
-                sel.applyWorldDelta(0, (e.getY() - startDragY) * 0.8, 0);
-                startDragY = e.getY(); lastHit = raycastPlane(e, sel.getWorldCenter().getY());
+                sel.applyWorldDelta(0, (e.getY() - startDragY) * 0.8, 0); startDragY = e.getY(); lastHit = raycastPlane(e, sel.getWorldCenter().getY());
             } else {
                 Point3D hit = raycastPlane(e, sel.getWorldCenter().getY());
-                if (hit != null && lastHit != null) {
-                    sel.translate(hit.getX() - lastHit.getX(), hit.getZ() - lastHit.getZ());
-                } else {
+                if (hit != null && lastHit != null) sel.translate(hit.getX() - lastHit.getX(), hit.getZ() - lastHit.getZ());
+                else {
                     double yr = Math.toRadians(cameraController.getRy().getAngle()), cy = Math.cos(yr), sy = Math.sin(yr);
                     double mx = (e.getX() - startDragX) * 0.8, my = (e.getY() - startDragY) * 0.8;
-                    sel.translate(mx * cy - my * sy, -mx * sy - my * cy);
-                    startDragX = e.getX(); startDragY = e.getY();
+                    sel.translate(mx * cy - my * sy, -mx * sy - my * cy); startDragX = e.getX(); startDragY = e.getY();
                 }
                 lastHit = hit;
             }
-            axisDrag.updateGizmoPosition(); editor.updateActiveFace();
-            hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); e.consume();
+            axisDrag.updateGizmoPosition(); editor.updateActiveFace(); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); e.consume();
         }
     }
 
@@ -183,16 +184,14 @@ public class shape_event_handler_ui_main {
         if (sel == null) return;
         if (e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) { editor.deleteSelected(); e.consume(); return; }
         if (e.getCode() == KeyCode.ESCAPE) { if (editor.getActiveFace() != null) editor.setActiveFace(null); else editor.selectShape(null); e.consume(); return; }
-
         double s = (e.isControlDown() || e.isAltDown()) ? 0.2 : 2.0;
-        boolean moved = true;
-        switch (e.getCode()) {
-            case LEFT -> sel.applyWorldDelta(-s, 0, 0); case RIGHT -> sel.applyWorldDelta(s, 0, 0);
-            case UP -> sel.applyWorldDelta(0, e.isShiftDown() ? -s : 0, e.isShiftDown() ? 0 : -s);
-            case DOWN -> sel.applyWorldDelta(0, e.isShiftDown() ? s : 0, e.isShiftDown() ? 0 : s);
-            case PAGE_UP -> sel.applyWorldDelta(0, -s, 0); case PAGE_DOWN -> sel.applyWorldDelta(0, s, 0);
-            default -> moved = false;
-        }
+        boolean moved = switch (e.getCode()) {
+            case LEFT -> { sel.applyWorldDelta(-s, 0, 0); yield true; } case RIGHT -> { sel.applyWorldDelta(s, 0, 0); yield true; }
+            case UP -> { sel.applyWorldDelta(0, e.isShiftDown() ? -s : 0, e.isShiftDown() ? 0 : -s); yield true; }
+            case DOWN -> { sel.applyWorldDelta(0, e.isShiftDown() ? s : 0, e.isShiftDown() ? 0 : s); yield true; }
+            case PAGE_UP -> { sel.applyWorldDelta(0, -s, 0); yield true; } case PAGE_DOWN -> { sel.applyWorldDelta(0, s, 0); yield true; }
+            default -> false;
+        };
         if (moved) { axisDrag.updateGizmoPosition(); editor.updateActiveFace(); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); editor.notifyShapesChanged(); e.consume(); }
     }
     private static Node pickNode(MouseEvent e) { return (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null; }

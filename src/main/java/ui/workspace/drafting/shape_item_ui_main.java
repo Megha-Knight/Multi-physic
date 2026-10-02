@@ -39,6 +39,7 @@ public class shape_item_ui_main {
     private final List<hole_feature_ui_main> holes = new java.util.ArrayList<>();
     private final List<hole_pattern_ui_main> patterns = new java.util.ArrayList<>();
     private final List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions = new java.util.ArrayList<>();
+    private String selectedExtrudeId = null;
 
     public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) { this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, 0); }
@@ -100,8 +101,10 @@ public class shape_item_ui_main {
     public List<ui.workspace.drafting.extrude.extrude_feature_ui_main> getExtrusions() { return extrusions; }
     public boolean hasExtrusions() { return !extrusions.isEmpty(); }
     public void addExtrude(ui.workspace.drafting.extrude.extrude_feature_ui_main ext) { if (ext != null) { extrusions.add(ext); rebuild(); } }
-    public void removeExtrude(String id) { extrusions.removeIf(e -> e.getId().equals(id)); rebuild(); }
-    public void clearExtrusions() { extrusions.clear(); rebuild(); }
+    public void removeExtrude(String id) { extrusions.removeIf(e -> e.getId().equals(id)); if (id != null && id.equals(selectedExtrudeId)) selectedExtrudeId = null; rebuild(); }
+    public void clearExtrusions() { extrusions.clear(); selectedExtrudeId = null; rebuild(); }
+    public String getSelectedExtrudeId() { return selectedExtrudeId; }
+    public void setSelectedExtrudeId(String id) { this.selectedExtrudeId = id; rebuild(); }
 
     public List<hole_feature_ui_main> getAllEffectiveHoles() {
         List<hole_feature_ui_main> eff = new java.util.ArrayList<>(holes);
@@ -146,7 +149,8 @@ public class shape_item_ui_main {
         };
         if (geo != null) shapeGroup.getChildren().add(geo);
         for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : extrusions) {
-            shapeGroup.getChildren().add(ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.buildExtrudeNode(this, ext, selected));
+            boolean isFocused = (selectedExtrudeId != null && selectedExtrudeId.equals(ext.getId()));
+            shapeGroup.getChildren().add(ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.buildExtrudeNode(this, ext, selected, isFocused));
         }
         if (selected) buildResizeHandles();
     }
@@ -157,8 +161,7 @@ public class shape_item_ui_main {
         for (int i = 0; i < handles.size(); i++) {
             Point3D h = handles.get(i);
             Sphere s = new Sphere(i == 0 ? framework_ui_main.DRAFT_HANDLE_RADIUS * 1.3 : framework_ui_main.DRAFT_HANDLE_RADIUS);
-            s.setMaterial(hMat); s.setTranslateX(h.getX()); s.setTranslateY(h.getY()); s.setTranslateZ(h.getZ());
-            handlesGroup.getChildren().add(s);
+            s.setMaterial(hMat); s.setTranslateX(h.getX()); s.setTranslateY(h.getY()); s.setTranslateZ(h.getZ()); handlesGroup.getChildren().add(s);
         }
     }
 
@@ -184,11 +187,8 @@ public class shape_item_ui_main {
         }
         return -1;
     }
-
     public boolean isNear(Point3D groundPt, double threshold) { return shape_rotation_helper_ui_main.isPointNearShape(this, groundPt, threshold); }
-
     public String formatDimensions() { return shape_item_formatter_ui_main.formatDimensions(this); }
-
     public String getId() { return id; } public String getName() { return name != null ? name : ""; }
     public void setName(String name) { this.name = name; }
     public void setP1P2(Point3D np1, Point3D np2) { this.p1 = np1; this.p2 = np2; updateRotationPivot(); rebuild(); }

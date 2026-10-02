@@ -19,6 +19,10 @@ public final class extrude_mesh_builder_ui_main {
     private extrude_mesh_builder_ui_main() {}
 
     public static Node buildExtrudeNode(shape_item_ui_main shape, extrude_feature_ui_main ext, boolean isSelected) {
+        return buildExtrudeNode(shape, ext, isSelected, false);
+    }
+
+    public static Node buildExtrudeNode(shape_item_ui_main shape, extrude_feature_ui_main ext, boolean isSelected, boolean isFocused) {
         if (shape == null || ext == null || !ext.isValid()) return new Group();
 
         hole_mesh_triangulator_ui_main.Frame f = getLocalFaceFrame(shape, ext.getFaceKind());
@@ -27,7 +31,7 @@ public final class extrude_mesh_builder_ui_main {
         Point3D baseCenter = f.origin().add(f.u().multiply(ext.getU())).add(f.v().multiply(ext.getV()));
         double len = ext.getHeight();
         Point3D mid = baseCenter.add(f.n().multiply(len * 0.5));
-        var mat = shape_geometry_3d_ui_main.createMaterial(false, isSelected);
+        var mat = createExtrudeMaterial(isSelected, isFocused);
 
         Node geoNode;
         if (ext.getProfileShape() == CutoutShape.CIRCLE) {
@@ -44,6 +48,23 @@ public final class extrude_mesh_builder_ui_main {
 
         geoNode.setUserData(ext);
         return geoNode;
+    }
+
+    public static javafx.scene.paint.PhongMaterial createExtrudeMaterial(boolean isSelected, boolean isFocused) {
+        if (isFocused) {
+            var m = new javafx.scene.paint.PhongMaterial(javafx.scene.paint.Color.web("#F59E0B"));
+            m.setSpecularColor(javafx.scene.paint.Color.web("#FFFBEB"));
+            m.setSpecularPower(50.0);
+            return m;
+        }
+        return shape_geometry_3d_ui_main.createMaterial(false, isSelected);
+    }
+
+    public static extrude_feature_ui_main findExtrudeFromNode(Node node) {
+        for (Node n = node; n != null; n = n.getParent()) {
+            if (n.getUserData() instanceof extrude_feature_ui_main ext) return ext;
+        }
+        return null;
     }
 
     private static Node createOrientedBox(Point3D n, Point3D mid, double w, double d, double len, javafx.scene.paint.PhongMaterial mat, face_kind_ui_main kind) {

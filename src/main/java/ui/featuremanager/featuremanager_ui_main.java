@@ -55,6 +55,7 @@ public class featuremanager_ui_main extends BorderPane {
         editor.setOnShapesChanged(this::refresh);
         editor.setOnSelectionChanged(s -> syncFromCanvas());
         editor.setOnHoleSelectionChanged((s, h) -> syncFromCanvas());
+        editor.setOnExtrudeSelectionChanged((s, ext) -> syncFromCanvas());
         refresh();
     }
 
