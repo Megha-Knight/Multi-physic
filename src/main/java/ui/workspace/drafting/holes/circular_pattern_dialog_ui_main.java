@@ -49,7 +49,11 @@ public class circular_pattern_dialog_ui_main extends Stage {
             }
         });
         seedCombo.setButtonCell(seedCombo.getCellFactory().call(null));
-        if (!shape.getHoles().isEmpty()) seedCombo.setValue(shape.getHoles().getFirst());
+        if (!shape.getHoles().isEmpty()) {
+            hole_feature_ui_main selHole = (editor != null) ? editor.getSelectedHole() : null;
+            if (selHole != null && shape.getHoles().contains(selHole)) seedCombo.setValue(selHole);
+            else seedCombo.setValue(shape.getHoles().getFirst());
+        }
 
         fullCircleCheck.setSelected(true);
         spanField.setDisable(true);
@@ -101,20 +105,11 @@ public class circular_pattern_dialog_ui_main extends Stage {
 
         boolean cw = "Clockwise".equals(dirCombo.getValue());
         hole_pattern_ui_main pat = hole_pattern_ui_main.createCircular(shape.getId(), seed.getId(), count, cu, cv, span, cw, full);
-        if (!pat.isValid(seed)) { showError("Pattern definition is invalid (radius must be > 0)."); return; }
-
-        // Face boundary check
-        face_kind_ui_main kind = seed.getFaceKind();
-        if (kind != null && kind.isCylinderCap()) {
-            double r = Math.max(1.0, shape.getP1().distance(shape.getP2()));
-            if (!pat.fitsWithinCylinderCap(seed, r)) { showError("Pattern instances exceed cylinder cap bounds."); return; }
-        } else {
-            double w = Math.abs(shape.getP2().getX() - shape.getP1().getX());
-            double h = Math.abs(shape.getP2().getZ() - shape.getP1().getZ());
-            if (!pat.fitsWithinFace(seed, Math.max(1.0, w), Math.max(1.0, h))) { showError("Pattern instances exceed face bounds."); return; }
+        StringBuilder err = new StringBuilder();
+        if (!pattern_validation_helper_ui_main.validateAgainstHost(shape, pat, seed, err)) {
+            showError(err.toString());
+            return;
         }
-
-        if (pat.hasOverlappingInstances(seed)) { showError("Pattern instances overlap each other."); return; }
 
         if (editor != null) editor.recordSnapshot();
         shape.addPattern(pat);

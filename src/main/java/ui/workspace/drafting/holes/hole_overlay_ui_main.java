@@ -107,40 +107,33 @@ public class hole_overlay_ui_main extends Group {
         return null;
     }
 
-    private static hole_mesh_triangulator_ui_main.Frame getLocalFrame(shape_item_ui_main shape, face_kind_ui_main kind) {
-        Point3D p1 = shape.getP1(), p2 = shape.getP2();
-        if (shape.getType() == basic_shapes_ui_main.CUBE) {
-            double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ(), s = Math.max(Math.abs(dx), Math.abs(dz));
-            Point3D c = new Point3D(p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5), p1.getY() - s * 0.5, p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5));
-            return hole_mesh_triangulator_ui_main.getCubeFaceFrame(c, s, kind);
-        } else if (shape.getType() == basic_shapes_ui_main.CUBOID) {
-            double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
-            double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
-            Point3D c = new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY() - h * 0.5, (p1.getZ() + p2.getZ()) * 0.5);
-            return hole_mesh_triangulator_ui_main.getCuboidFaceFrame(c, w, h, d, kind);
-        } else if (shape.getType() == basic_shapes_ui_main.CYLINDER) {
-            double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-            if (kind == face_kind_ui_main.TOP_CAP || kind == face_kind_ui_main.TOP)
-                return new hole_mesh_triangulator_ui_main.Frame(new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(0, -1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, 1));
-            if (kind == face_kind_ui_main.BOTTOM_CAP || kind == face_kind_ui_main.BOTTOM)
-                return new hole_mesh_triangulator_ui_main.Frame(new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(0, 1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, -1));
+    public record PatternHit(hole_pattern_ui_main pattern, int instanceIndex) {}
+
+    public static PatternHit findPatternInstanceAt(shape_item_ui_main shape, face_reference_ui_main face) {
+        if (shape == null || face == null || !shape.hasPatterns()) return null;
+        for (hole_pattern_ui_main p : shape.getPatterns()) {
+            hole_feature_ui_main seed = null;
+            for (hole_feature_ui_main h : shape.getHoles()) {
+                if (h.getId().equals(p.getSeedHoleId())) { seed = h; break; }
+            }
+            if (seed == null || seed.getFaceKind() != face.getFaceKind()) continue;
+            var posList = p.getAllPositions(seed);
+            for (int i = 1; i < posList.size(); i++) {
+                var pos = posList.get(i);
+                double dist = Math.hypot(face.getLocalHitU() - pos.u(), face.getLocalHitV() - pos.v());
+                if (dist <= seed.getOuterRadius() + 3.0) return new PatternHit(p, i);
+            }
         }
         return null;
     }
 
+    private static hole_mesh_triangulator_ui_main.Frame getLocalFrame(shape_item_ui_main shape, face_kind_ui_main kind) {
+        var info = ui.workspace.drafting.faces.face_geometry_helper_ui_main.getFaceInfo(shape, kind);
+        return new hole_mesh_triangulator_ui_main.Frame(info.origin(), info.normal(), info.uAxis(), info.vAxis());
+    }
+
     private static double getShapeThickness(shape_item_ui_main shape, face_kind_ui_main kind) {
-        Point3D p1 = shape.getP1(), p2 = shape.getP2();
-        if (shape.getType() == basic_shapes_ui_main.CUBE) {
-            return Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ()));
-        } else if (shape.getType() == basic_shapes_ui_main.CUBOID) {
-            double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
-            double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
-            return hole_mesh_triangulator_ui_main.getFaceThickness(w, h, d, kind);
-        } else if (shape.getType() == basic_shapes_ui_main.CYLINDER) {
-            double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-            return Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-        }
-        return 50.0;
+        return ui.workspace.drafting.faces.face_geometry_helper_ui_main.getFaceInfo(shape, kind).thickness();
     }
 
     private static face_kind_ui_main getOpposite(face_kind_ui_main f) {

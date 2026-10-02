@@ -170,7 +170,7 @@ public class hole_feature_ui_main {
     public boolean fitsWithinCylinderCap(double capRadius) {
         if (!isValid() || capRadius <= 0) return false;
         double r = getOuterRadius();
-        return (Math.hypot(u, v) + r < capRadius * 0.99);
+        return (Math.hypot(u, v) + r <= capRadius + 1e-4);
     }
 
     public CutoutShape getCutoutShape()         { return cutoutShape != null ? cutoutShape : CutoutShape.CIRCLE; }

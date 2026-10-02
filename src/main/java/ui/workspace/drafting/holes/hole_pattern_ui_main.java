@@ -156,7 +156,7 @@ public class hole_pattern_ui_main {
         if (!isValid(seed) || capRadius <= 0) return false;
         double r = seed.getOuterRadius();
         for (Pos2D p : getAllPositions(seed)) {
-            if (Math.hypot(p.u(), p.v()) + r >= capRadius * 0.99) return false;
+            if (Math.hypot(p.u(), p.v()) + r > capRadius + 1e-4) return false;
         }
         return true;
     }

@@ -46,7 +46,11 @@ public class linear_pattern_dialog_ui_main extends Stage {
             }
         });
         seedCombo.setButtonCell(seedCombo.getCellFactory().call(null));
-        if (!shape.getHoles().isEmpty()) seedCombo.setValue(shape.getHoles().getFirst());
+        if (!shape.getHoles().isEmpty()) {
+            hole_feature_ui_main selHole = (editor != null) ? editor.getSelectedHole() : null;
+            if (selHole != null && shape.getHoles().contains(selHole)) seedCombo.setValue(selHole);
+            else seedCombo.setValue(shape.getHoles().getFirst());
+        }
 
         dirCombo.getItems().addAll(hole_pattern_ui_main.LinearDirection.U_DIR, hole_pattern_ui_main.LinearDirection.V_DIR);
         dirCombo.setValue(hole_pattern_ui_main.LinearDirection.U_DIR);
@@ -87,20 +91,11 @@ public class linear_pattern_dialog_ui_main extends Stage {
         if (spacing <= 0) { showError("Spacing must be > 0."); return; }
 
         hole_pattern_ui_main pat = hole_pattern_ui_main.createLinear(shape.getId(), seed.getId(), count, dirCombo.getValue(), spacing);
-        if (!pat.isValid(seed)) { showError("Pattern definition is invalid."); return; }
-
-        // Face boundary check
-        face_kind_ui_main kind = seed.getFaceKind();
-        if (kind != null && kind.isCylinderCap()) {
-            double r = Math.max(1.0, shape.getP1().distance(shape.getP2()));
-            if (!pat.fitsWithinCylinderCap(seed, r)) { showError("Pattern instances exceed cylinder cap bounds."); return; }
-        } else {
-            double w = Math.abs(shape.getP2().getX() - shape.getP1().getX());
-            double h = Math.abs(shape.getP2().getZ() - shape.getP1().getZ());
-            if (!pat.fitsWithinFace(seed, Math.max(1.0, w), Math.max(1.0, h))) { showError("Pattern instances exceed face bounds."); return; }
+        StringBuilder err = new StringBuilder();
+        if (!pattern_validation_helper_ui_main.validateAgainstHost(shape, pat, seed, err)) {
+            showError(err.toString());
+            return;
         }
-
-        if (pat.hasOverlappingInstances(seed)) { showError("Pattern instances overlap each other."); return; }
 
         if (editor != null) editor.recordSnapshot();
         shape.addPattern(pat);

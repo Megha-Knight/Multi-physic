@@ -134,10 +134,11 @@ public final class hole_cylinder_builder_ui_main {
 
     private static void buildAnnulus(double cx, double cz, Point3D[] innerProf, double y, double rOut,
                                      boolean faceUp, List<Float> pts, List<Integer> fcs) {
+        double zSign = faceUp ? 1.0 : -1.0;
         for (int i = 0; i < SEGS; i++) {
             double a1 = i * 2.0 * Math.PI / SEGS, a2 = (i + 1) * 2.0 * Math.PI / SEGS;
-            Point3D o1 = new Point3D(cx + rOut * Math.cos(a1), y, cz + rOut * Math.sin(a1));
-            Point3D o2 = new Point3D(cx + rOut * Math.cos(a2), y, cz + rOut * Math.sin(a2));
+            Point3D o1 = new Point3D(cx + rOut * Math.cos(a1), y, cz + zSign * rOut * Math.sin(a1));
+            Point3D o2 = new Point3D(cx + rOut * Math.cos(a2), y, cz + zSign * rOut * Math.sin(a2));
             Point3D i1 = innerProf[i], i2 = innerProf[(i + 1) % SEGS];
             if (faceUp) hole_mesh_triangulator_ui_main.addQuad(o1, i1, i2, o2, pts, fcs);
             else hole_mesh_triangulator_ui_main.addQuad(o1, o2, i2, i1, pts, fcs);

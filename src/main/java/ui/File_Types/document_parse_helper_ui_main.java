@@ -66,7 +66,9 @@ public final class document_parse_helper_ui_main {
                 double span = Double.parseDouble(p[9].trim());
                 boolean cw = Boolean.parseBoolean(p[10].trim());
                 boolean full = Boolean.parseBoolean(p[11].trim());
-                out.add(new hole_pattern_ui_main(id, ownerId, seedId, pType, count, dir, spacing, cU, cV, span, cw, full));
+                if (count >= 2 && !seedId.contains("-inst-") && !seedId.equals(id)) {
+                    out.add(new hole_pattern_ui_main(id, ownerId, seedId, pType, count, dir, spacing, cU, cV, span, cw, full));
+                }
             }
         } catch (Exception ignored) {}
     }

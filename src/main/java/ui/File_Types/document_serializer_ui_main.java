@@ -141,7 +141,16 @@ public final class document_serializer_ui_main {
             shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
             if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
             for (hole_feature_ui_main h : holes) item.addHole(h);
-            for (hole_pattern_ui_main p : patterns) item.addPattern(p);
+            for (hole_pattern_ui_main p : patterns) {
+                hole_feature_ui_main seed = null;
+                for (hole_feature_ui_main h : item.getHoles()) if (h.getId().equals(p.getSeedHoleId())) { seed = h; break; }
+                if (seed == null) { System.err.println("[Multiphysics] Rejected pattern: missing seed " + p.getSeedHoleId()); continue; }
+                if (seed.getId().contains("-inst-") || !seed.getOwnerShapeId().equals(item.getId())) { System.err.println("[Multiphysics] Rejected pattern: invalid seed " + seed.getId()); continue; }
+                boolean matchesPat = false;
+                for (hole_pattern_ui_main existingP : patterns) if (existingP.getId().equals(seed.getId())) { matchesPat = true; break; }
+                if (matchesPat) { System.err.println("[Multiphysics] Rejected pattern: pattern-of-pattern."); continue; }
+                item.addPattern(p);
+            }
             for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : extrusions) item.addExtrude(ext);
             list.add(item);
         }
@@ -163,19 +172,10 @@ public final class document_serializer_ui_main {
                 ));
             }
             for (hole_pattern_ui_main p : s.getPatterns()) {
-                item.addPattern(new hole_pattern_ui_main(
-                    p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType(),
-                    p.getInstanceCount(), p.getLinearDirection(), p.getLinearSpacing(),
-                    p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(),
-                    p.isClockwise(), p.isFullCircle()
-                ));
+                item.addPattern(new hole_pattern_ui_main(p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType(), p.getInstanceCount(), p.getLinearDirection(), p.getLinearSpacing(), p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(), p.isClockwise(), p.isFullCircle()));
             }
             for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : s.getExtrusions()) {
-                item.addExtrude(new ui.workspace.drafting.extrude.extrude_feature_ui_main(
-                    ext.getId(), ext.getOwnerShapeId(), ext.getName(), ext.getFaceKind(),
-                    ext.getProfileShape(), ext.getU(), ext.getV(), ext.getDiameter(),
-                    ext.getWidth2(), ext.getHeight()
-                ));
+                item.addExtrude(new ui.workspace.drafting.extrude.extrude_feature_ui_main(ext.getId(), ext.getOwnerShapeId(), ext.getName(), ext.getFaceKind(), ext.getProfileShape(), ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight()));
             }
             copies.add(item);
         }
