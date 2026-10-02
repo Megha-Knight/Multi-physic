@@ -163,6 +163,15 @@ public class hole_dialog_ui_main extends Stage {
                 return;
             }
 
+            for (hole_feature_ui_main existing : shape.getHoles()) {
+                if (existing.getFaceKind() == face.getFaceKind()) {
+                    if (Math.hypot(u - existing.getU(), v - existing.getV()) < (hole.getOuterRadius() + existing.getOuterRadius()) - 0.001) {
+                        showError("Hole overlaps with an existing hole on this face.");
+                        return;
+                    }
+                }
+            }
+
             if (editor != null) editor.recordSnapshot();
             shape.addHole(hole);
             if (editor != null) editor.notifyShapesChanged();

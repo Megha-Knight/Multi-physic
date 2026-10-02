@@ -30,9 +30,8 @@ public class ribbon_ui_main extends HBox {
     private final splitbutton_ui_main saveButton;
     private final splitbutton_ui_main basicShapesButton;
     private final basicshapespanel_ui_main shapesPanel;
-    private final splitbutton_ui_main holeButton;
-    private final splitbutton_ui_main linearPatternButton;
-    private final splitbutton_ui_main circularPatternButton;
+    private final splitbutton_ui_main machiningButton;
+    private final machining_panel_ui_main machiningPanel;
     private Runnable onHoleRequested;
     private Runnable onLinearPatternRequested;
     private Runnable onCircularPatternRequested;
@@ -86,19 +85,16 @@ public class ribbon_ui_main extends HBox {
             if (onShapeSelected != null) onShapeSelected.accept(shape);
         });
 
-        holeButton = new splitbutton_ui_main("Hole", ribbonicons_ui_main.createHoleIcon(iconSz, iconColor), () -> {
-            if (onHoleRequested != null) onHoleRequested.run();
-        });
+        machiningPanel = new machining_panel_ui_main();
+        machiningButton = new splitbutton_ui_main("Machining", ribbonicons_ui_main.createMachiningIcon(iconSz, iconColor), 84.0, true,
+            () -> machiningPanel.toggle());
+        machiningButton.setDropAction(() -> machiningPanel.toggle());
+        machiningPanel.setAnchorNode(machiningButton);
+        machiningButton.addMenuItem("Hole", () -> { if (onHoleRequested != null) onHoleRequested.run(); });
+        machiningButton.addMenuItem("Linear Pattern", () -> { if (onLinearPatternRequested != null) onLinearPatternRequested.run(); });
+        machiningButton.addMenuItem("Circular Pattern", () -> { if (onCircularPatternRequested != null) onCircularPatternRequested.run(); });
 
-        linearPatternButton = new splitbutton_ui_main("Linear", ribbonicons_ui_main.createLinearPatternIcon(iconSz, iconColor), () -> {
-            if (onLinearPatternRequested != null) onLinearPatternRequested.run();
-        });
-
-        circularPatternButton = new splitbutton_ui_main("Circular", ribbonicons_ui_main.createCircularPatternIcon(iconSz, iconColor), () -> {
-            if (onCircularPatternRequested != null) onCircularPatternRequested.run();
-        });
-
-        getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildFeaturesGroup());
+        getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildMachiningGroup());
     }
 
     private VBox buildFilesGroup() {
@@ -111,8 +107,10 @@ public class ribbon_ui_main extends HBox {
         return wrapGroup(shapesRow, "Basic Shapes");
     }
 
-    private VBox buildFeaturesGroup() {
-        return wrapGroup(new HBox(2, holeButton, linearPatternButton, circularPatternButton), "Features");
+    private VBox buildMachiningGroup() {
+        HBox machiningRow = new HBox(4, machiningButton, machiningPanel);
+        machiningRow.setAlignment(Pos.CENTER_LEFT);
+        return wrapGroup(machiningRow, "Machining");
     }
 
     private VBox wrapGroup(HBox buttonsRow, String labelText) {
@@ -148,12 +146,23 @@ public class ribbon_ui_main extends HBox {
     public splitbutton_ui_main getSaveButton()            { return saveButton; }
     public splitbutton_ui_main getBasicShapesButton()     { return basicShapesButton; }
     public basicshapespanel_ui_main getShapesPanel()       { return shapesPanel; }
-    public splitbutton_ui_main getHoleButton()            { return holeButton; }
-    public splitbutton_ui_main getLinearPatternButton()   { return linearPatternButton; }
-    public splitbutton_ui_main getCircularPatternButton() { return circularPatternButton; }
-    public void setOnHoleRequested(Runnable r)            { this.onHoleRequested = r; }
-    public void setOnLinearPatternRequested(Runnable r)   { this.onLinearPatternRequested = r; }
-    public void setOnCircularPatternRequested(Runnable r) { this.onCircularPatternRequested = r; }
+    public splitbutton_ui_main getMachiningButton()       { return machiningButton; }
+    public machining_panel_ui_main getMachiningPanel()    { return machiningPanel; }
+    public splitbutton_ui_main getHoleButton()            { return machiningButton; }
+    public splitbutton_ui_main getLinearPatternButton()   { return machiningButton; }
+    public splitbutton_ui_main getCircularPatternButton() { return machiningButton; }
+    public void setOnHoleRequested(Runnable r) {
+        this.onHoleRequested = r;
+        machiningPanel.setOnHoleRequested(r);
+    }
+    public void setOnLinearPatternRequested(Runnable r) {
+        this.onLinearPatternRequested = r;
+        machiningPanel.setOnLinearPatternRequested(r);
+    }
+    public void setOnCircularPatternRequested(Runnable r) {
+        this.onCircularPatternRequested = r;
+        machiningPanel.setOnCircularPatternRequested(r);
+    }
 
     public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
 

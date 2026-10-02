@@ -77,6 +77,16 @@ public final class ribbonicons_ui_main {
         scaleIcon(path, size);
         return path;
     }
+    /** Machining tool / end mill cutter icon. */
+    public static Node createMachiningIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 6 1 L 10 1 L 10 4 L 11 6 L 11 11 L 8 15 L 5 11 L 5 6 L 6 4 Z M 7 6 L 9 7 M 7 9 L 9 10");
+        path.setFill(Color.TRANSPARENT);
+        path.setStroke(color);
+        path.setStrokeWidth(1.4);
+        scaleIcon(path, size);
+        return path;
+    }
 
     /** Dropdown down-arrow chevron. */
     public static Node createArrowDown(double size, Color color) {

@@ -72,13 +72,38 @@ public final class hole_mesh_triangulator_ui_main {
     }
 
     public static void triangulateAnnularFace(Point3D[] oct, Point3D[] circ, List<Float> pts, List<Integer> fcs, boolean reverse) {
-        int segsPerOct = circ.length / 8;
+        int n = circ.length;
+        Point3D c = circ[0].add(circ[n / 2]).multiply(0.5);
+        Point3D u = circ[0].subtract(c).normalize(), v = circ[n / 4].subtract(c).normalize();
+        double[] phi = new double[9];
+        for (int k = 0; k < 8; k++) {
+            Point3D d = oct[k].subtract(c);
+            double a = Math.atan2(d.dotProduct(v), d.dotProduct(u));
+            phi[k] = (a < 0) ? (a + 2.0 * Math.PI) : a;
+        }
+        for (int k = 1; k < 8; k++) {
+            while (phi[k] < phi[k - 1]) phi[k] += 2.0 * Math.PI;
+        }
+        phi[8] = phi[0] + 2.0 * Math.PI;
+        while (phi[8] < phi[7]) phi[8] += 2.0 * Math.PI;
+
+        int[] idx = new int[9];
+        for (int k = 0; k < 8; k++) {
+            idx[k] = (int) Math.round((phi[k] - phi[0]) / (2.0 * Math.PI) * n);
+        }
+        idx[8] = n;
+        for (int k = 1; k < 8; k++) {
+            if (idx[k] < idx[k - 1]) idx[k] = idx[k - 1];
+            if (idx[k] > n) idx[k] = n;
+        }
+        int base = (int) Math.round(phi[0] / (2.0 * Math.PI) * n) % n;
+
         for (int k = 0; k < 8; k++) {
             Point3D o1 = oct[k], o2 = oct[(k + 1) % 8];
-            int arcStart = k * segsPerOct;
-            addTri(o1, o2, circ[(arcStart + segsPerOct) % circ.length], pts, fcs, reverse);
-            for (int j = 0; j < segsPerOct; j++) {
-                addTri(o1, circ[(arcStart + j + 1) % circ.length], circ[(arcStart + j) % circ.length], pts, fcs, reverse);
+            int iStart = idx[k], iEnd = idx[k + 1];
+            addTri(o1, o2, circ[(base + iEnd) % n], pts, fcs, reverse);
+            for (int m = iStart; m < iEnd; m++) {
+                addTri(o1, circ[(base + m + 1) % n], circ[(base + m) % n], pts, fcs, reverse);
             }
         }
     }
