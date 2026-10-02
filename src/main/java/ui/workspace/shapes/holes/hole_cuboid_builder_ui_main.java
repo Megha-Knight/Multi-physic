@@ -144,7 +144,8 @@ public final class hole_cuboid_builder_ui_main {
     private static void buildCavity(CuboidFace cf, CuboidContext ctx, hole_feature_ui_main h, Point3D hc,
                                     Point3D[] entry, List<Float> pts, List<Integer> fcs) {
         Frame f = cf.frame;
-        double rBore = h.getRadius(), totalDepth = h.isThroughAll() ? cf.thick : Math.min(cf.thick, h.getDepth());
+        double rBore = h.getRadius();
+        double totalDepth = hole_intersection_helper_ui_main.getEffectiveDepth(h, ctx.allHoles, ctx.c, ctx.w, ctx.h, ctx.d);
         Point3D endCenter = hc.subtract(f.n().multiply(totalDepth)), boreStart = hc;
 
         if (h.getHoleType() == HoleType.COUNTERSINK) {
@@ -161,18 +162,10 @@ public final class hole_cuboid_builder_ui_main {
             hole_advanced_mesh_helper_ui_main.buildPlanarAnnulus(recessBottom, shoulderInner, pts, fcs);
         }
 
-        if (h.getCutoutShape() == hole_feature_ui_main.CutoutShape.CIRCLE) {
-            hole_intersection_helper_ui_main.buildCylindricalWallTrimmed(boreStart, endCenter, f.u(), f.v(), rBore,
-                    ctx.allHoles, h, ctx.c, ctx.w, ctx.h, ctx.d, pts, fcs);
-        } else {
-            Point3D[] topProf = hole_profile_helper_ui_main.getProfilePoints(boreStart, f.u(), f.v(), h, SEGS);
-            Point3D[] botProf = hole_profile_helper_ui_main.getProfilePoints(endCenter, f.u(), f.v(), h, SEGS);
-            hole_mesh_triangulator_ui_main.buildCylindricalWall(topProf, botProf, pts, fcs);
-        }
-        if (!h.isThroughAll() && !hole_intersection_helper_ui_main.isInsideAnyOtherHole(endCenter, ctx.allHoles, h, ctx.c, ctx.w, ctx.h, ctx.d)) {
-            Point3D[] boreEnd = hole_profile_helper_ui_main.getProfilePoints(endCenter, f.u(), f.v(), h, rBore, SEGS);
-            hole_mesh_triangulator_ui_main.buildCircleCap(endCenter, boreEnd, pts, fcs, true);
-        }
+        hole_intersection_helper_ui_main.buildCylindricalWallTrimmed(boreStart, endCenter, f.u(), f.v(), rBore,
+                ctx.allHoles, h, ctx.c, ctx.w, ctx.h, ctx.d, pts, fcs);
+        hole_intersection_helper_ui_main.buildCavityEndCapTrimmed(endCenter, f.u(), f.v(), h, rBore,
+                ctx.allHoles, ctx.c, ctx.w, ctx.h, ctx.d, pts, fcs);
     }
 
     private static void buildStandardQuad(Frame f, double fw, double fh, List<Float> pts, List<Integer> fcs) {

@@ -20,7 +20,7 @@ public final class hole_profile_helper_ui_main {
 
         Point3D[] pts = new Point3D[segs];
         double dim1 = (rOverride > 0) ? rOverride * 2.0 : h.getDiameter();
-        double dim2 = (h.getWidth2() > 0.1) ? h.getWidth2() : dim1 * 0.6;
+        double dim2 = (h.getWidth2() > 0.1) ? ((rOverride > 0 && h.getDiameter() > 1e-4) ? dim1 * (h.getWidth2() / h.getDiameter()) : h.getWidth2()) : dim1 * 0.6;
 
         switch (h.getCutoutShape()) {
             case SQUARE -> samplePolygon(center, u, v, getSquareVertices(dim1), pts);
@@ -88,16 +88,16 @@ public final class hole_profile_helper_ui_main {
 
     public static boolean isInside2DProfile(double du, double dv, hole_feature_ui_main h) {
         if (h == null || h.getCutoutShape() == CutoutShape.CIRCLE) {
-            return (du * du + dv * dv) < (h.getRadius() - 0.05) * (h.getRadius() - 0.05);
+            return (du * du + dv * dv) < (h.getRadius() - 1e-3) * (h.getRadius() - 1e-3);
         }
         double dim1 = h.getDiameter();
         double dim2 = (h.getWidth2() > 0.1) ? h.getWidth2() : dim1 * 0.6;
         return switch (h.getCutoutShape()) {
-            case SQUARE -> Math.abs(du) < (dim1 * 0.5 - 0.05) && Math.abs(dv) < (dim1 * 0.5 - 0.05);
-            case RECTANGLE -> Math.abs(du) < (dim1 * 0.5 - 0.05) && Math.abs(dv) < (dim2 * 0.5 - 0.05);
+            case SQUARE -> Math.abs(du) < (dim1 * 0.5 - 1e-3) && Math.abs(dv) < (dim1 * 0.5 - 1e-3);
+            case RECTANGLE -> Math.abs(du) < (dim1 * 0.5 - 1e-3) && Math.abs(dv) < (dim2 * 0.5 - 1e-3);
             case EQUILATERAL_TRIANGLE -> isPointInPoly(du, dv, getEquilateralVertices(dim1));
             case RIGHT_TRIANGLE -> isPointInPoly(du, dv, getRightTriangleVertices(dim1, (h.getWidth2() > 0.1) ? h.getWidth2() : dim1));
-            default -> (du * du + dv * dv) < (h.getRadius() - 0.05) * (h.getRadius() - 0.05);
+            default -> (du * du + dv * dv) < (h.getRadius() - 1e-3) * (h.getRadius() - 1e-3);
         };
     }
 

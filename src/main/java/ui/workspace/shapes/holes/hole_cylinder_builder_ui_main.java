@@ -23,7 +23,7 @@ public final class hole_cylinder_builder_ui_main {
     private hole_cylinder_builder_ui_main() {}
 
     public static Node buildCylinderWithHoles(Point3D p1, Point3D p2, List<hole_feature_ui_main> holes,
-                                             boolean isPreview, boolean isSelected) {
+                                              boolean isPreview, boolean isSelected) {
         double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
         double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
         if (r < 0.2 || holes == null || holes.isEmpty()) return shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview, isSelected);
@@ -44,7 +44,6 @@ public final class hole_cylinder_builder_ui_main {
         List<Integer> fcs = new ArrayList<>();
         double cx = p1.getX(), cz = p1.getZ();
 
-        // Outer lateral wall of cylinder with shared vertices
         int[] topIdx = new int[SEGS], botIdx = new int[SEGS];
         for (int i = 0; i < SEGS; i++) {
             double a = i * 2.0 * Math.PI / SEGS;
@@ -57,8 +56,8 @@ public final class hole_cylinder_builder_ui_main {
             hole_mesh_triangulator_ui_main.addTriIdx(topIdx[i], botIdx[next], botIdx[i], fcs, false);
         }
 
-        buildCap(cx, cz, -h, r, true, topHoles, botHoles, h, pts, fcs);
-        buildCap(cx, cz, 0.0, r, false, botHoles, topHoles, h, pts, fcs);
+        buildCap(cx, cz, -h, r, true, topHoles, botHoles, holes, h, pts, fcs);
+        buildCap(cx, cz, 0.0, r, false, botHoles, topHoles, holes, h, pts, fcs);
 
         float[] pa = new float[pts.size()];
         for (int i = 0; i < pts.size(); i++) pa[i] = pts.get(i);
@@ -78,9 +77,10 @@ public final class hole_cylinder_builder_ui_main {
 
     private static void buildCap(double cx, double cz, double y, double r, boolean isTop,
                                  List<hole_feature_ui_main> capHoles, List<hole_feature_ui_main> oppHoles,
-                                 double h, List<Float> pts, List<Integer> fcs) {
+                                 List<hole_feature_ui_main> allHoles, double h, List<Float> pts, List<Integer> fcs) {
         List<hole_feature_ui_main> throughExits = new ArrayList<>();
         for (hole_feature_ui_main oh : oppHoles) if (oh.isThroughAll()) throughExits.add(oh);
+        Point3D u = new Point3D(1, 0, 0), v = isTop ? new Point3D(0, 0, 1) : new Point3D(0, 0, -1);
 
         if (!capHoles.isEmpty()) {
             List<hole_stepped_helper_ui_main.HoleCluster> clusters = new ArrayList<>();
@@ -98,25 +98,26 @@ public final class hole_cylinder_builder_ui_main {
             }
             if (clusters.size() == 1) {
                 hole_stepped_helper_ui_main.HoleCluster cl = clusters.get(0);
-                double hx = cl.center.getX(), hz = cl.center.getZ();
-                buildAnnulus(cx, cz, hx, hz, y, r, cl.getMaxOuterRadius(), isTop, pts, fcs);
+                Point3D[] innerProf = hole_profile_helper_ui_main.getProfilePoints(cl.center, u, v, cl.getPrimaryHole(), cl.getMaxOuterRadius(), SEGS);
+                buildAnnulus(cx, cz, innerProf, y, r, isTop, pts, fcs);
                 if (cl.holes.size() == 1) {
-                    hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, y, h, isTop, cl.holes.get(0), pts, fcs);
+                    hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, cl.center.getX(), cl.center.getZ(), y, h, isTop, cl.holes.get(0), allHoles, r, pts, fcs);
                 } else {
-                    hole_stepped_helper_ui_main.buildCylinderSteppedCavity(cx, cz, hx, hz, y, h, isTop, cl.holes, pts, fcs);
+                    hole_stepped_helper_ui_main.buildCylinderSteppedCavity(cx, cz, cl.center.getX(), cl.center.getZ(), y, h, isTop, cl.holes, pts, fcs);
                 }
             } else {
                 hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, y, r, isTop, capHoles, false, pts, fcs);
                 for (hole_feature_ui_main hole : capHoles) {
                     double hx = cx + hole.getU(), hz = cz + (isTop ? hole.getV() : -hole.getV());
-                    hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, y, h, isTop, hole, pts, fcs);
+                    hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, y, h, isTop, hole, allHoles, r, pts, fcs);
                 }
             }
         } else if (!throughExits.isEmpty()) {
             if (throughExits.size() == 1) {
                 hole_feature_ui_main oh = throughExits.get(0);
                 double hx = cx + oh.getU(), hz = cz + (!isTop ? oh.getV() : -oh.getV());
-                buildAnnulus(cx, cz, hx, hz, y, r, oh.getRadius(), isTop, pts, fcs);
+                Point3D[] innerProf = hole_profile_helper_ui_main.getProfilePoints(new Point3D(hx, y, hz), u, v, oh, oh.getRadius(), SEGS);
+                buildAnnulus(cx, cz, innerProf, y, r, isTop, pts, fcs);
             } else {
                 hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, y, r, isTop, throughExits, true, pts, fcs);
             }
@@ -131,14 +132,13 @@ public final class hole_cylinder_builder_ui_main {
         }
     }
 
-    private static void buildAnnulus(double cx, double cz, double hx, double hz, double y, double rOut, double rIn,
+    private static void buildAnnulus(double cx, double cz, Point3D[] innerProf, double y, double rOut,
                                      boolean faceUp, List<Float> pts, List<Integer> fcs) {
         for (int i = 0; i < SEGS; i++) {
             double a1 = i * 2.0 * Math.PI / SEGS, a2 = (i + 1) * 2.0 * Math.PI / SEGS;
             Point3D o1 = new Point3D(cx + rOut * Math.cos(a1), y, cz + rOut * Math.sin(a1));
             Point3D o2 = new Point3D(cx + rOut * Math.cos(a2), y, cz + rOut * Math.sin(a2));
-            Point3D i1 = new Point3D(hx + rIn * Math.cos(a1), y, hz + rIn * Math.sin(a1));
-            Point3D i2 = new Point3D(hx + rIn * Math.cos(a2), y, hz + rIn * Math.sin(a2));
+            Point3D i1 = innerProf[i], i2 = innerProf[(i + 1) % SEGS];
             if (faceUp) hole_mesh_triangulator_ui_main.addQuad(o1, i1, i2, o2, pts, fcs);
             else hole_mesh_triangulator_ui_main.addQuad(o1, o2, i2, i1, pts, fcs);
         }

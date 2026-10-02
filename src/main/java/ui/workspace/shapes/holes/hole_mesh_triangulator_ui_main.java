@@ -27,8 +27,8 @@ public final class hole_mesh_triangulator_ui_main {
     public static Frame getCuboidFaceFrame(Point3D c, double w, double h, double d, face_kind_ui_main kind) {
         double hw = w * 0.5, hh = h * 0.5, hd = d * 0.5;
         return switch (kind) {
-            case TOP    -> new Frame(new Point3D(c.getX(), c.getY() - hh, c.getZ()), new Point3D(0, -1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, 1));
-            case BOTTOM -> new Frame(new Point3D(c.getX(), c.getY() + hh, c.getZ()), new Point3D(0, 1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, -1));
+            case TOP, TOP_CAP       -> new Frame(new Point3D(c.getX(), c.getY() - hh, c.getZ()), new Point3D(0, -1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, 1));
+            case BOTTOM, BOTTOM_CAP -> new Frame(new Point3D(c.getX(), c.getY() + hh, c.getZ()), new Point3D(0, 1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, -1));
             case FRONT  -> new Frame(new Point3D(c.getX(), c.getY(), c.getZ() + hd), new Point3D(0, 0, 1), new Point3D(1, 0, 0), new Point3D(0, -1, 0));
             case BACK   -> new Frame(new Point3D(c.getX(), c.getY(), c.getZ() - hd), new Point3D(0, 0, -1), new Point3D(-1, 0, 0), new Point3D(0, -1, 0));
             case RIGHT  -> new Frame(new Point3D(c.getX() + hw, c.getY(), c.getZ()), new Point3D(1, 0, 0), new Point3D(0, 0, -1), new Point3D(0, -1, 0));
@@ -43,7 +43,7 @@ public final class hole_mesh_triangulator_ui_main {
 
     public static double getFaceThickness(double w, double h, double d, face_kind_ui_main kind) {
         if (kind == null) return h;
-        return (kind == face_kind_ui_main.TOP || kind == face_kind_ui_main.BOTTOM) ? h
+        return (kind == face_kind_ui_main.TOP || kind == face_kind_ui_main.BOTTOM || kind == face_kind_ui_main.TOP_CAP || kind == face_kind_ui_main.BOTTOM_CAP) ? h
              : (kind == face_kind_ui_main.FRONT || kind == face_kind_ui_main.BACK) ? d : w;
     }
 
