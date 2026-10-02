@@ -94,6 +94,7 @@ public class UI_Main extends BorderPane {
         ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile); ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
 
         ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this));
+        ribbonBar.setOnCutoutRequested(shape -> ui_feature_action_helper_ui_main.handleCutout(this, shape));
         ribbonBar.setOnLinearPatternRequested(() -> ui_feature_action_helper_ui_main.handleLinearPattern(this));
         ribbonBar.setOnCircularPatternRequested(() -> ui_feature_action_helper_ui_main.handleCircularPattern(this));
 

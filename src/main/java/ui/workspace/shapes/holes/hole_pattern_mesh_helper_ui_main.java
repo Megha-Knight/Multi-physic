@@ -42,13 +42,13 @@ public final class hole_pattern_mesh_helper_ui_main {
                 double rEntry = h.getOuterRadius();
                 Point3D hc = f.origin().add(f.u().multiply(h.getU())).add(f.v().multiply(h.getV()));
                 Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, b.uMin, b.uMax, b.vMin, b.vMax);
-                Point3D[] entry = hole_mesh_triangulator_ui_main.getCirclePoints(hc, f.u(), f.v(), rEntry, SEGS);
+                Point3D[] entry = hole_profile_helper_ui_main.getProfilePoints(hc, f.u(), f.v(), h, rEntry, SEGS);
                 hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, entry, pts, fcs, false);
                 hole_advanced_mesh_helper_ui_main.buildCubeHoleCavity(f, s, h, hc, entry, allHoles, cubeCenter, pts, fcs);
             } else {
                 Point3D hc = f.origin().add(f.u().multiply(h.getU())).add(f.v().multiply(-h.getV()));
                 Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(f, b.uMin, b.uMax, b.vMin, b.vMax);
-                Point3D[] exit = hole_mesh_triangulator_ui_main.getCirclePoints(hc, f.u(), f.v(), h.getRadius(), SEGS);
+                Point3D[] exit = hole_profile_helper_ui_main.getProfilePoints(hc, f.u(), f.v(), h, h.getRadius(), SEGS);
                 hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, exit, pts, fcs, true);
             }
             return;

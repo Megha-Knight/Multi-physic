@@ -22,6 +22,14 @@ public class hole_feature_ui_main {
         public String getLabel() { return label; }
     }
 
+    public enum CutoutShape {
+        CIRCLE("Circle"), SQUARE("Square"), RECTANGLE("Rectangle"),
+        EQUILATERAL_TRIANGLE("Equilateral Triangle"), RIGHT_TRIANGLE("Right Triangle");
+        private final String label;
+        CutoutShape(String label) { this.label = label; }
+        public String getLabel() { return label; }
+    }
+
     private final String id;
     private final String ownerShapeId;
     private final HoleType holeType;
@@ -40,6 +48,10 @@ public class hole_feature_ui_main {
     private double cbDiameter;
     private double cbDepth;
 
+    // 2D Profile Cutout extension
+    private CutoutShape cutoutShape = CutoutShape.CIRCLE;
+    private double width2 = 0.0;
+
     public hole_feature_ui_main(String id, String ownerShapeId, face_kind_ui_main faceKind,
                                 double u, double v, double diameter, double depth, boolean throughAll) {
         this(id, ownerShapeId, HoleType.SIMPLE, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0);
@@ -53,6 +65,13 @@ public class hole_feature_ui_main {
     public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
                                 double u, double v, double diameter, double depth, boolean throughAll,
                                 double csDiameter, double csAngle, double cbDiameter, double cbDepth) {
+        this(id, ownerShapeId, holeType, faceKind, u, v, diameter, depth, throughAll, csDiameter, csAngle, cbDiameter, cbDepth, CutoutShape.CIRCLE, 0.0);
+    }
+
+    public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
+                                double u, double v, double diameter, double depth, boolean throughAll,
+                                double csDiameter, double csAngle, double cbDiameter, double cbDepth,
+                                CutoutShape cutoutShape, double width2) {
         this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
         this.ownerShapeId = ownerShapeId;
         this.holeType = (holeType != null) ? holeType : HoleType.SIMPLE;
@@ -66,6 +85,8 @@ public class hole_feature_ui_main {
         this.csAngle = csAngle;
         this.cbDiameter = cbDiameter;
         this.cbDepth = cbDepth;
+        this.cutoutShape = (cutoutShape != null) ? cutoutShape : CutoutShape.CIRCLE;
+        this.width2 = width2;
     }
 
     public String getId()                  { return id; }
@@ -144,9 +165,18 @@ public class hole_feature_ui_main {
         return (Math.hypot(u, v) + r < capRadius * 0.99);
     }
 
+    public CutoutShape getCutoutShape()         { return cutoutShape != null ? cutoutShape : CutoutShape.CIRCLE; }
+    public void setCutoutShape(CutoutShape s)   { this.cutoutShape = s; }
+    public double getWidth2()                  { return width2; }
+    public void setWidth2(double w)            { this.width2 = w; }
+
     @Override
     public String toString() {
         String depthStr = throughAll ? "Through-All" : String.format(Locale.US, "Depth: %.1f mm", depth);
+        if (cutoutShape != null && cutoutShape != CutoutShape.CIRCLE) {
+            return String.format(Locale.US, "%s Cutout (Size: %.1f mm, %s) on %s",
+                cutoutShape.getLabel(), diameter, depthStr, faceKind.getLabel());
+        }
         return switch (holeType) {
             case COUNTERSINK -> String.format(Locale.US, "Countersink (D: %.1f mm, Ds: %.1f mm, %.1f deg, %s) on %s",
                 diameter, csDiameter, csAngle, depthStr, faceKind.getLabel());

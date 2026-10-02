@@ -62,9 +62,15 @@ public final class hole_advanced_mesh_helper_ui_main {
             }
             default -> {
                 Point3D endCenter = hc.subtract(f.n().multiply(totalDepth));
-                hole_intersection_helper_ui_main.buildCylindricalWallTrimmed(hc, endCenter, f.u(), f.v(), rBore, allHoles, h, cubeCenter, s, pts, fcs);
+                if (h.getCutoutShape() == hole_feature_ui_main.CutoutShape.CIRCLE) {
+                    hole_intersection_helper_ui_main.buildCylindricalWallTrimmed(hc, endCenter, f.u(), f.v(), rBore, allHoles, h, cubeCenter, s, pts, fcs);
+                } else {
+                    Point3D[] topProf = hole_profile_helper_ui_main.getProfilePoints(hc, f.u(), f.v(), h, SEGS);
+                    Point3D[] botProf = hole_profile_helper_ui_main.getProfilePoints(endCenter, f.u(), f.v(), h, SEGS);
+                    hole_mesh_triangulator_ui_main.buildCylindricalWall(topProf, botProf, pts, fcs);
+                }
                 if (!h.isThroughAll() && !hole_intersection_helper_ui_main.isInsideAnyOtherHole(endCenter, allHoles, h, cubeCenter, s)) {
-                    Point3D[] boreEnd = hole_mesh_triangulator_ui_main.getCirclePoints(endCenter, f.u(), f.v(), rBore, SEGS);
+                    Point3D[] boreEnd = hole_profile_helper_ui_main.getProfilePoints(endCenter, f.u(), f.v(), h, rBore, SEGS);
                     hole_mesh_triangulator_ui_main.buildCircleCap(endCenter, boreEnd, pts, fcs, true);
                 }
             }

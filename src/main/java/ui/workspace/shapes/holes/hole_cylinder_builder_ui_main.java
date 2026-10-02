@@ -83,16 +83,34 @@ public final class hole_cylinder_builder_ui_main {
         for (hole_feature_ui_main oh : oppHoles) if (oh.isThroughAll()) throughExits.add(oh);
 
         if (!capHoles.isEmpty()) {
-            if (capHoles.size() == 1) {
-                hole_feature_ui_main hole = capHoles.get(0);
-                double hx = cx + hole.getU(), hz = cz + (isTop ? hole.getV() : -hole.getV());
-                buildAnnulus(cx, cz, hx, hz, y, r, hole.getOuterRadius(), isTop, pts, fcs);
+            List<hole_stepped_helper_ui_main.HoleCluster> clusters = new ArrayList<>();
+            for (hole_feature_ui_main hf : capHoles) {
+                hole_stepped_helper_ui_main.HoleCluster match = null;
+                for (hole_stepped_helper_ui_main.HoleCluster c : clusters) {
+                    if (Math.hypot(hf.getU() - c.u, hf.getV() - c.v) < 0.5) { match = c; break; }
+                }
+                if (match == null) {
+                    double hx = cx + hf.getU(), hz = cz + (isTop ? hf.getV() : -hf.getV());
+                    match = new hole_stepped_helper_ui_main.HoleCluster(hf.getU(), hf.getV(), new Point3D(hx, y, hz));
+                    clusters.add(match);
+                }
+                match.holes.add(hf);
+            }
+            if (clusters.size() == 1) {
+                hole_stepped_helper_ui_main.HoleCluster cl = clusters.get(0);
+                double hx = cl.center.getX(), hz = cl.center.getZ();
+                buildAnnulus(cx, cz, hx, hz, y, r, cl.getMaxOuterRadius(), isTop, pts, fcs);
+                if (cl.holes.size() == 1) {
+                    hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, y, h, isTop, cl.holes.get(0), pts, fcs);
+                } else {
+                    hole_stepped_helper_ui_main.buildCylinderSteppedCavity(cx, cz, hx, hz, y, h, isTop, cl.holes, pts, fcs);
+                }
             } else {
                 hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, y, r, isTop, capHoles, false, pts, fcs);
-            }
-            for (hole_feature_ui_main hole : capHoles) {
-                double hx = cx + hole.getU(), hz = cz + (isTop ? hole.getV() : -hole.getV());
-                hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, y, h, isTop, hole, pts, fcs);
+                for (hole_feature_ui_main hole : capHoles) {
+                    double hx = cx + hole.getU(), hz = cz + (isTop ? hole.getV() : -hole.getV());
+                    hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, y, h, isTop, hole, pts, fcs);
+                }
             }
         } else if (!throughExits.isEmpty()) {
             if (throughExits.size() == 1) {

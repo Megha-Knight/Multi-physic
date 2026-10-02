@@ -90,7 +90,7 @@ public class ribbon_ui_main extends HBox {
             () -> machiningPanel.toggle());
         machiningButton.setDropAction(() -> machiningPanel.toggle());
         machiningPanel.setAnchorNode(machiningButton);
-        machiningButton.addMenuItem("Hole", () -> { if (onHoleRequested != null) onHoleRequested.run(); });
+        machiningButton.addMenuItem("Circle", () -> { if (onHoleRequested != null) onHoleRequested.run(); });
         machiningButton.addMenuItem("Linear Pattern", () -> { if (onLinearPatternRequested != null) onLinearPatternRequested.run(); });
         machiningButton.addMenuItem("Circular Pattern", () -> { if (onCircularPatternRequested != null) onCircularPatternRequested.run(); });
 
@@ -154,6 +154,9 @@ public class ribbon_ui_main extends HBox {
     public void setOnHoleRequested(Runnable r) {
         this.onHoleRequested = r;
         machiningPanel.setOnHoleRequested(r);
+    }
+    public void setOnCutoutRequested(java.util.function.Consumer<ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape> cb) {
+        machiningPanel.setOnCutoutRequested(cb);
     }
     public void setOnLinearPatternRequested(Runnable r) {
         this.onLinearPatternRequested = r;

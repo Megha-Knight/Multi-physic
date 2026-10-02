@@ -7,23 +7,30 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import ui.framework_ui_main;
+import ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape;
+
+import java.io.InputStream;
+import java.util.function.Consumer;
 
 /**
  * machining_panel_ui_main.java
- * Dynamic Ribbon Gallery Panel for Machining operations (Holes, Linear/Circular Patterns).
+ * Dynamic Ribbon Gallery Panel for Machining Cutouts (Circle, Square, Rectangle, Triangles) and Patterns.
  */
 public class machining_panel_ui_main extends HBox {
 
-    private final Button btnCatHoles = new Button("Holes");
+    private final Button btnCatCutouts = new Button("Cutouts");
     private final Button btnCatPatterns = new Button("Patterns");
-    private final HBox paneHoles;
+    private final HBox paneCutouts;
     private final HBox panePatterns;
 
+    private Consumer<CutoutShape> onCutoutRequested;
     private Runnable onHoleRequested;
     private Runnable onLinearPatternRequested;
     private Runnable onCircularPatternRequested;
@@ -38,17 +45,30 @@ public class machining_panel_ui_main extends HBox {
                  "-fx-border-color: " + framework_ui_main.SHAPES_PANEL_BORDER + "; " +
                  "-fx-border-radius: 4; -fx-background-radius: 4;");
 
-        initCategoryBtn(btnCatHoles, true);
+        initCategoryBtn(btnCatCutouts, true);
         initCategoryBtn(btnCatPatterns, false);
-        btnCatHoles.setOnAction(e -> selectCategory(true));
+        btnCatCutouts.setOnAction(e -> selectCategory(true));
         btnCatPatterns.setOnAction(e -> selectCategory(false));
-        VBox catCol = new VBox(2, btnCatHoles, btnCatPatterns);
+        VBox catCol = new VBox(2, btnCatCutouts, btnCatPatterns);
         catCol.setAlignment(Pos.CENTER);
 
         Color iconColor = Color.web(framework_ui_main.PRIMARY_BRAND_COLOR);
-        paneHoles = new HBox(4,
-            createItem("Hole", ribbonicons_ui_main.createHoleIcon(15, iconColor), () -> {
+        paneCutouts = new HBox(4,
+            createItem("Circle", loadIcon("/icons/circle.png", ribbonicons_ui_main.createHoleIcon(15, iconColor)), () -> {
+                if (onCutoutRequested != null) onCutoutRequested.accept(CutoutShape.CIRCLE);
                 if (onHoleRequested != null) onHoleRequested.run();
+            }),
+            createItem("Square", loadIcon("/icons/square.png", null), () -> {
+                if (onCutoutRequested != null) onCutoutRequested.accept(CutoutShape.SQUARE);
+            }),
+            createItem("Rectangle", loadIcon("/icons/rectangle.png", null), () -> {
+                if (onCutoutRequested != null) onCutoutRequested.accept(CutoutShape.RECTANGLE);
+            }),
+            createItem("Equilateral", loadIcon("/icons/triangle_equilateral.png", null), () -> {
+                if (onCutoutRequested != null) onCutoutRequested.accept(CutoutShape.EQUILATERAL_TRIANGLE);
+            }),
+            createItem("Right Angle", loadIcon("/icons/triangle_right.png", null), () -> {
+                if (onCutoutRequested != null) onCutoutRequested.accept(CutoutShape.RIGHT_TRIANGLE);
             })
         );
         panePatterns = new HBox(4,
@@ -62,7 +82,7 @@ public class machining_panel_ui_main extends HBox {
         panePatterns.setVisible(false);
         panePatterns.setManaged(false);
 
-        StackPane contentStack = new StackPane(paneHoles, panePatterns);
+        StackPane contentStack = new StackPane(paneCutouts, panePatterns);
         contentStack.setAlignment(Pos.CENTER_LEFT);
 
         Button closeBtn = new Button("✕");
@@ -81,6 +101,7 @@ public class machining_panel_ui_main extends HBox {
     }
 
     public void setAnchorNode(Node node) { /* kept for API parity */ }
+    public void setOnCutoutRequested(Consumer<CutoutShape> r) { this.onCutoutRequested = r; }
     public void setOnHoleRequested(Runnable r) { this.onHoleRequested = r; }
     public void setOnLinearPatternRequested(Runnable r) { this.onLinearPatternRequested = r; }
     public void setOnCircularPatternRequested(Runnable r) { this.onCircularPatternRequested = r; }
@@ -89,16 +110,15 @@ public class machining_panel_ui_main extends HBox {
     public void hide() { setVisible(false); setManaged(false); }
     public void toggle() { if (isVisible()) hide(); else show(); }
 
-    private void selectCategory(boolean isHoles) {
-        paneHoles.setVisible(isHoles); paneHoles.setManaged(isHoles);
-        panePatterns.setVisible(!isHoles); panePatterns.setManaged(!isHoles);
-        btnCatHoles.setStyle(getCategoryStyle(isHoles));
-        btnCatPatterns.setStyle(getCategoryStyle(!isHoles));
+    private void selectCategory(boolean isCutouts) {
+        paneCutouts.setVisible(isCutouts); paneCutouts.setManaged(isCutouts);
+        panePatterns.setVisible(!isCutouts); panePatterns.setManaged(!isCutouts);
+        btnCatCutouts.setStyle(getCategoryStyle(isCutouts));
+        btnCatPatterns.setStyle(getCategoryStyle(!isCutouts));
     }
 
     private void initCategoryBtn(Button b, boolean active) {
-        b.setPrefWidth(60);
-        b.setPrefHeight(18);
+        b.setPrefWidth(60); b.setPrefHeight(18);
         b.setStyle(getCategoryStyle(active));
     }
 
@@ -128,9 +148,19 @@ public class machining_panel_ui_main extends HBox {
         b.setStyle(base);
         b.setOnMouseEntered(e -> b.setStyle(hover));
         b.setOnMouseExited(e -> b.setStyle(base));
-        b.setOnAction(e -> {
-            if (action != null) action.run();
-        });
+        b.setOnAction(e -> { if (action != null) action.run(); });
         return b;
+    }
+
+    private Node loadIcon(String path, Node fallback) {
+        try (InputStream is = getClass().getResourceAsStream(path)) {
+            if (is != null) {
+                ImageView iv = new ImageView(new Image(is));
+                iv.setFitWidth(15); iv.setFitHeight(15);
+                iv.setPreserveRatio(true);
+                return iv;
+            }
+        } catch (Exception ignored) {}
+        return fallback;
     }
 }
