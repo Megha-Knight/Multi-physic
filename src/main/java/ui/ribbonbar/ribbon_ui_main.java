@@ -30,8 +30,10 @@ public class ribbon_ui_main extends HBox {
     private final splitbutton_ui_main saveButton;
     private final splitbutton_ui_main basicShapesButton;
     private final basicshapespanel_ui_main shapesPanel;
+    private final splitbutton_ui_main extrudeButton;
     private final splitbutton_ui_main machiningButton;
     private final machining_panel_ui_main machiningPanel;
+    private Runnable onExtrudeRequested;
     private Runnable onHoleRequested;
     private Runnable onLinearPatternRequested;
     private Runnable onCircularPatternRequested;
@@ -85,6 +87,9 @@ public class ribbon_ui_main extends HBox {
             if (onShapeSelected != null) onShapeSelected.accept(shape);
         });
 
+        extrudeButton = new splitbutton_ui_main("Extrude", ribbonicons_ui_main.createExtrudeIcon(iconSz, iconColor), 84.0, false,
+            () -> { if (onExtrudeRequested != null) onExtrudeRequested.run(); });
+
         machiningPanel = new machining_panel_ui_main();
         machiningButton = new splitbutton_ui_main("Machining", ribbonicons_ui_main.createMachiningIcon(iconSz, iconColor), 84.0, true,
             () -> machiningPanel.toggle());
@@ -94,7 +99,7 @@ public class ribbon_ui_main extends HBox {
         machiningButton.addMenuItem("Linear Pattern", () -> { if (onLinearPatternRequested != null) onLinearPatternRequested.run(); });
         machiningButton.addMenuItem("Circular Pattern", () -> { if (onCircularPatternRequested != null) onCircularPatternRequested.run(); });
 
-        getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildMachiningGroup());
+        getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildFeaturesGroup(), buildMachiningGroup());
     }
 
     private VBox buildFilesGroup() {
@@ -105,6 +110,10 @@ public class ribbon_ui_main extends HBox {
         HBox shapesRow = new HBox(4, basicShapesButton, shapesPanel);
         shapesRow.setAlignment(Pos.CENTER_LEFT);
         return wrapGroup(shapesRow, "Basic Shapes");
+    }
+
+    private VBox buildFeaturesGroup() {
+        return wrapGroup(new HBox(4, extrudeButton), "Features");
     }
 
     private VBox buildMachiningGroup() {
@@ -146,11 +155,13 @@ public class ribbon_ui_main extends HBox {
     public splitbutton_ui_main getSaveButton()            { return saveButton; }
     public splitbutton_ui_main getBasicShapesButton()     { return basicShapesButton; }
     public basicshapespanel_ui_main getShapesPanel()       { return shapesPanel; }
+    public splitbutton_ui_main getExtrudeButton()         { return extrudeButton; }
     public splitbutton_ui_main getMachiningButton()       { return machiningButton; }
     public machining_panel_ui_main getMachiningPanel()    { return machiningPanel; }
     public splitbutton_ui_main getHoleButton()            { return machiningButton; }
     public splitbutton_ui_main getLinearPatternButton()   { return machiningButton; }
     public splitbutton_ui_main getCircularPatternButton() { return machiningButton; }
+    public void setOnExtrudeRequested(Runnable r)         { this.onExtrudeRequested = r; }
     public void setOnHoleRequested(Runnable r) {
         this.onHoleRequested = r;
         machiningPanel.setOnHoleRequested(r);
@@ -169,20 +180,8 @@ public class ribbon_ui_main extends HBox {
 
     public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
 
-    public void setOnSave(Runnable r) {
-        saveButton.setPrimaryAction(r);
-        menuSave.setOnAction(e -> { if (r != null) r.run(); });
-    }
-
-    public void setOnSaveAs(Runnable r) {
-        menuSaveAs.setOnAction(e -> { if (r != null) r.run(); });
-    }
-
-    public void setOnSaveRoot(Runnable r) {
-        menuSaveRoot.setOnAction(e -> { if (r != null) r.run(); });
-    }
-
-    public void setOnSaveIn(Runnable r) {
-        menuSaveIn.setOnAction(e -> { if (r != null) r.run(); });
-    }
+    public void setOnSave(Runnable r)   { saveButton.setPrimaryAction(r); menuSave.setOnAction(e -> { if (r != null) r.run(); }); }
+    public void setOnSaveAs(Runnable r) { menuSaveAs.setOnAction(e -> { if (r != null) r.run(); }); }
+    public void setOnSaveRoot(Runnable r) { menuSaveRoot.setOnAction(e -> { if (r != null) r.run(); }); }
+    public void setOnSaveIn(Runnable r)   { menuSaveIn.setOnAction(e -> { if (r != null) r.run(); }); }
 }

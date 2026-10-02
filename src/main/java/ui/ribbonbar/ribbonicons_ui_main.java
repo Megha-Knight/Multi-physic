@@ -56,6 +56,17 @@ public final class ribbonicons_ui_main {
         return path;
     }
 
+    /** 3D Extrusion boss icon. */
+    public static Node createExtrudeIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 2 12 L 8 9 L 14 12 L 8 15 Z M 2 12 L 2 15 L 8 18 L 14 15 L 14 12 M 8 15 L 8 18 M 8 9 L 8 2 M 5 5 L 8 2 L 11 5");
+        path.setFill(Color.TRANSPARENT);
+        path.setStroke(color);
+        path.setStrokeWidth(1.4);
+        scaleIcon(path, size);
+        return path;
+    }
+
     /** Linear pattern icon. */
     public static Node createLinearPatternIcon(double size, Color color) {
         SVGPath path = new SVGPath();

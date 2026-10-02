@@ -10,6 +10,7 @@ import ui.framework_ui_main;
 import ui.workspace.drafting.shape_editor_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
+import ui.workspace.drafting.extrude.extrude_feature_ui_main;
 
 public class featuremanager_ui_main extends BorderPane {
 
@@ -36,22 +37,14 @@ public class featuremanager_ui_main extends BorderPane {
             syncLock = true;
             try {
                 feature_tree_node_ui_main val = newVal.getValue();
-                if (val.isShape()) {
-                    editor.selectShape(val.getShape());
-                    editor.selectHole(val.getShape(), null);
-                } else if (val.isHole()) {
-                    editor.selectHole(val.getParentShape(), val.getHole());
-                }
-            } finally {
-                syncLock = false;
-            }
+                if (val.isShape()) { editor.selectShape(val.getShape()); editor.selectHole(val.getShape(), null); editor.selectExtrude(val.getShape(), null); }
+                else if (val.isHole()) editor.selectHole(val.getParentShape(), val.getHole());
+                else if (val.isExtrude()) editor.selectExtrude(val.getParentShape(), val.getExtrude());
+            } finally { syncLock = false; }
         });
 
         treeView.setOnMouseClicked(e -> {
-            if (e.getTarget() == treeView && editor != null) {
-                editor.selectHole(null, null);
-                editor.selectShape(null);
-            }
+            if (e.getTarget() == treeView && editor != null) { editor.selectExtrude(null, null); editor.selectHole(null, null); editor.selectShape(null); }
         });
         setCenter(treeView);
     }
@@ -73,15 +66,12 @@ public class featuremanager_ui_main extends BorderPane {
             for (shape_item_ui_main s : editor.getShapes()) {
                 TreeItem<feature_tree_node_ui_main> sNode = new TreeItem<>(feature_tree_node_ui_main.forShape(s));
                 sNode.setExpanded(true);
-                for (hole_feature_ui_main h : s.getHoles()) {
-                    sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forHole(s, h)));
-                }
+                for (hole_feature_ui_main h : s.getHoles()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forHole(s, h)));
+                for (extrude_feature_ui_main ext : s.getExtrusions()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forExtrude(s, ext)));
                 rootItem.getChildren().add(sNode);
             }
             syncFromCanvas();
-        } finally {
-            syncLock = false;
-        }
+        } finally { syncLock = false; }
     }
 
     public TreeView<feature_tree_node_ui_main> getTreeView() { return treeView; }
@@ -90,6 +80,7 @@ public class featuremanager_ui_main extends BorderPane {
         if (editor == null) return;
         shape_item_ui_main selShape = editor.getSelectedShape();
         hole_feature_ui_main selHole = editor.getSelectedHole();
+        extrude_feature_ui_main selExt = editor.getSelectedExtrude();
         if (selShape == null) { treeView.getSelectionModel().clearSelection(); return; }
 
         for (TreeItem<feature_tree_node_ui_main> sItem : rootItem.getChildren()) {
@@ -97,16 +88,18 @@ public class featuremanager_ui_main extends BorderPane {
                 if (selHole != null) {
                     for (TreeItem<feature_tree_node_ui_main> hItem : sItem.getChildren()) {
                         if (hItem.getValue().getHole() == selHole) {
-                            sItem.setExpanded(true);
-                            treeView.getSelectionModel().select(hItem);
-                            treeView.scrollTo(treeView.getRow(hItem));
-                            return;
+                            sItem.setExpanded(true); treeView.getSelectionModel().select(hItem); treeView.scrollTo(treeView.getRow(hItem)); return;
                         }
                     }
                 }
-                treeView.getSelectionModel().select(sItem);
-                treeView.scrollTo(treeView.getRow(sItem));
-                return;
+                if (selExt != null) {
+                    for (TreeItem<feature_tree_node_ui_main> eItem : sItem.getChildren()) {
+                        if (eItem.getValue().getExtrude() == selExt) {
+                            sItem.setExpanded(true); treeView.getSelectionModel().select(eItem); treeView.scrollTo(treeView.getRow(eItem)); return;
+                        }
+                    }
+                }
+                treeView.getSelectionModel().select(sItem); treeView.scrollTo(treeView.getRow(sItem)); return;
             }
         }
     }
@@ -114,11 +107,12 @@ public class featuremanager_ui_main extends BorderPane {
     public static String formatItemLabel(shape_item_ui_main item) {
         if (item == null) return "";
         String lbl = item.getName();
-        if (item.hasHoles() || item.hasPatterns()) {
+        int h = item.getHoles().size(), ext = item.getExtrusions().size();
+        if (h > 0 || ext > 0) {
             lbl += " [";
-            if (item.hasHoles()) { int c = item.getHoles().size(); lbl += c + (c == 1 ? " Hole" : " Holes"); }
-            if (item.hasHoles() && item.hasPatterns()) lbl += ", ";
-            if (item.hasPatterns()) { int p = item.getPatterns().size(); lbl += p + (p == 1 ? " Pattern" : " Patterns"); }
+            if (h > 0) lbl += h + (h == 1 ? " Hole" : " Holes");
+            if (h > 0 && ext > 0) lbl += ", ";
+            if (ext > 0) lbl += ext + (ext == 1 ? " Extrude" : " Extrudes");
             lbl += "]";
         }
         return lbl;
@@ -130,16 +124,14 @@ public class featuremanager_ui_main extends BorderPane {
         private final HBox row = new HBox(6, iconView, nameLabel);
 
         FeatureTreeCell() {
-            row.setAlignment(Pos.CENTER_LEFT);
-            row.setPadding(new Insets(2, 4, 2, 4));
-            iconView.setFitWidth(14);
-            iconView.setFitHeight(14);
+            row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(2, 4, 2, 4));
+            iconView.setFitWidth(14); iconView.setFitHeight(14);
             nameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #1E293B;");
-
             setOnMouseClicked(e -> {
                 if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 2 && !isEmpty() && editor != null) {
                     feature_tree_node_ui_main val = getItem();
                     if (val.isHole()) editor.openHoleEditor(val.getParentShape(), val.getHole());
+                    else if (val.isExtrude()) editor.openExtrudeEditor(val.getParentShape(), val.getExtrude());
                     else if (val.isShape()) editor.openDimensionEditor(val.getShape());
                     e.consume();
                 }
@@ -149,13 +141,9 @@ public class featuremanager_ui_main extends BorderPane {
         @Override
         protected void updateItem(feature_tree_node_ui_main item, boolean empty) {
             super.updateItem(item, empty);
-            if (empty || item == null) {
-                setGraphic(null); setText(null); setContextMenu(null); setStyle("-fx-background-color: transparent;");
-            } else {
-                nameLabel.setText(item.getLabel());
-                iconView.setImage(item.getIcon());
-                setGraphic(row); setText(null);
-                setContextMenu(createContextMenu(item));
+            if (empty || item == null) { setGraphic(null); setText(null); setContextMenu(null); setStyle("-fx-background-color: transparent;"); }
+            else {
+                nameLabel.setText(item.getLabel()); iconView.setImage(item.getIcon()); setGraphic(row); setText(null); setContextMenu(createContextMenu(item));
                 if (isSelected()) {
                     setStyle("-fx-background-color: " + framework_ui_main.FEATURE_ROW_SELECTED_BG + "; -fx-border-color: " + framework_ui_main.OBJECT_SELECTED_COLOR + "; -fx-border-width: 0 0 0 3;");
                     nameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #0369A1;");
@@ -173,6 +161,11 @@ public class featuremanager_ui_main extends BorderPane {
                 MenuItem ren = new MenuItem("Rename..."); ren.setOnAction(e -> promptRenameHole(item.getParentShape(), item.getHole()));
                 MenuItem del = new MenuItem("Delete Hole"); del.setOnAction(e -> { item.getParentShape().removeHole(item.getHole().getId()); editor.notifyShapesChanged(); });
                 cm.getItems().addAll(edit, ren, new SeparatorMenuItem(), del);
+            } else if (item.isExtrude()) {
+                MenuItem edit = new MenuItem("Edit / Resize..."); edit.setOnAction(e -> editor.openExtrudeEditor(item.getParentShape(), item.getExtrude()));
+                MenuItem ren = new MenuItem("Rename..."); ren.setOnAction(e -> promptRenameExtrude(item.getParentShape(), item.getExtrude()));
+                MenuItem del = new MenuItem("Delete Extrude"); del.setOnAction(e -> { item.getParentShape().removeExtrude(item.getExtrude().getId()); editor.notifyShapesChanged(); });
+                cm.getItems().addAll(edit, ren, new SeparatorMenuItem(), del);
             } else if (item.isShape()) {
                 MenuItem edit = new MenuItem("Edit Dimensions..."); edit.setOnAction(e -> editor.openDimensionEditor(item.getShape()));
                 MenuItem ren = new MenuItem("Rename..."); ren.setOnAction(e -> promptRenameShape(item.getShape()));
@@ -186,6 +179,11 @@ public class featuremanager_ui_main extends BorderPane {
     private void promptRenameHole(shape_item_ui_main shape, hole_feature_ui_main hole) {
         TextInputDialog d = new TextInputDialog(hole.getName()); d.setTitle("Rename Hole"); d.setHeaderText(null); d.setContentText("New Name:");
         d.showAndWait().ifPresent(name -> { if (!name.isBlank()) { hole.setName(name.trim()); shape.rebuild(); editor.notifyShapesChanged(); } });
+    }
+
+    private void promptRenameExtrude(shape_item_ui_main shape, extrude_feature_ui_main ext) {
+        TextInputDialog d = new TextInputDialog(ext.getName()); d.setTitle("Rename Extrude"); d.setHeaderText(null); d.setContentText("New Name:");
+        d.showAndWait().ifPresent(name -> { if (!name.isBlank()) { ext.setName(name.trim()); shape.rebuild(); editor.notifyShapesChanged(); } });
     }
 
     private void promptRenameShape(shape_item_ui_main shape) {

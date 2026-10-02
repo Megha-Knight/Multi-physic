@@ -38,6 +38,7 @@ public class shape_item_ui_main {
     private face_kind_ui_main faceKind = null;
     private final List<hole_feature_ui_main> holes = new java.util.ArrayList<>();
     private final List<hole_pattern_ui_main> patterns = new java.util.ArrayList<>();
+    private final List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions = new java.util.ArrayList<>();
 
     public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) { this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, 0); }
@@ -86,30 +87,28 @@ public class shape_item_ui_main {
     public Point3D getUAxis() { return uAxis; } public Point3D getVAxis() { return vAxis; } public Point3D getFaceNormal() { return normal; }
     public String getFaceOwnerId() { return faceOwnerId; } public face_kind_ui_main getFaceKind() { return faceKind; } public boolean isOnFace() { return faceOwnerId != null; }
 
-    public List<hole_feature_ui_main> getHoles() { return holes; }
-    public boolean hasHoles() { return !holes.isEmpty(); }
+    public List<hole_feature_ui_main> getHoles() { return holes; } public boolean hasHoles() { return !holes.isEmpty(); }
     public void addHole(hole_feature_ui_main h) { if (h != null) { holes.add(h); rebuild(); } }
-    public void removeHole(String hId) {
-        holes.removeIf(h -> h.getId().equals(hId));
-        patterns.removeIf(p -> hId.equals(p.getSeedHoleId()));
-        rebuild();
-    }
+    public void removeHole(String hId) { holes.removeIf(h -> h.getId().equals(hId)); patterns.removeIf(p -> hId.equals(p.getSeedHoleId())); rebuild(); }
     public void clearHoles() { holes.clear(); patterns.clear(); rebuild(); }
 
-    public List<hole_pattern_ui_main> getPatterns() { return patterns; }
-    public boolean hasPatterns() { return !patterns.isEmpty(); }
+    public List<hole_pattern_ui_main> getPatterns() { return patterns; } public boolean hasPatterns() { return !patterns.isEmpty(); }
     public void addPattern(hole_pattern_ui_main p) { if (p != null) { patterns.add(p); rebuild(); } }
     public void removePattern(String pId) { patterns.removeIf(p -> p.getId().equals(pId)); rebuild(); }
     public void clearPatterns() { patterns.clear(); rebuild(); }
 
+    public List<ui.workspace.drafting.extrude.extrude_feature_ui_main> getExtrusions() { return extrusions; }
+    public boolean hasExtrusions() { return !extrusions.isEmpty(); }
+    public void addExtrude(ui.workspace.drafting.extrude.extrude_feature_ui_main ext) { if (ext != null) { extrusions.add(ext); rebuild(); } }
+    public void removeExtrude(String id) { extrusions.removeIf(e -> e.getId().equals(id)); rebuild(); }
+    public void clearExtrusions() { extrusions.clear(); rebuild(); }
+
     public List<hole_feature_ui_main> getAllEffectiveHoles() {
         List<hole_feature_ui_main> eff = new java.util.ArrayList<>(holes);
         for (hole_pattern_ui_main pat : patterns) {
-            hole_feature_ui_main seed = null;
             for (hole_feature_ui_main h : holes) {
-                if (h.getId().equals(pat.getSeedHoleId())) { seed = h; break; }
+                if (h.getId().equals(pat.getSeedHoleId())) { eff.addAll(pat.generateDerivedHoles(h)); break; }
             }
-            if (seed != null) eff.addAll(pat.generateDerivedHoles(seed));
         }
         return eff;
     }
@@ -146,6 +145,9 @@ public class shape_item_ui_main {
             default -> null;
         };
         if (geo != null) shapeGroup.getChildren().add(geo);
+        for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : extrusions) {
+            shapeGroup.getChildren().add(ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.buildExtrudeNode(this, ext, selected));
+        }
         if (selected) buildResizeHandles();
     }
 

@@ -11,6 +11,17 @@ public final class ui_feature_action_helper_ui_main {
         handleCutout(app, ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE);
     }
 
+    public static void handleExtrude(UI_Main app) {
+        var ed = app.getWorkspace3D().getShapeEditor();
+        var s = ed.getSelectedShape();
+        var f = ed.getActiveFace();
+        if (s != null && f != null && f.isPlanar()) {
+            ui.workspace.drafting.extrude.extrude_dialog_ui_main.open(s, f, ed, app.getScene() != null ? app.getScene().getWindow() : null);
+        } else {
+            app.getFooterBar().setStatusText(s == null ? "Select a 3D shape first." : (f == null ? "Select a planar face on the shape to extrude." : "Face is not planar."));
+        }
+    }
+
     public static void handleCutout(UI_Main app, ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape shape) {
         var ed = app.getWorkspace3D().getShapeEditor();
         var s = ed.getSelectedShape();

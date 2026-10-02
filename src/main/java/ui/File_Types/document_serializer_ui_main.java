@@ -61,6 +61,13 @@ public final class document_serializer_ui_main {
                             h.getHoleType().name(), h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth(),
                             h.getCutoutShape().name(), h.getWidth2(), enc);
                     }
+                    for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : s.getExtrusions()) {
+                        String enc = "";
+                        try { enc = java.net.URLEncoder.encode(ext.getName(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                        pw.printf(java.util.Locale.US, "extrude: %s, %s, %s, %.4f, %.4f, %.4f, %.4f, %.4f, %s%n",
+                            ext.getId(), ext.getFaceKind().name(), ext.getProfileShape().name(),
+                            ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight(), enc);
+                    }
                     for (hole_pattern_ui_main p : s.getPatterns()) {
                         pw.printf(java.util.Locale.US, "pattern: %s, %s, %s, %s, %d, %s, %.4f, %.4f, %.4f, %.4f, %b, %b%n",
                             p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType().name(),
@@ -88,6 +95,7 @@ public final class document_serializer_ui_main {
             double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0;
             List<hole_feature_ui_main> pendingHoles = new ArrayList<>();
             List<hole_pattern_ui_main> pendingPatterns = new ArrayList<>();
+            List<ui.workspace.drafting.extrude.extrude_feature_ui_main> pendingExtrusions = new ArrayList<>();
 
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -95,12 +103,12 @@ public final class document_serializer_ui_main {
                 if (line.startsWith("(") && line.endsWith(")")) line = line.substring(1, line.length() - 1).trim();
 
                 if (line.startsWith("SHAPE:")) {
-                    commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns);
+                    commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns, pendingExtrusions);
                     String typeStr = line.substring(6).trim();
                     try { currentType = basic_shapes_ui_main.valueOf(typeStr); } catch (Exception ex) { currentType = null; }
                     id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0;
                     uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null;
-                    pendingHoles.clear(); pendingPatterns.clear();
+                    pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear();
                 } else if (line.startsWith("id:")) id = line.substring(3).trim();
                 else if (line.startsWith("name:")) name = line.substring(5).trim();
                 else if (line.startsWith("p1:")) p1 = document_parse_helper_ui_main.parsePoint(line.substring(3).trim());
@@ -115,8 +123,9 @@ public final class document_serializer_ui_main {
                 else if (line.startsWith("faceKind:")) { try { faceKind = face_kind_ui_main.valueOf(line.substring(9).trim()); } catch (Exception ignored) {} }
                 else if (line.startsWith("hole:")) document_parse_helper_ui_main.parseHoleLine(line.substring(5).trim(), id, pendingHoles);
                 else if (line.startsWith("pattern:")) document_parse_helper_ui_main.parsePatternLine(line.substring(8).trim(), id, pendingPatterns);
+                else if (line.startsWith("extrude:")) document_parse_helper_ui_main.parseExtrudeLine(line.substring(8).trim(), id, pendingExtrusions);
             }
-            commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns);
+            commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns, pendingExtrusions);
         } catch (Exception e) {
             System.err.println("[Multiphysics] Error loading: " + e.getMessage());
         }
@@ -126,12 +135,14 @@ public final class document_serializer_ui_main {
     private static void commitShape(List<shape_item_ui_main> list, basic_shapes_ui_main currentType, String id, String name,
                                     Point3D p1, Point3D p2, double tx, double ty, double tz, double rotX, double rotY,
                                     Point3D uAxis, Point3D vAxis, Point3D norm, String faceOwner, face_kind_ui_main faceKind,
-                                    List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns) {
+                                    List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns,
+                                    List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions) {
         if (currentType != null && p1 != null && p2 != null) {
             shape_item_ui_main item = new shape_item_ui_main(id, name, currentType, p1, p2, tx, ty, tz, rotX, rotY);
             if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
             for (hole_feature_ui_main h : holes) item.addHole(h);
             for (hole_pattern_ui_main p : patterns) item.addPattern(p);
+            for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : extrusions) item.addExtrude(ext);
             list.add(item);
         }
     }
@@ -157,6 +168,13 @@ public final class document_serializer_ui_main {
                     p.getInstanceCount(), p.getLinearDirection(), p.getLinearSpacing(),
                     p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(),
                     p.isClockwise(), p.isFullCircle()
+                ));
+            }
+            for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : s.getExtrusions()) {
+                item.addExtrude(new ui.workspace.drafting.extrude.extrude_feature_ui_main(
+                    ext.getId(), ext.getOwnerShapeId(), ext.getName(), ext.getFaceKind(),
+                    ext.getProfileShape(), ext.getU(), ext.getV(), ext.getDiameter(),
+                    ext.getWidth2(), ext.getHeight()
                 ));
             }
             copies.add(item);

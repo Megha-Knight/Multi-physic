@@ -70,4 +70,23 @@ public final class document_parse_helper_ui_main {
             }
         } catch (Exception ignored) {}
     }
+
+    public static void parseExtrudeLine(String str, String parentId, List<ui.workspace.drafting.extrude.extrude_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 8) {
+                String id = p[0].trim();
+                face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
+                hole_feature_ui_main.CutoutShape shape = hole_feature_ui_main.CutoutShape.valueOf(p[2].trim());
+                double u = Double.parseDouble(p[3].trim()), v = Double.parseDouble(p[4].trim());
+                double dia = Double.parseDouble(p[5].trim()), w2 = Double.parseDouble(p[6].trim());
+                double h = Double.parseDouble(p[7].trim());
+                String name = null;
+                if (p.length >= 9) {
+                    try { name = java.net.URLDecoder.decode(p[8].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { name = p[8].trim(); }
+                }
+                out.add(new ui.workspace.drafting.extrude.extrude_feature_ui_main(id, parentId, name, kind, shape, u, v, dia, w2, h));
+            }
+        } catch (Exception ignored) {}
+    }
 }
