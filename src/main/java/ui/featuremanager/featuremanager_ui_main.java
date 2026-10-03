@@ -17,18 +17,15 @@ public class featuremanager_ui_main extends BorderPane {
 
     private final TreeView<feature_tree_node_ui_main> treeView = new TreeView<>();
     private final TreeItem<feature_tree_node_ui_main> rootItem = new TreeItem<>(null);
-    private shape_editor_ui_main editor;
-    private boolean syncLock = false;
+    private final ListView<shape_item_ui_main> legacyListView = new ListView<>();
+    private shape_editor_ui_main editor; private boolean syncLock = false;
 
     public featuremanager_ui_main() {
-        getStyleClass().add("feature-manager-pane");
-        setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #C9D1D9; -fx-border-width: 0 1 0 0;");
-
-        HBox header = new HBox(); header.setAlignment(Pos.CENTER_LEFT); header.setPadding(new Insets(4, 10, 4, 10)); header.setPrefHeight(26);
+        getStyleClass().add("feature-manager-pane"); setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #C9D1D9; -fx-border-width: 0 1 0 0;");
+        Label lbl = new Label("Feature Manager"); lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #1F2933;");
+        HBox header = new HBox(lbl); header.setAlignment(Pos.CENTER_LEFT); header.setPadding(new Insets(4, 10, 4, 10)); header.setPrefHeight(26);
         header.setStyle("-fx-background-color: #F1F5F9; -fx-border-color: #CBD5E1; -fx-border-width: 0 0 1 0;");
-        Label titleLabel = new Label("Feature Manager"); titleLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #1F2933;");
-        header.getChildren().add(titleLabel); setTop(header);
-
+        setTop(header);
         treeView.setRoot(rootItem); treeView.setShowRoot(false);
         treeView.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
         treeView.setCellFactory(tv -> new FeatureTreeCell());
@@ -47,17 +44,17 @@ public class featuremanager_ui_main extends BorderPane {
         treeView.setOnMouseClicked(e -> {
             if (e.getTarget() == treeView && editor != null) { editor.selectPattern(null, null); editor.selectExtrude(null, null); editor.selectHole(null, null); editor.selectShape(null); }
         });
+        legacyListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (!syncLock && editor != null) { syncLock = true; try { editor.selectShape(newVal); if (newVal != null) { editor.selectHole(newVal, null); editor.selectExtrude(newVal, null); } } finally { syncLock = false; } }
+        });
         setCenter(treeView);
     }
 
     public void bindToEditor(shape_editor_ui_main ed) {
-        this.editor = ed;
-        if (editor == null) return;
+        this.editor = ed; if (editor == null) return;
         editor.setOnShapesChanged(this::refresh);
-        editor.setOnSelectionChanged(s -> syncFromCanvas());
-        editor.setOnHoleSelectionChanged((s, h) -> syncFromCanvas());
-        editor.setOnPatternSelectionChanged((s, p) -> syncFromCanvas());
-        editor.setOnExtrudeSelectionChanged((s, ext) -> syncFromCanvas());
+        editor.setOnSelectionChanged(s -> syncFromCanvas()); editor.setOnHoleSelectionChanged((s, h) -> syncFromCanvas());
+        editor.setOnPatternSelectionChanged((s, p) -> syncFromCanvas()); editor.setOnExtrudeSelectionChanged((s, ext) -> syncFromCanvas());
         refresh();
     }
 
@@ -68,25 +65,25 @@ public class featuremanager_ui_main extends BorderPane {
             rootItem.getChildren().clear();
             for (shape_item_ui_main s : editor.getShapes()) {
                 TreeItem<feature_tree_node_ui_main> sNode = new TreeItem<>(feature_tree_node_ui_main.forShape(s));
-                sNode.setExpanded(true);
+                sNode.setExpanded(true); rootItem.getChildren().add(sNode);
                 for (hole_feature_ui_main h : s.getHoles()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forHole(s, h)));
                 for (hole_pattern_ui_main p : s.getPatterns()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forPattern(s, p)));
                 for (extrude_feature_ui_main ext : s.getExtrusions()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forExtrude(s, ext)));
-                rootItem.getChildren().add(sNode);
             }
+            legacyListView.getItems().setAll(editor.getShapes());
             syncFromCanvas();
         } finally { syncLock = false; }
     }
 
     public TreeView<feature_tree_node_ui_main> getTreeView() { return treeView; }
+    public ListView<shape_item_ui_main> getListView() { return legacyListView; }
 
     private void syncFromCanvas() {
         if (editor == null) return;
         shape_item_ui_main selShape = editor.getSelectedShape();
-        hole_feature_ui_main selHole = editor.getSelectedHole();
-        hole_pattern_ui_main selPat = editor.getSelectedPattern();
-        extrude_feature_ui_main selExt = editor.getSelectedExtrude();
-        if (selShape == null) { treeView.getSelectionModel().clearSelection(); return; }
+        hole_feature_ui_main selHole = editor.getSelectedHole(); hole_pattern_ui_main selPat = editor.getSelectedPattern(); extrude_feature_ui_main selExt = editor.getSelectedExtrude();
+        if (selShape == null) { treeView.getSelectionModel().clearSelection(); legacyListView.getSelectionModel().clearSelection(); return; }
+        legacyListView.getSelectionModel().select(selShape);
 
         for (TreeItem<feature_tree_node_ui_main> sItem : rootItem.getChildren()) {
             if (sItem.getValue().getShape() == selShape) {
@@ -165,23 +162,30 @@ public class featuremanager_ui_main extends BorderPane {
         private ContextMenu createContextMenu(feature_tree_node_ui_main item) {
             ContextMenu cm = new ContextMenu();
             if (item.isHole()) {
-                MenuItem edit = new MenuItem("Edit / Resize..."); edit.setOnAction(e -> editor.openHoleEditor(item.getParentShape(), item.getHole()));
-                MenuItem ren = new MenuItem("Rename..."); ren.setOnAction(e -> promptRename("Rename Hole", item.getHole().getName(), n -> { item.getHole().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
-                MenuItem del = new MenuItem("Delete Hole"); del.setOnAction(e -> { item.getParentShape().removeHole(item.getHole().getId()); editor.notifyShapesChanged(); });
-                cm.getItems().addAll(edit, ren, new SeparatorMenuItem(), del);
+                MenuItem edit = new MenuItem("Edit / Resize..."), del = new MenuItem("Delete Hole"), ren = new MenuItem("Rename..."), tog = new MenuItem(item.getHole().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
+                edit.setOnAction(e -> editor.openHoleEditor(item.getParentShape(), item.getHole()));
+                del.setOnAction(e -> { item.getParentShape().removeHole(item.getHole().getId()); editor.notifyShapesChanged(); });
+                ren.setOnAction(e -> promptRename("Rename Hole", item.getHole().getName(), n -> { item.getHole().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
+                tog.setOnAction(e -> { item.getHole().setVisible(!item.getHole().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
+                cm.getItems().addAll(edit, ren, tog, new SeparatorMenuItem(), del);
             } else if (item.isPattern()) {
-                MenuItem edit = new MenuItem("Edit Pattern..."); edit.setOnAction(e -> editor.openPatternEditor(item.getParentShape(), item.getPattern()));
-                MenuItem del = new MenuItem("Delete Pattern"); del.setOnAction(e -> { item.getParentShape().removePattern(item.getPattern().getId()); editor.notifyShapesChanged(); });
-                cm.getItems().addAll(edit, new SeparatorMenuItem(), del);
+                MenuItem edit = new MenuItem("Edit Pattern..."), del = new MenuItem("Delete Pattern"), tog = new MenuItem(item.getPattern().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
+                edit.setOnAction(e -> editor.openPatternEditor(item.getParentShape(), item.getPattern()));
+                del.setOnAction(e -> { item.getParentShape().removePattern(item.getPattern().getId()); editor.notifyShapesChanged(); });
+                tog.setOnAction(e -> { item.getPattern().setVisible(!item.getPattern().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
+                cm.getItems().addAll(edit, tog, new SeparatorMenuItem(), del);
             } else if (item.isExtrude()) {
-                MenuItem edit = new MenuItem("Edit / Resize..."); edit.setOnAction(e -> editor.openExtrudeEditor(item.getParentShape(), item.getExtrude()));
-                MenuItem ren = new MenuItem("Rename..."); ren.setOnAction(e -> promptRename("Rename Extrude", item.getExtrude().getName(), n -> { item.getExtrude().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
-                MenuItem del = new MenuItem("Delete Extrude"); del.setOnAction(e -> { item.getParentShape().removeExtrude(item.getExtrude().getId()); editor.notifyShapesChanged(); });
-                cm.getItems().addAll(edit, ren, new SeparatorMenuItem(), del);
+                MenuItem edit = new MenuItem("Edit / Resize..."), del = new MenuItem("Delete Extrude"), ren = new MenuItem("Rename..."), tog = new MenuItem(item.getExtrude().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
+                edit.setOnAction(e -> editor.openExtrudeEditor(item.getParentShape(), item.getExtrude()));
+                del.setOnAction(e -> { item.getParentShape().removeExtrude(item.getExtrude().getId()); editor.notifyShapesChanged(); });
+                ren.setOnAction(e -> promptRename("Rename Extrude", item.getExtrude().getName(), n -> { item.getExtrude().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
+                tog.setOnAction(e -> { item.getExtrude().setVisible(!item.getExtrude().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
+                cm.getItems().addAll(edit, ren, tog, new SeparatorMenuItem(), del);
             } else if (item.isShape()) {
-                MenuItem edit = new MenuItem("Edit Dimensions..."); edit.setOnAction(e -> editor.openDimensionEditor(item.getShape()));
-                MenuItem ren = new MenuItem("Rename..."); ren.setOnAction(e -> promptRename("Rename Shape", item.getShape().getName(), n -> { item.getShape().setName(n); editor.notifyShapesChanged(); }));
-                MenuItem del = new MenuItem("Delete Shape"); del.setOnAction(e -> editor.removeShape(item.getShape()));
+                MenuItem edit = new MenuItem("Edit Dimensions..."), del = new MenuItem("Delete Shape"), ren = new MenuItem("Rename...");
+                edit.setOnAction(e -> editor.openDimensionEditor(item.getShape()));
+                del.setOnAction(e -> editor.removeShape(item.getShape()));
+                ren.setOnAction(e -> promptRename("Rename Shape", item.getShape().getName(), n -> { item.getShape().setName(n); editor.notifyShapesChanged(); }));
                 cm.getItems().addAll(edit, ren, new SeparatorMenuItem(), del);
             }
             return cm;

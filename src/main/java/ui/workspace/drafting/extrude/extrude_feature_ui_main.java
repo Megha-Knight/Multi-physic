@@ -37,6 +37,14 @@ public class extrude_feature_ui_main {
         this(id, ownerShapeId, null, faceKind, profileShape, u, v, diameter, width2, height);
     }
 
+    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    private boolean visible = true;
+
+    public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
+    public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
+    public boolean isVisible() { return visible; }
+    public void setVisible(boolean v) { this.visible = v; }
+
     public String getId()                  { return id; }
     public String getOwnerShapeId()        { return ownerShapeId; }
     public String getName()                { return (name != null && !name.isBlank()) ? name : getDefaultName(); }

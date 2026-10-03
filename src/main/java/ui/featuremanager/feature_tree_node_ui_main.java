@@ -53,19 +53,43 @@ public class feature_tree_node_ui_main {
     public String getSeedHoleId() { return pattern != null ? pattern.getSeedHoleId() : null; }
     public int getInstanceCount() { return pattern != null ? pattern.getInstanceCount() : 0; }
 
+    public ui.workspace.drafting.features.feature_state_ui_main getFeatureState() {
+        if (hole != null) return hole.getState();
+        if (pattern != null) return pattern.getState();
+        if (extrude != null) return extrude.getState();
+        if (shape != null) return shape.getState();
+        return ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    }
+
+    public boolean isVisible() {
+        if (hole != null) return hole.isVisible();
+        if (pattern != null) return pattern.isVisible();
+        if (extrude != null) return extrude.isVisible();
+        return true;
+    }
+
+    public String getDependencyId() {
+        if (pattern != null) return pattern.getSeedHoleId();
+        if (hole != null) return parentShape != null ? parentShape.getId() : null;
+        if (extrude != null) return parentShape != null ? parentShape.getId() : null;
+        if (shape != null && shape.isOnFace()) return shape.getFaceOwnerId();
+        return null;
+    }
+
     public String getLabel() {
-        if (isShape()) return featuremanager_ui_main.formatItemLabel(shape);
-        if (isHole()) {
+        String base = "";
+        if (isShape()) base = featuremanager_ui_main.formatItemLabel(shape);
+        else if (isHole()) {
             String detail = hole.isThroughAll() ? "Through" : String.format(java.util.Locale.US, "d:%.1f", hole.getDepth());
-            return String.format(java.util.Locale.US, "%s [Ø%.1f, %s, %s]", hole.getName(), hole.getDiameter(), detail, hole.getFaceKind().getLabel());
+            base = String.format(java.util.Locale.US, "%s [Ø%.1f, %s, %s]", hole.getName(), hole.getDiameter(), detail, hole.getFaceKind().getLabel());
+        } else if (isPattern()) {
+            base = String.format(java.util.Locale.US, "%s (%d Instances)", pattern.getPatternType().getLabel(), pattern.getInstanceCount());
+        } else if (isExtrude()) {
+            base = String.format(java.util.Locale.US, "%s [Boss %.1f x %.1f, %s]", extrude.getName(), extrude.getDiameter(), extrude.getHeight(), extrude.getFaceKind().getLabel());
         }
-        if (isPattern()) {
-            return String.format(java.util.Locale.US, "%s (%d Instances)", pattern.getPatternType().getLabel(), pattern.getInstanceCount());
-        }
-        if (isExtrude()) {
-            return String.format(java.util.Locale.US, "%s [Boss %.1f x %.1f, %s]", extrude.getName(), extrude.getDiameter(), extrude.getHeight(), extrude.getFaceKind().getLabel());
-        }
-        return "";
+        if (getFeatureState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) base += " [INVALID]";
+        else if (!isVisible() || getFeatureState() == ui.workspace.drafting.features.feature_state_ui_main.SUPPRESSED) base += " [Suppressed]";
+        return base;
     }
 
     public Image getIcon() {

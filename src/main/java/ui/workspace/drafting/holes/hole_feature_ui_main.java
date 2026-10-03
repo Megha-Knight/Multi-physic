@@ -99,25 +99,24 @@ public class hole_feature_ui_main {
     public HoleType getHoleType()          { return holeType; }
     public face_kind_ui_main getFaceKind() { return faceKind; }
 
-    public double getU()                   { return u; }
-    public void setU(double u)             { this.u = u; }
-    public double getV()                   { return v; }
-    public void setV(double v)             { this.v = v; }
-    public double getDiameter()            { return diameter; }
-    public void setDiameter(double d)      { this.diameter = d; }
-    public double getRadius()              { return Math.max(0.05, diameter * 0.5); }
-    public double getDepth()               { return depth; }
-    public void setDepth(double d)         { this.depth = d; }
-    public boolean isThroughAll()          { return throughAll; }
-    public void setThroughAll(boolean b)   { this.throughAll = b; }
-    public double getCsDiameter()          { return csDiameter; }
-    public void setCsDiameter(double d)    { this.csDiameter = d; }
-    public double getCsAngle()             { return csAngle; }
-    public void setCsAngle(double a)       { this.csAngle = a; }
-    public double getCbDiameter()          { return cbDiameter; }
-    public void setCbDiameter(double d)    { this.cbDiameter = d; }
-    public double getCbDepth()             { return cbDepth; }
-    public void setCbDepth(double d)       { this.cbDepth = d; }
+    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    private boolean visible = true;
+
+    public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
+    public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
+    public boolean isVisible() { return visible; }
+    public void setVisible(boolean v) { this.visible = v; }
+
+    public double getU() { return u; } public void setU(double u) { this.u = u; }
+    public double getV() { return v; } public void setV(double v) { this.v = v; }
+    public double getDiameter() { return diameter; } public void setDiameter(double d) { this.diameter = d; }
+    public double getRadius() { return Math.max(0.05, diameter * 0.5); }
+    public double getDepth() { return depth; } public void setDepth(double d) { this.depth = d; }
+    public boolean isThroughAll() { return throughAll; } public void setThroughAll(boolean b) { this.throughAll = b; }
+    public double getCsDiameter() { return csDiameter; } public void setCsDiameter(double d) { this.csDiameter = d; }
+    public double getCsAngle() { return csAngle; } public void setCsAngle(double a) { this.csAngle = a; }
+    public double getCbDiameter() { return cbDiameter; } public void setCbDiameter(double d) { this.cbDiameter = d; }
+    public double getCbDepth() { return cbDepth; } public void setCbDepth(double d) { this.cbDepth = d; }
 
     public String getDefaultName() {
         if (cutoutShape != null && cutoutShape != CutoutShape.CIRCLE) {

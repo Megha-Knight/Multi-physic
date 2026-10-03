@@ -21,6 +21,8 @@ public class hole_pattern_ui_main {
 
     public enum LinearDirection {
         U_DIR("U Direction"), V_DIR("V Direction");
+        public static final LinearDirection ALONG_U = U_DIR;
+        public static final LinearDirection ALONG_V = V_DIR;
         private final String label;
         LinearDirection(String label) { this.label = label; }
         public String getLabel() { return label; }
@@ -69,31 +71,44 @@ public class hole_pattern_ui_main {
         this.centerU = cu; this.centerV = cv; this.angularSpan = span; this.clockwise = cw; this.fullCircle = full;
     }
 
-    public String getId()                   { return id; }
-    public String getOwnerShapeId()          { return ownerShapeId; }
-    public String getSeedHoleId()            { return seedHoleId; }
-    public PatternType getPatternType()      { return patternType; }
-    public LinearDirection getDirection()    { return direction; }
+    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    private boolean visible = true;
+    private String diagnosticMessage = null;
+
+    public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
+    public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
+    public boolean isVisible() { return visible; }
+    public void setVisible(boolean v) { this.visible = v; }
+    public String getDiagnosticMessage() { return diagnosticMessage; }
+    public void setDiagnosticMessage(String msg) { this.diagnosticMessage = msg; }
+
+    public String getId() { return id; }
+    public String getOwnerShapeId() { return ownerShapeId; }
+    public String getSeedHoleId() { return seedHoleId; }
+    public PatternType getPatternType() { return patternType; }
+    public LinearDirection getDirection() { return direction; }
     public LinearDirection getLinearDirection() { return direction; }
     public void setDirection(LinearDirection d) { this.direction = d; }
-    public int getCount()                    { return count; }
-    public int getInstanceCount()            { return count; }
-    public void setCount(int c)              { this.count = c; }
-    public double getSpacing()               { return spacing; }
-    public double getLinearSpacing()         { return spacing; }
-    public void setSpacing(double s)         { this.spacing = s; }
-    public double getCenterU()               { return centerU; }
-    public double getCircularCenterU()       { return centerU; }
-    public void setCenterU(double u)         { this.centerU = u; }
-    public double getCenterV()               { return centerV; }
-    public double getCircularCenterV()       { return centerV; }
-    public void setCenterV(double v)         { this.centerV = v; }
-    public double getAngularSpan()           { return angularSpan; }
-    public void setAngularSpan(double span)  { this.angularSpan = span; }
-    public boolean isClockwise()             { return clockwise; }
-    public void setClockwise(boolean cw)     { this.clockwise = cw; }
-    public boolean isFullCircle()            { return fullCircle; }
-    public void setFullCircle(boolean fc)    { this.fullCircle = fc; }
+    public int getCount() { return count; }
+    public int getInstanceCount() { return count; }
+    public void setCount(int c) { this.count = c; }
+    public void setInstanceCount(int c) { this.count = c; }
+    public double getSpacing() { return spacing; }
+    public double getLinearSpacing() { return spacing; }
+    public void setSpacing(double s) { this.spacing = s; }
+    public void setLinearSpacing(double s) { this.spacing = s; }
+    public double getCenterU() { return centerU; }
+    public double getCircularCenterU() { return centerU; }
+    public void setCenterU(double u) { this.centerU = u; }
+    public double getCenterV() { return centerV; }
+    public double getCircularCenterV() { return centerV; }
+    public void setCenterV(double v) { this.centerV = v; }
+    public double getAngularSpan() { return angularSpan; }
+    public void setAngularSpan(double span) { this.angularSpan = span; }
+    public boolean isClockwise() { return clockwise; }
+    public void setClockwise(boolean cw) { this.clockwise = cw; }
+    public boolean isFullCircle() { return fullCircle; }
+    public void setFullCircle(boolean fc) { this.fullCircle = fc; }
 
     public record Pos2D(double u, double v) {}
 

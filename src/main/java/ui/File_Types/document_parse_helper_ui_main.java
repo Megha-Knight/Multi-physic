@@ -60,7 +60,8 @@ public final class document_parse_helper_ui_main {
                 String seedId = p[2].trim();
                 hole_pattern_ui_main.PatternType pType = hole_pattern_ui_main.PatternType.valueOf(p[3].trim());
                 int count = Integer.parseInt(p[4].trim());
-                hole_pattern_ui_main.LinearDirection dir = hole_pattern_ui_main.LinearDirection.valueOf(p[5].trim());
+                hole_pattern_ui_main.LinearDirection dir = ("ALONG_V".equalsIgnoreCase(p[5].trim()) || "V_DIR".equalsIgnoreCase(p[5].trim()))
+                        ? hole_pattern_ui_main.LinearDirection.V_DIR : hole_pattern_ui_main.LinearDirection.U_DIR;
                 double spacing = Double.parseDouble(p[6].trim());
                 double cU = Double.parseDouble(p[7].trim()), cV = Double.parseDouble(p[8].trim());
                 double span = Double.parseDouble(p[9].trim());

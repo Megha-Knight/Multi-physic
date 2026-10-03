@@ -163,19 +163,26 @@ public final class document_serializer_ui_main {
             shape_item_ui_main item = new shape_item_ui_main(s.getId(), s.getName(), s.getType(), s.getP1(), s.getP2(),
                     s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationX(), s.getRotationY());
             if (s.isOnFace()) item.setFacePlane(s.getUAxis(), s.getVAxis(), s.getFaceNormal(), s.getFaceOwnerId(), s.getFaceKind());
+            item.setState(s.getState());
             for (hole_feature_ui_main h : s.getHoles()) {
-                item.addHole(new hole_feature_ui_main(
+                hole_feature_ui_main ch = new hole_feature_ui_main(
                     h.getId(), h.getOwnerShapeId(), h.getName(), h.getHoleType(), h.getFaceKind(),
                     h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(),
                     h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth(),
                     h.getCutoutShape(), h.getWidth2()
-                ));
+                );
+                ch.setState(h.getState()); ch.setVisible(h.isVisible());
+                item.addHole(ch);
             }
             for (hole_pattern_ui_main p : s.getPatterns()) {
-                item.addPattern(new hole_pattern_ui_main(p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType(), p.getInstanceCount(), p.getLinearDirection(), p.getLinearSpacing(), p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(), p.isClockwise(), p.isFullCircle()));
+                hole_pattern_ui_main cp = new hole_pattern_ui_main(p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType(), p.getInstanceCount(), p.getLinearDirection(), p.getLinearSpacing(), p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(), p.isClockwise(), p.isFullCircle());
+                cp.setState(p.getState()); cp.setVisible(p.isVisible()); cp.setDiagnosticMessage(p.getDiagnosticMessage());
+                item.addPattern(cp);
             }
             for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : s.getExtrusions()) {
-                item.addExtrude(new ui.workspace.drafting.extrude.extrude_feature_ui_main(ext.getId(), ext.getOwnerShapeId(), ext.getName(), ext.getFaceKind(), ext.getProfileShape(), ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight()));
+                ui.workspace.drafting.extrude.extrude_feature_ui_main cext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(ext.getId(), ext.getOwnerShapeId(), ext.getName(), ext.getFaceKind(), ext.getProfileShape(), ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight());
+                cext.setState(ext.getState()); cext.setVisible(ext.isVisible());
+                item.addExtrude(cext);
             }
             copies.add(item);
         }

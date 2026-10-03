@@ -41,14 +41,16 @@ public class shape_item_ui_main {
     private final List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions = new java.util.ArrayList<>();
     private String selectedExtrudeId = null;
 
+    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
+    public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
+
     public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) { this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z, double rot) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, rot); }
     public shape_item_ui_main(String id, String name, basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(id, name, t, p1, p2, x, y, z, 0, 0); }
-    public shape_item_ui_main(String id, String name, basic_shapes_ui_main type, Point3D p1, Point3D p2,
-                               double wx, double wy, double wz, double rot) { this(id, name, type, p1, p2, wx, wy, wz, 0, rot); }
-    public shape_item_ui_main(String id, String name, basic_shapes_ui_main type, Point3D p1, Point3D p2,
-                               double wx, double wy, double wz, double rx, double ry) {
+    public shape_item_ui_main(String id, String name, basic_shapes_ui_main type, Point3D p1, Point3D p2, double wx, double wy, double wz, double rot) { this(id, name, type, p1, p2, wx, wy, wz, 0, rot); }
+    public shape_item_ui_main(String id, String name, basic_shapes_ui_main type, Point3D p1, Point3D p2, double wx, double wy, double wz, double rx, double ry) {
         this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
         this.name = name; this.type = type; this.p1 = p1; this.p2 = p2;
         rootGroup.getTransforms().addAll(worldTx, worldRy, worldRx);
@@ -57,20 +59,12 @@ public class shape_item_ui_main {
         setRotation(rx, ry);
     }
 
-    public void applyWorldDelta(double dx, double dy, double dz) {
-        worldX += dx; worldY += dy; worldZ += dz;
-        worldTx.setX(worldX); worldTx.setY(worldY); worldTx.setZ(worldZ);
-    }
-    public void setWorldTranslation(double x, double y, double z) {
-        worldX = x; worldY = y; worldZ = z;
-        worldTx.setX(x); worldTx.setY(y); worldTx.setZ(z);
-    }
+    public void applyWorldDelta(double dx, double dy, double dz) { worldX += dx; worldY += dy; worldZ += dz; worldTx.setX(worldX); worldTx.setY(worldY); worldTx.setZ(worldZ); }
+    public void setWorldTranslation(double x, double y, double z) { worldX = x; worldY = y; worldZ = z; worldTx.setX(x); worldTx.setY(y); worldTx.setZ(z); }
     public void setRotation(double rx, double ry) {
         this.rotationX = shape_rotation_helper_ui_main.normalize360(rx);
         this.rotationY = shape_rotation_helper_ui_main.normalize360(ry);
-        updateRotationPivot();
-        worldRx.setAngle(this.rotationX);
-        worldRy.setAngle(this.rotationY);
+        updateRotationPivot(); worldRx.setAngle(this.rotationX); worldRy.setAngle(this.rotationY);
     }
     public void setRotationAngle(double deg) { setRotation(this.rotationX, deg); }
     public void setRotationX(double deg) { setRotation(deg, this.rotationY); }
@@ -92,6 +86,7 @@ public class shape_item_ui_main {
     public void addHole(hole_feature_ui_main h) { if (h != null) { holes.add(h); rebuild(); } }
     public void removeHole(String hId) { holes.removeIf(h -> h.getId().equals(hId)); patterns.removeIf(p -> hId.equals(p.getSeedHoleId())); rebuild(); }
     public void clearHoles() { holes.clear(); patterns.clear(); rebuild(); }
+    public hole_feature_ui_main getHole(String id) { for (hole_feature_ui_main h : holes) if (h.getId().equals(id)) return h; return null; }
 
     public List<hole_pattern_ui_main> getPatterns() { return patterns; } public boolean hasPatterns() { return !patterns.isEmpty(); }
     public void addPattern(hole_pattern_ui_main p) { if (p != null) { patterns.add(p); rebuild(); } }
@@ -107,10 +102,17 @@ public class shape_item_ui_main {
     public void setSelectedExtrudeId(String id) { this.selectedExtrudeId = id; rebuild(); }
 
     public List<hole_feature_ui_main> getAllEffectiveHoles() {
-        List<hole_feature_ui_main> eff = new java.util.ArrayList<>(holes);
+        List<hole_feature_ui_main> eff = new java.util.ArrayList<>();
+        for (hole_feature_ui_main h : holes) {
+            if (h.isVisible() && h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) eff.add(h);
+        }
         for (hole_pattern_ui_main pat : patterns) {
+            if (!pat.isVisible() || pat.getState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) continue;
             for (hole_feature_ui_main h : holes) {
-                if (h.getId().equals(pat.getSeedHoleId())) { eff.addAll(pat.generateDerivedHoles(h)); break; }
+                if (h.getId().equals(pat.getSeedHoleId()) && h.isValid() && h.isVisible() && h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) {
+                    eff.addAll(pat.generateDerivedHoles(h));
+                    break;
+                }
             }
         }
         return eff;
@@ -149,6 +151,7 @@ public class shape_item_ui_main {
         };
         if (geo != null) shapeGroup.getChildren().add(geo);
         for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : extrusions) {
+            if (!ext.isVisible() || ext.getState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) continue;
             boolean isFocused = (selectedExtrudeId != null && selectedExtrudeId.equals(ext.getId()));
             shapeGroup.getChildren().add(ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.buildExtrudeNode(this, ext, selected, isFocused));
         }
@@ -167,17 +170,11 @@ public class shape_item_ui_main {
 
     public List<Point3D> getControlHandles() { return shape_handles_ui_main.getControlHandles(type, p1, p2); }
     public boolean isRotationHandle(int idx) { return false; }
-
     public void moveHandle(int index, Point3D newPos) {
         Point3D[] updated = shape_handles_ui_main.moveHandle(type, p1, p2, index, newPos);
-        this.p1 = updated[0]; this.p2 = updated[1];
-        updateRotationPivot(); rebuild();
+        this.p1 = updated[0]; this.p2 = updated[1]; updateRotationPivot(); rebuild();
     }
-
-    public boolean containsNode(Node node) {
-        for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup) return true;
-        return false;
-    }
+    public boolean containsNode(Node node) { for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup) return true; return false; }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }
     public int findHandleNear(Point3D groundPt, double threshold) {
         List<Point3D> handles = getControlHandles();
@@ -192,7 +189,7 @@ public class shape_item_ui_main {
     public String getId() { return id; } public String getName() { return name != null ? name : ""; }
     public void setName(String name) { this.name = name; }
     public void setP1P2(Point3D np1, Point3D np2) { this.p1 = np1; this.p2 = np2; updateRotationPivot(); rebuild(); }
-    public Group getRootGroup() { return rootGroup; } public basic_shapes_ui_main getType() { return type; }
+    public Group getRootGroup() { return rootGroup; } public Group getShapeGroup() { return shapeGroup; } public basic_shapes_ui_main getType() { return type; }
     public Point3D getP1() { return p1; } public Point3D getP2() { return p2; }
     public boolean isSelected() { return selected; } public void setSelected(boolean sel) { this.selected = sel; rebuild(); }
 }
