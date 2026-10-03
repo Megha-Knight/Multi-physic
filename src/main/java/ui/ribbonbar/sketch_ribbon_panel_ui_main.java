@@ -16,7 +16,7 @@ import ui.workspace.drafting.sketch.sketch_tool_type_ui_main;
  * sketch_ribbon_panel_ui_main.java
  * Ribbon tool group for Interactive Sketch Mode tools (Select, Line, Circle, Rect, Arc, Close).
  */
-public class sketch_ribbon_panel_ui_main extends HBox {
+public class sketch_ribbon_panel_ui_main extends HBox implements dynamic_panel_entry_ui_main {
 
     private final ToggleGroup toolGroup = new ToggleGroup();
     private final ToggleButton btnSelect = createToolBtn("Select", sketch_tool_type_ui_main.SELECT);
@@ -59,6 +59,11 @@ public class sketch_ribbon_panel_ui_main extends HBox {
         this.controller = ctrl;
         this.onCloseRequested = onClose;
     }
+
+    public void show() { setVisible(true); setManaged(true); }
+    public void hide() { setVisible(false); setManaged(false); }
+    @Override public boolean isPanelVisible() { return isVisible(); }
+    @Override public javafx.scene.Node asNode() { return this; }
 
     public void setSketchModeActive(boolean active) {
         setVisible(active);

@@ -39,6 +39,7 @@ public class featuremanager_ui_main extends BorderPane {
                 else if (val.isHole()) editor.selectHole(val.getParentShape(), val.getHole());
                 else if (val.isPattern()) editor.selectPattern(val.getParentShape(), val.getPattern());
                 else if (val.isExtrude()) editor.selectExtrude(val.getParentShape(), val.getExtrude());
+                else if (val.isDerivedFace()) { editor.selectShape(val.getParentShape()); editor.selectHole(val.getParentShape(), val.getHole()); }
             } finally { syncLock = false; }
         });
 
@@ -68,7 +69,16 @@ public class featuremanager_ui_main extends BorderPane {
                 TreeItem<feature_tree_node_ui_main> sNode = new TreeItem<>(feature_tree_node_ui_main.forShape(s));
                 sNode.setExpanded(true); rootItem.getChildren().add(sNode);
                 for (var sk : s.getSketches()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forSketch(s, sk)));
-                for (hole_feature_ui_main h : s.getHoles()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forHole(s, h)));
+                for (hole_feature_ui_main h : s.getHoles()) {
+                    TreeItem<feature_tree_node_ui_main> hNode = new TreeItem<>(feature_tree_node_ui_main.forHole(s, h));
+                    var body = s.getTopology();
+                    if (body != null) {
+                        for (var df : body.getDerivedFacesForFeature(h.getId())) {
+                            hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, df)));
+                        }
+                    }
+                    sNode.getChildren().add(hNode);
+                }
                 for (hole_pattern_ui_main p : s.getPatterns()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forPattern(s, p)));
                 for (extrude_feature_ui_main ext : s.getExtrusions()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forExtrude(s, ext)));
             }
@@ -145,45 +155,7 @@ public class featuremanager_ui_main extends BorderPane {
         }
 
         private ContextMenu createContextMenu(feature_tree_node_ui_main item) {
-            ContextMenu cm = new ContextMenu();
-            if (item.isHole()) {
-                MenuItem edit = new MenuItem("Edit / Resize..."), del = new MenuItem("Delete Hole"), ren = new MenuItem("Rename..."), tog = new MenuItem(item.getHole().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
-                edit.setOnAction(e -> editor.openHoleEditor(item.getParentShape(), item.getHole()));
-                del.setOnAction(e -> { item.getParentShape().removeHole(item.getHole().getId()); editor.notifyShapesChanged(); });
-                ren.setOnAction(e -> promptRename("Rename Hole", item.getHole().getName(), n -> { item.getHole().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
-                tog.setOnAction(e -> { item.getHole().setVisible(!item.getHole().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
-                cm.getItems().addAll(edit, ren, tog, new SeparatorMenuItem(), del);
-            } else if (item.isPattern()) {
-                MenuItem edit = new MenuItem("Edit Pattern..."), del = new MenuItem("Delete Pattern"), tog = new MenuItem(item.getPattern().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
-                edit.setOnAction(e -> editor.openPatternEditor(item.getParentShape(), item.getPattern()));
-                del.setOnAction(e -> { item.getParentShape().removePattern(item.getPattern().getId()); editor.notifyShapesChanged(); });
-                tog.setOnAction(e -> { item.getPattern().setVisible(!item.getPattern().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
-                cm.getItems().addAll(edit, tog, new SeparatorMenuItem(), del);
-            } else if (item.isExtrude()) {
-                MenuItem edit = new MenuItem("Edit / Resize..."), del = new MenuItem("Delete Extrude"), ren = new MenuItem("Rename..."), tog = new MenuItem(item.getExtrude().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
-                edit.setOnAction(e -> editor.openExtrudeEditor(item.getParentShape(), item.getExtrude()));
-                del.setOnAction(e -> { item.getParentShape().removeExtrude(item.getExtrude().getId()); editor.notifyShapesChanged(); });
-                ren.setOnAction(e -> promptRename("Rename Extrude", item.getExtrude().getName(), n -> { item.getExtrude().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
-                tog.setOnAction(e -> { item.getExtrude().setVisible(!item.getExtrude().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
-                cm.getItems().addAll(edit, ren, tog, new SeparatorMenuItem(), del);
-            } else if (item.isSketch()) {
-                MenuItem edit = new MenuItem("Edit Sketch..."), del = new MenuItem("Delete Sketch");
-                edit.setOnAction(e -> { if (onSketchDoubleClicked != null) onSketchDoubleClicked.accept(item.getSketch()); });
-                del.setOnAction(e -> { if (item.getParentShape() != null) { item.getParentShape().removeSketch(item.getSketch().getId()); editor.notifyShapesChanged(); } });
-                cm.getItems().addAll(edit, new SeparatorMenuItem(), del);
-            } else if (item.isShape()) {
-                MenuItem edit = new MenuItem("Edit Dimensions..."), del = new MenuItem("Delete Shape"), ren = new MenuItem("Rename...");
-                edit.setOnAction(e -> editor.openDimensionEditor(item.getShape()));
-                del.setOnAction(e -> editor.removeShape(item.getShape()));
-                ren.setOnAction(e -> promptRename("Rename Shape", item.getShape().getName(), n -> { item.getShape().setName(n); editor.notifyShapesChanged(); }));
-                cm.getItems().addAll(edit, ren, new SeparatorMenuItem(), del);
-            }
-            return cm;
+            return feature_context_menu_helper_ui_main.createMenu(item, editor, onSketchDoubleClicked);
         }
-    }
-
-    private void promptRename(String title, String cur, java.util.function.Consumer<String> onRename) {
-        TextInputDialog d = new TextInputDialog(cur); d.setTitle(title); d.setHeaderText(null); d.setContentText("New Name:");
-        d.showAndWait().ifPresent(n -> { if (!n.isBlank()) onRename.accept(n.trim()); });
     }
 }

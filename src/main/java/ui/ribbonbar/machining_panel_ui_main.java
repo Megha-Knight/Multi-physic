@@ -23,7 +23,7 @@ import java.util.function.Consumer;
  * machining_panel_ui_main.java
  * Dynamic Ribbon Gallery Panel for Machining Cutouts (Circle, Square, Rectangle, Triangles) and Patterns.
  */
-public class machining_panel_ui_main extends HBox {
+public class machining_panel_ui_main extends HBox implements dynamic_panel_entry_ui_main {
 
     private final Button btnCatCutouts = new Button("Cutouts");
     private final Button btnCatPatterns = new Button("Patterns");
@@ -109,6 +109,8 @@ public class machining_panel_ui_main extends HBox {
     public void show() { setVisible(true); setManaged(true); }
     public void hide() { setVisible(false); setManaged(false); }
     public void toggle() { if (isVisible()) hide(); else show(); }
+    @Override public boolean isPanelVisible() { return isVisible(); }
+    @Override public Node asNode() { return this; }
 
     private void selectCategory(boolean isCutouts) {
         paneCutouts.setVisible(isCutouts); paneCutouts.setManaged(isCutouts);

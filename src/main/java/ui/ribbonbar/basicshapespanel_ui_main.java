@@ -23,7 +23,7 @@ import java.util.function.Consumer;
  * Dynamic Ribbon Gallery Panel for Basic2D and Basic3D geometric designs.
  * Remains open during interactive drafting until closed by X mark or Basic Shapes button.
  */
-public class basicshapespanel_ui_main extends HBox {
+public class basicshapespanel_ui_main extends HBox implements dynamic_panel_entry_ui_main {
 
     private final Button btnCat2D = new Button("Basic2D");
     private final Button btnCat3D = new Button("Basic3D");
@@ -79,6 +79,8 @@ public class basicshapespanel_ui_main extends HBox {
     public void show() { setVisible(true); setManaged(true); }
     public void hide() { setVisible(false); setManaged(false); }
     public void toggle() { if (isVisible()) hide(); else show(); }
+    @Override public boolean isPanelVisible() { return isVisible(); }
+    @Override public Node asNode() { return this; }
 
     private void selectCategory(boolean is2D) {
         pane2D.setVisible(is2D); pane2D.setManaged(is2D);

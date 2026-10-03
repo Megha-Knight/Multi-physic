@@ -104,8 +104,9 @@ public class UI_Main extends BorderPane {
         workspace3D.getSketchMode().setStatusCallback(footerBar::setStatusText);
 
         ribbonBar.setOnExtrudeRequested(() -> ui_feature_action_helper_ui_main.handleExtrude(this));
+        ribbonBar.getExtrudePanel().setOnApply(cfg -> ui_feature_action_helper_ui_main.applyExtrudeConfig(this, cfg));
         ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this));
-        ribbonBar.setOnCutoutRequested(shape -> ui_feature_action_helper_ui_main.handleCutout(this, shape));
+        ribbonBar.setOnCutoutRequested(s -> ui_feature_action_helper_ui_main.handleCutout(this, s));
         ribbonBar.setOnLinearPatternRequested(() -> ui_feature_action_helper_ui_main.handleLinearPattern(this));
         ribbonBar.setOnCircularPatternRequested(() -> ui_feature_action_helper_ui_main.handleCircularPattern(this));
 

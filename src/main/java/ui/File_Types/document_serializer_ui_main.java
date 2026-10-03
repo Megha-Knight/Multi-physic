@@ -77,6 +77,9 @@ public final class document_serializer_ui_main {
                             p.isClockwise(), p.isFullCircle());
                     }
                     for (var sk : s.getSketches()) ui.workspace.drafting.sketch.sketch_serializer_ui_main.writeSketch(pw, sk);
+                    for (var e : ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.getOverridesForShape(s.getId()).entrySet()) {
+                        pw.println("face_app: " + e.getKey() + "," + e.getValue().formatNd());
+                    }
                     pw.println();
                 }
             }
@@ -136,6 +139,12 @@ public final class document_serializer_ui_main {
                     ui.workspace.drafting.sketch.sketch_serializer_ui_main.parseGeometryLine(line, currentSketch);
                 } else if (line.startsWith("sconstraint:")) {
                     ui.workspace.drafting.sketch.sketch_serializer_ui_main.parseConstraintLine(line, currentSketch);
+                } else if (line.startsWith("face_app:")) {
+                    String[] parts = line.substring(9).trim().split(",", 2);
+                    if (parts.length == 2 && id != null) {
+                        var app = ui.workspace.drafting.topology.topology_face_appearance_ui_main.parseNd(parts[1].trim());
+                        ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.setAppearance(id, parts[0].trim(), app);
+                    }
                 }
             }
             if (currentSketch != null) pendingSketches.add(currentSketch);
@@ -172,6 +181,7 @@ public final class document_serializer_ui_main {
                 item.addExtrude(cext);
             }
             for (var sk : s.getSketches()) item.addSketch(sk.copy());
+            ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.copyOverrides(s.getId(), item.getId());
             copies.add(item);
         }
         return copies;

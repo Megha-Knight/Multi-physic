@@ -33,8 +33,10 @@ public class ribbon_ui_main extends HBox {
     private final splitbutton_ui_main sketchButton;
     private final sketch_ribbon_panel_ui_main sketchPanel = new sketch_ribbon_panel_ui_main();
     private final splitbutton_ui_main extrudeButton;
+    private final extrude_ribbon_panel_ui_main extrudePanel = new extrude_ribbon_panel_ui_main();
     private final splitbutton_ui_main machiningButton;
     private final machining_panel_ui_main machiningPanel;
+    private final dynamic_panel_coordinator_ui_main panelCoordinator = new dynamic_panel_coordinator_ui_main();
     private Runnable onSketchRequested;
     private Runnable onExtrudeRequested;
     private Runnable onHoleRequested;
@@ -82,8 +84,8 @@ public class ribbon_ui_main extends HBox {
 
         shapesPanel = new basicshapespanel_ui_main();
         basicShapesButton = new splitbutton_ui_main("Basic Shapes", loadIcon("/icons/basic_shapes.png"), 84.0, true,
-            () -> shapesPanel.toggle());
-        basicShapesButton.setDropAction(() -> shapesPanel.toggle());
+            () -> panelCoordinator.toggle(shapesPanel));
+        basicShapesButton.setDropAction(() -> panelCoordinator.toggle(shapesPanel));
         shapesPanel.setAnchorNode(basicShapesButton);
         shapesPanel.setOnShapeSelected(shape -> {
             this.currentShape = shape;
@@ -92,17 +94,24 @@ public class ribbon_ui_main extends HBox {
 
         sketchButton = new splitbutton_ui_main("Sketch", loadIcon("/icons/rectangle.png"), 84.0, false,
             () -> { if (onSketchRequested != null) onSketchRequested.run(); });
-        extrudeButton = new splitbutton_ui_main("Extrude", ribbonicons_ui_main.createExtrudeIcon(iconSz, iconColor), 84.0, false,
-            () -> { if (onExtrudeRequested != null) onExtrudeRequested.run(); });
+        extrudeButton = new splitbutton_ui_main("Extrude", ribbonicons_ui_main.createExtrudeIcon(iconSz, iconColor), 84.0, true,
+            () -> panelCoordinator.toggle(extrudePanel));
+        extrudeButton.setDropAction(() -> panelCoordinator.toggle(extrudePanel));
+        extrudeButton.addMenuItem("Extrude Feature...", () -> { if (onExtrudeRequested != null) onExtrudeRequested.run(); });
 
         machiningPanel = new machining_panel_ui_main();
         machiningButton = new splitbutton_ui_main("Machining", ribbonicons_ui_main.createMachiningIcon(iconSz, iconColor), 84.0, true,
-            () -> machiningPanel.toggle());
-        machiningButton.setDropAction(() -> machiningPanel.toggle());
+            () -> panelCoordinator.toggle(machiningPanel));
+        machiningButton.setDropAction(() -> panelCoordinator.toggle(machiningPanel));
         machiningPanel.setAnchorNode(machiningButton);
         machiningButton.addMenuItem("Circle", () -> { if (onHoleRequested != null) onHoleRequested.run(); });
         machiningButton.addMenuItem("Linear Pattern", () -> { if (onLinearPatternRequested != null) onLinearPatternRequested.run(); });
         machiningButton.addMenuItem("Circular Pattern", () -> { if (onCircularPatternRequested != null) onCircularPatternRequested.run(); });
+
+        panelCoordinator.register(shapesPanel);
+        panelCoordinator.register(extrudePanel);
+        panelCoordinator.register(machiningPanel);
+        panelCoordinator.register(sketchPanel);
 
         getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildFeaturesGroup(), buildMachiningGroup());
     }
@@ -118,7 +127,7 @@ public class ribbon_ui_main extends HBox {
     }
 
     private VBox buildFeaturesGroup() {
-        return wrapGroup(new HBox(4, sketchButton, extrudeButton, sketchPanel), "Features");
+        return wrapGroup(new HBox(4, sketchButton, extrudeButton, extrudePanel, sketchPanel), "Features");
     }
 
     private VBox buildMachiningGroup() {
@@ -163,6 +172,8 @@ public class ribbon_ui_main extends HBox {
     public splitbutton_ui_main getSketchButton()          { return sketchButton; }
     public sketch_ribbon_panel_ui_main getSketchPanel()    { return sketchPanel; }
     public splitbutton_ui_main getExtrudeButton()         { return extrudeButton; }
+    public extrude_ribbon_panel_ui_main getExtrudePanel() { return extrudePanel; }
+    public dynamic_panel_coordinator_ui_main getPanelCoordinator() { return panelCoordinator; }
     public splitbutton_ui_main getMachiningButton()       { return machiningButton; }
     public machining_panel_ui_main getMachiningPanel()    { return machiningPanel; }
     public splitbutton_ui_main getHoleButton()            { return machiningButton; }

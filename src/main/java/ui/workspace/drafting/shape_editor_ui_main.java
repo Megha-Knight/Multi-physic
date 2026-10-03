@@ -38,6 +38,7 @@ public class shape_editor_ui_main {
     private hole_feature_ui_main selectedHole = null;
     private extrude_feature_ui_main selectedExtrude = null;
     private hole_pattern_ui_main selectedPattern = null;
+    private ui.workspace.drafting.topology.topology_derived_face_ui_main selectedDerivedFace = null;
 
     private final Group container;
     private Consumer<String> statusCallback;
@@ -61,10 +62,8 @@ public class shape_editor_ui_main {
     }
 
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; } public void setOnShapesChanged(Runnable r) { this.onShapesChanged = r; }
-    public void setOnSelectionChanged(Consumer<shape_item_ui_main> c) { this.onSelectionChanged = c; }
-    public void setOnHoleSelectionChanged(BiConsumer<shape_item_ui_main, hole_feature_ui_main> c) { this.onHoleSelectionChanged = c; }
-    public void setOnExtrudeSelectionChanged(BiConsumer<shape_item_ui_main, extrude_feature_ui_main> c) { this.onExtrudeSelectionChanged = c; }
-    public void setOnPatternSelectionChanged(BiConsumer<shape_item_ui_main, hole_pattern_ui_main> c) { this.onPatternSelectionChanged = c; }
+    public void setOnSelectionChanged(Consumer<shape_item_ui_main> c) { this.onSelectionChanged = c; } public void setOnHoleSelectionChanged(BiConsumer<shape_item_ui_main, hole_feature_ui_main> c) { this.onHoleSelectionChanged = c; }
+    public void setOnExtrudeSelectionChanged(BiConsumer<shape_item_ui_main, extrude_feature_ui_main> c) { this.onExtrudeSelectionChanged = c; } public void setOnPatternSelectionChanged(BiConsumer<shape_item_ui_main, hole_pattern_ui_main> c) { this.onPatternSelectionChanged = c; }
 
     public void notifyShapesChanged() {
         if (activeFace != null && selectedShape != null) updateActiveFace();
@@ -98,15 +97,13 @@ public class shape_editor_ui_main {
     }
 
     public void deleteSelected() { if (selectedShape != null) { history.pushSnapshot(shapes); String name = selectedShape.getName(); removeShape(selectedShape); if (statusCallback != null) statusCallback.accept("Deleted " + name); } }
-    public void copySelected() { if (selectedShape != null) { history.copy(selectedShape); if (statusCallback != null) statusCallback.accept("Copied " + selectedShape.getName()); } }
-    public void cutSelected() { if (selectedShape != null) { history.copy(selectedShape); deleteSelected(); } }
+    public void copySelected() { if (selectedShape != null) { history.copy(selectedShape); if (statusCallback != null) statusCallback.accept("Copied " + selectedShape.getName()); } } public void cutSelected() { if (selectedShape != null) { history.copy(selectedShape); deleteSelected(); } }
     public void paste() {
         if (!history.hasClipboard()) return;
         history.pushSnapshot(shapes); shape_item_ui_main item = history.paste(15.0);
         if (item != null) { item.setName(generateNextName(item.getType())); shapes.add(item); container.getChildren().add(item.getRootGroup()); selectShape(item); notifyShapesChanged(); if (statusCallback != null) statusCallback.accept("Pasted " + item.getName()); }
     }
-    public void undo() { List<shape_item_ui_main> p = history.undo(shapes); if (p != null) { loadShapes(p); if (statusCallback != null) statusCallback.accept("Undo"); } }
-    public void redo() { List<shape_item_ui_main> n = history.redo(shapes); if (n != null) { loadShapes(n); if (statusCallback != null) statusCallback.accept("Redo"); } }
+    public void undo() { List<shape_item_ui_main> p = history.undo(shapes); if (p != null) { loadShapes(p); if (statusCallback != null) statusCallback.accept("Undo"); } } public void redo() { List<shape_item_ui_main> n = history.redo(shapes); if (n != null) { loadShapes(n); if (statusCallback != null) statusCallback.accept("Redo"); } }
     public boolean canUndo() { return history.canUndo(); } public boolean canRedo() { return history.canRedo(); }
     public void loadShapes(List<shape_item_ui_main> newShapes) {
         selectExtrude(null, null); selectHole(null, null); selectPattern(null, null); selectShape(null); setActiveFace(null); container.getChildren().clear(); shapes.clear();
@@ -122,13 +119,14 @@ public class shape_editor_ui_main {
 
     public void openDimensionEditor(shape_item_ui_main s) { if (s != null) dimension_editor_dialog_ui_main.open(s, this, container.getScene() != null ? container.getScene().getWindow() : null); }
     public void openHoleEditor(shape_item_ui_main s, hole_feature_ui_main h) { if (s != null && h != null) hole_editor_dialog_ui_main.open(s, h, this, container.getScene() != null ? container.getScene().getWindow() : null); }
-    public void openExtrudeEditor(shape_item_ui_main s, extrude_feature_ui_main e) { if (s != null && e != null) extrude_editor_dialog_ui_main.open(s, e, this, container.getScene() != null ? container.getScene().getWindow() : null); }
-    public void openPatternEditor(shape_item_ui_main s, hole_pattern_ui_main p) { if (s != null && p != null) pattern_editor_dialog_ui_main.open(s, p, this, container.getScene() != null ? container.getScene().getWindow() : null); }
+    public void openExtrudeEditor(shape_item_ui_main s, extrude_feature_ui_main e) { if (s != null && e != null) extrude_editor_dialog_ui_main.open(s, e, this, container.getScene() != null ? container.getScene().getWindow() : null); } public void openPatternEditor(shape_item_ui_main s, hole_pattern_ui_main p) { if (s != null && p != null) pattern_editor_dialog_ui_main.open(s, p, this, container.getScene() != null ? container.getScene().getWindow() : null); }
     public void clearHistory() { history.clear(); } public List<shape_item_ui_main> getShapes() { return new ArrayList<>(shapes); }
     public shape_item_ui_main getSelectedShape()  { return selectedShape; } public axis_drag_controller_ui_main getAxisDrag() { return axisDrag; }
     public face_reference_ui_main getActiveFace() { return activeFace; } public hole_feature_ui_main getSelectedHole() { return selectedHole; }
     public shape_item_ui_main getSelectedHoleShape() { return selectedHoleShape; } public extrude_feature_ui_main getSelectedExtrude() { return selectedExtrude; }
     public hole_pattern_ui_main getSelectedPattern() { return selectedPattern; } public shape_item_ui_main getSelectedPatternShape() { return selectedPatternShape; }
+    public ui.workspace.drafting.topology.topology_derived_face_ui_main getSelectedDerivedFace() { return selectedDerivedFace; }
+    public void setSelectedDerivedFace(ui.workspace.drafting.topology.topology_derived_face_ui_main df) { this.selectedDerivedFace = df; }
 
     public void setActiveFace(face_reference_ui_main face) {
         this.activeFace = face; faceOverlay.highlightFace(face);
@@ -179,6 +177,10 @@ public class shape_editor_ui_main {
     }
 
     public void checkHoleHit(face_reference_ui_main face, shape_item_ui_main shape) {
+        if (shape != null && face != null) {
+            var res = ui.workspace.drafting.faces.face_selection_resolver_ui_main.resolveFace(shape, face.getFaceKind(), face.getLocalHitU(), face.getLocalHitV());
+            selectedDerivedFace = res.derivedFace();
+        } else selectedDerivedFace = null;
         var h = hole_overlay_ui_main.findHoleAt(shape, face);
         if (h != null) { selectHole(shape, h); return; }
         var hit = hole_overlay_ui_main.findPatternInstanceAt(shape, face);

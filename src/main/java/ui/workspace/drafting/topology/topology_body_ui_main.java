@@ -15,6 +15,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
     private final String bodyId;
     private final basic_shapes_ui_main type;
     private final Map<face_kind_ui_main, topology_face_ui_main> faces = new LinkedHashMap<>();
+    private final Map<String, topology_derived_face_ui_main> derivedFaces = new LinkedHashMap<>();
     private final Map<String, topology_edge_ui_main> edges = new LinkedHashMap<>();
     private final Map<String, topology_vertex_ui_main> vertices = new LinkedHashMap<>();
 
@@ -28,6 +29,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
     public basic_shapes_ui_main getType() { return type; }
 
     public void addFace(topology_face_ui_main face) { if (face != null) faces.put(face.getFaceKind(), face); }
+    public void addDerivedFace(topology_derived_face_ui_main df) { if (df != null) derivedFaces.put(df.getId(), df); }
     public void addEdge(topology_edge_ui_main edge) { if (edge != null) edges.put(edge.getName(), edge); }
     public void addVertex(topology_vertex_ui_main vertex) { if (vertex != null) vertices.put(vertex.getName(), vertex); }
 
@@ -35,6 +37,13 @@ public class topology_body_ui_main implements topology_entity_ui_main {
     public topology_face_ui_main getFaceById(String faceId) {
         for (topology_face_ui_main f : faces.values()) if (f.getId().equals(faceId)) return f;
         return null;
+    }
+    public topology_derived_face_ui_main getDerivedFaceById(String id) { return derivedFaces.get(id); }
+    public Collection<topology_derived_face_ui_main> getDerivedFaces() { return Collections.unmodifiableCollection(derivedFaces.values()); }
+    public List<topology_derived_face_ui_main> getDerivedFacesForFeature(String fid) {
+        List<topology_derived_face_ui_main> l = new ArrayList<>();
+        if (fid != null) for (var df : derivedFaces.values()) if (fid.equals(df.getCreatingFeatureId())) l.add(df);
+        return l;
     }
     public topology_edge_ui_main getEdge(String name) { return edges.get(name); }
     public topology_edge_ui_main getEdgeById(String edgeId) {
@@ -52,6 +61,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
     public Collection<topology_vertex_ui_main> getVertices() { return Collections.unmodifiableCollection(vertices.values()); }
 
     public int getFaceCount() { return faces.size(); }
+    public int getDerivedFaceCount() { return derivedFaces.size(); }
     public int getEdgeCount() { return edges.size(); }
     public int getVertexCount() { return vertices.size(); }
 
@@ -67,6 +77,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
         } else if (shape.getType() == basic_shapes_ui_main.SPHERE) {
             body.addFace(new topology_face_ui_main(body.getId(), face_kind_ui_main.SPHERE_SURFACE, 100, 100));
         }
+        hole_topology_builder_ui_main.populateDerivedFaces(body, shape);
         return body;
     }
 
