@@ -22,6 +22,7 @@ import ui.workspace.camera.camera_controller_ui_main;
 import ui.workspace.camera.coordinate_system_ui_main;
 import ui.workspace.drafting.shape_drafting_ui_main;
 import ui.workspace.drafting.shape_editor_ui_main;
+import ui.workspace.drafting.sketch.*;
 
 /**
  * workspace_ui_main.java
@@ -45,6 +46,8 @@ public class workspace_ui_main extends StackPane {
     private final camera_controller_ui_main controller;
     private final shape_drafting_ui_main drafter;
     private final shape_editor_ui_main shapeEditor;
+    private final sketch_mode_ui_main sketchMode = new sketch_mode_ui_main();
+    private final sketch_controller_ui_main sketchController;
 
     private boolean isOrthographic = false;
     private double savedDist = -400.0;
@@ -110,16 +113,19 @@ public class workspace_ui_main extends StackPane {
         drafter = new shape_drafting_ui_main(this, camera, controller, hudDimLabel);
         shapeEditor = new shape_editor_ui_main(
             drafter.getShapesGroup(), this, subScene, controller,
-            e -> {
-                javafx.geometry.Point2D p = ui.workspace.drafting.gizmo.viewport_coordinate_helper_ui_main.getViewportPoint(e, this);
-                return drafter.screenToGround(p.getX(), p.getY());
-            },
-            hudDimLabel,
-            () -> drafter.getActiveShape().isDrawing(),
-            camera
+            e -> drafter.screenToGround(ui.workspace.drafting.gizmo.viewport_coordinate_helper_ui_main.getViewportX(e, this), ui.workspace.drafting.gizmo.viewport_coordinate_helper_ui_main.getViewportY(e, this)),
+            hudDimLabel, () -> drafter.getActiveShape().isDrawing() || sketchMode.isActive(), camera
         );
         drafter.setEditor(shapeEditor);
-        root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup());
+        sketchController = new sketch_controller_ui_main(sketchMode, () -> sketchMode.exit(true, shapeEditor));
+        root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup(), sketchController.getView(), sketchController.getPreview());
+        getChildren().add(sketchController.getHud());
+        StackPane.setAlignment(sketchController.getHud(), Pos.TOP_LEFT);
+        StackPane.setMargin(sketchController.getHud(), new Insets(10));
+
+        addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, e -> sketchController.handleMouseMoved(e, this, camera, root3D));
+        addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> { if (sketchController.handleMousePressed(e, this, camera, root3D, shapeEditor)) e.consume(); });
+        addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> { if (sketchController.handleKeyPressed(e, shapeEditor)) e.consume(); });
 
         widthProperty().addListener((obs, o, n) -> updateLabels());
         heightProperty().addListener((obs, o, n) -> updateLabels());
@@ -185,8 +191,7 @@ public class workspace_ui_main extends StackPane {
     }
 
     public camera_controller_ui_main getCameraController() { return controller; }
-    public PerspectiveCamera getCamera()                   { return camera; }
-    public viewcube_ui_main getViewCube()                  { return viewCube; }
-    public shape_drafting_ui_main getDrafter()             { return drafter; }
-    public shape_editor_ui_main getShapeEditor()           { return shapeEditor; }
+    public PerspectiveCamera getCamera() { return camera; } public viewcube_ui_main getViewCube() { return viewCube; }
+    public shape_drafting_ui_main getDrafter() { return drafter; } public shape_editor_ui_main getShapeEditor() { return shapeEditor; }
+    public sketch_mode_ui_main getSketchMode() { return sketchMode; } public sketch_controller_ui_main getSketchController() { return sketchController; }
 }

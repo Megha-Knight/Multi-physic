@@ -63,6 +63,11 @@ public class UI_Main extends BorderPane {
 
         navigationBar = new navigation_ui_main();
         navigationBar.getFeatureManager().bindToEditor(workspace3D.getShapeEditor());
+        navigationBar.getFeatureManager().setOnSketchDoubleClicked(sk -> {
+            shape_item_ui_main h = workspace3D.getShapeEditor().getShapes().stream()
+                .filter(s -> s.getId().equals(sk.getOwnerShapeId())).findFirst().orElse(null);
+            workspace3D.getSketchMode().enterSketch(sk, h, workspace3D.getCameraController());
+        });
         setLeft(navigationBar);
 
         VBox centerArea = new VBox(documentTabBar, workspace3D);
@@ -92,6 +97,11 @@ public class UI_Main extends BorderPane {
         ribbonBar.getOpenButton().setPrimaryAction(docHandler::onOpenFile);
         ribbonBar.setOnSave(docHandler::onSaveFile); ribbonBar.setOnSaveAs(docHandler::onSaveAsFile);
         ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile); ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
+
+        ribbonBar.setOnSketchRequested(() -> ui_sketch_action_helper_ui_main.handleCreateOrEnterSketch(this, workspace3D.getSketchMode()));
+        ribbonBar.getSketchPanel().bind(workspace3D.getSketchController(), () -> workspace3D.getSketchMode().exit(true, workspace3D.getShapeEditor()));
+        workspace3D.getSketchMode().setOnModeChanged(() -> ribbonBar.getSketchPanel().setSketchModeActive(workspace3D.getSketchMode().isActive()));
+        workspace3D.getSketchMode().setStatusCallback(footerBar::setStatusText);
 
         ribbonBar.setOnExtrudeRequested(() -> ui_feature_action_helper_ui_main.handleExtrude(this));
         ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this));
@@ -180,13 +190,9 @@ public class UI_Main extends BorderPane {
         shortcuts.register(shortcuts_ui_main.REDO, ed::redo); shortcuts.register(shortcuts_ui_main.REDO_ALT, ed::redo);
     }
 
-    public tools_ui_main getTabToolbar()              { return tabToolbar; }
-    public ribbon_ui_main getRibbonBar()               { return ribbonBar; }
-    public breadcrumb_ui_main getBreadcrumbBar()       { return breadcrumbBar; }
-    public navigation_ui_main getNavigationBar()       { return navigationBar; }
-    public footer_ui_main getFooterBar()               { return footerBar; }
-    public workspace_ui_main getWorkspace3D()          { return workspace3D; }
-    public file_tab_ui_main getDocumentTabBar()         { return documentTabBar; }
-    public shortcuts_ui_main getShortcuts()            { return shortcuts; }
-    public space_bar_ui_main getSpaceBarShortcut()     { return spaceBarShortcut; } public viewshortcuts_ui_main getViewShortcuts() { return viewShortcuts; }
+    public tools_ui_main getTabToolbar() { return tabToolbar; } public ribbon_ui_main getRibbonBar() { return ribbonBar; }
+    public breadcrumb_ui_main getBreadcrumbBar() { return breadcrumbBar; } public navigation_ui_main getNavigationBar() { return navigationBar; }
+    public footer_ui_main getFooterBar() { return footerBar; } public workspace_ui_main getWorkspace3D() { return workspace3D; }
+    public file_tab_ui_main getDocumentTabBar() { return documentTabBar; } public shortcuts_ui_main getShortcuts() { return shortcuts; }
+    public space_bar_ui_main getSpaceBarShortcut() { return spaceBarShortcut; } public viewshortcuts_ui_main getViewShortcuts() { return viewShortcuts; }
 }

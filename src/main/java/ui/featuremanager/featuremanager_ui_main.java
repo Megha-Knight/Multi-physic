@@ -19,6 +19,8 @@ public class featuremanager_ui_main extends BorderPane {
     private final TreeItem<feature_tree_node_ui_main> rootItem = new TreeItem<>(null);
     private final ListView<shape_item_ui_main> legacyListView = new ListView<>();
     private shape_editor_ui_main editor; private boolean syncLock = false;
+    private java.util.function.Consumer<ui.workspace.drafting.sketch.sketch_feature_ui_main> onSketchDoubleClicked;
+    public void setOnSketchDoubleClicked(java.util.function.Consumer<ui.workspace.drafting.sketch.sketch_feature_ui_main> c) { this.onSketchDoubleClicked = c; }
 
     public featuremanager_ui_main() {
         getStyleClass().add("feature-manager-pane"); setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #C9D1D9; -fx-border-width: 0 1 0 0;");
@@ -87,27 +89,9 @@ public class featuremanager_ui_main extends BorderPane {
 
         for (TreeItem<feature_tree_node_ui_main> sItem : rootItem.getChildren()) {
             if (sItem.getValue().getShape() == selShape) {
-                if (selHole != null) {
-                    for (TreeItem<feature_tree_node_ui_main> hItem : sItem.getChildren()) {
-                        if (hItem.getValue().getHole() == selHole) {
-                            sItem.setExpanded(true); treeView.getSelectionModel().select(hItem); treeView.scrollTo(treeView.getRow(hItem)); return;
-                        }
-                    }
-                }
-                if (selPat != null) {
-                    for (TreeItem<feature_tree_node_ui_main> pItem : sItem.getChildren()) {
-                        if (pItem.getValue().getPattern() == selPat) {
-                            sItem.setExpanded(true); treeView.getSelectionModel().select(pItem); treeView.scrollTo(treeView.getRow(pItem)); return;
-                        }
-                    }
-                }
-                if (selExt != null) {
-                    for (TreeItem<feature_tree_node_ui_main> eItem : sItem.getChildren()) {
-                        if (eItem.getValue().getExtrude() == selExt) {
-                            sItem.setExpanded(true); treeView.getSelectionModel().select(eItem); treeView.scrollTo(treeView.getRow(eItem)); return;
-                        }
-                    }
-                }
+                if (selHole != null) for (var hItem : sItem.getChildren()) if (hItem.getValue().getHole() == selHole) { sItem.setExpanded(true); treeView.getSelectionModel().select(hItem); treeView.scrollTo(treeView.getRow(hItem)); return; }
+                if (selPat != null) for (var pItem : sItem.getChildren()) if (pItem.getValue().getPattern() == selPat) { sItem.setExpanded(true); treeView.getSelectionModel().select(pItem); treeView.scrollTo(treeView.getRow(pItem)); return; }
+                if (selExt != null) for (var eItem : sItem.getChildren()) if (eItem.getValue().getExtrude() == selExt) { sItem.setExpanded(true); treeView.getSelectionModel().select(eItem); treeView.scrollTo(treeView.getRow(eItem)); return; }
                 treeView.getSelectionModel().select(sItem); treeView.scrollTo(treeView.getRow(sItem)); return;
             }
         }
@@ -142,6 +126,7 @@ public class featuremanager_ui_main extends BorderPane {
                     if (val.isHole()) editor.openHoleEditor(val.getParentShape(), val.getHole());
                     else if (val.isPattern()) editor.openPatternEditor(val.getParentShape(), val.getPattern());
                     else if (val.isExtrude()) editor.openExtrudeEditor(val.getParentShape(), val.getExtrude());
+                    else if (val.isSketch() && onSketchDoubleClicked != null) onSketchDoubleClicked.accept(val.getSketch());
                     else if (val.isShape()) editor.openDimensionEditor(val.getShape());
                     e.consume();
                 }
@@ -181,6 +166,11 @@ public class featuremanager_ui_main extends BorderPane {
                 ren.setOnAction(e -> promptRename("Rename Extrude", item.getExtrude().getName(), n -> { item.getExtrude().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
                 tog.setOnAction(e -> { item.getExtrude().setVisible(!item.getExtrude().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
                 cm.getItems().addAll(edit, ren, tog, new SeparatorMenuItem(), del);
+            } else if (item.isSketch()) {
+                MenuItem edit = new MenuItem("Edit Sketch..."), del = new MenuItem("Delete Sketch");
+                edit.setOnAction(e -> { if (onSketchDoubleClicked != null) onSketchDoubleClicked.accept(item.getSketch()); });
+                del.setOnAction(e -> { if (item.getParentShape() != null) { item.getParentShape().removeSketch(item.getSketch().getId()); editor.notifyShapesChanged(); } });
+                cm.getItems().addAll(edit, new SeparatorMenuItem(), del);
             } else if (item.isShape()) {
                 MenuItem edit = new MenuItem("Edit Dimensions..."), del = new MenuItem("Delete Shape"), ren = new MenuItem("Rename...");
                 edit.setOnAction(e -> editor.openDimensionEditor(item.getShape()));

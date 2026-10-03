@@ -30,9 +30,12 @@ public class ribbon_ui_main extends HBox {
     private final splitbutton_ui_main saveButton;
     private final splitbutton_ui_main basicShapesButton;
     private final basicshapespanel_ui_main shapesPanel;
+    private final splitbutton_ui_main sketchButton;
+    private final sketch_ribbon_panel_ui_main sketchPanel = new sketch_ribbon_panel_ui_main();
     private final splitbutton_ui_main extrudeButton;
     private final splitbutton_ui_main machiningButton;
     private final machining_panel_ui_main machiningPanel;
+    private Runnable onSketchRequested;
     private Runnable onExtrudeRequested;
     private Runnable onHoleRequested;
     private Runnable onLinearPatternRequested;
@@ -87,6 +90,8 @@ public class ribbon_ui_main extends HBox {
             if (onShapeSelected != null) onShapeSelected.accept(shape);
         });
 
+        sketchButton = new splitbutton_ui_main("Sketch", loadIcon("/icons/rectangle.png"), 84.0, false,
+            () -> { if (onSketchRequested != null) onSketchRequested.run(); });
         extrudeButton = new splitbutton_ui_main("Extrude", ribbonicons_ui_main.createExtrudeIcon(iconSz, iconColor), 84.0, false,
             () -> { if (onExtrudeRequested != null) onExtrudeRequested.run(); });
 
@@ -113,7 +118,7 @@ public class ribbon_ui_main extends HBox {
     }
 
     private VBox buildFeaturesGroup() {
-        return wrapGroup(new HBox(4, extrudeButton), "Features");
+        return wrapGroup(new HBox(4, sketchButton, extrudeButton, sketchPanel), "Features");
     }
 
     private VBox buildMachiningGroup() {
@@ -155,28 +160,20 @@ public class ribbon_ui_main extends HBox {
     public splitbutton_ui_main getSaveButton()            { return saveButton; }
     public splitbutton_ui_main getBasicShapesButton()     { return basicShapesButton; }
     public basicshapespanel_ui_main getShapesPanel()       { return shapesPanel; }
+    public splitbutton_ui_main getSketchButton()          { return sketchButton; }
+    public sketch_ribbon_panel_ui_main getSketchPanel()    { return sketchPanel; }
     public splitbutton_ui_main getExtrudeButton()         { return extrudeButton; }
     public splitbutton_ui_main getMachiningButton()       { return machiningButton; }
     public machining_panel_ui_main getMachiningPanel()    { return machiningPanel; }
     public splitbutton_ui_main getHoleButton()            { return machiningButton; }
     public splitbutton_ui_main getLinearPatternButton()   { return machiningButton; }
     public splitbutton_ui_main getCircularPatternButton() { return machiningButton; }
+    public void setOnSketchRequested(Runnable r)          { this.onSketchRequested = r; }
     public void setOnExtrudeRequested(Runnable r)         { this.onExtrudeRequested = r; }
-    public void setOnHoleRequested(Runnable r) {
-        this.onHoleRequested = r;
-        machiningPanel.setOnHoleRequested(r);
-    }
-    public void setOnCutoutRequested(java.util.function.Consumer<ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape> cb) {
-        machiningPanel.setOnCutoutRequested(cb);
-    }
-    public void setOnLinearPatternRequested(Runnable r) {
-        this.onLinearPatternRequested = r;
-        machiningPanel.setOnLinearPatternRequested(r);
-    }
-    public void setOnCircularPatternRequested(Runnable r) {
-        this.onCircularPatternRequested = r;
-        machiningPanel.setOnCircularPatternRequested(r);
-    }
+    public void setOnHoleRequested(Runnable r) { this.onHoleRequested = r; machiningPanel.setOnHoleRequested(r); }
+    public void setOnCutoutRequested(java.util.function.Consumer<ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape> cb) { machiningPanel.setOnCutoutRequested(cb); }
+    public void setOnLinearPatternRequested(Runnable r) { this.onLinearPatternRequested = r; machiningPanel.setOnLinearPatternRequested(r); }
+    public void setOnCircularPatternRequested(Runnable r) { this.onCircularPatternRequested = r; machiningPanel.setOnCircularPatternRequested(r); }
 
     public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
 
