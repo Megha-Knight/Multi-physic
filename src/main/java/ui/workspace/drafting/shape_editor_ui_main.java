@@ -107,7 +107,7 @@ public class shape_editor_ui_main {
     }
     public void undo() { List<shape_item_ui_main> p = history.undo(shapes); if (p != null) { loadShapes(p); if (statusCallback != null) statusCallback.accept("Undo"); } }
     public void redo() { List<shape_item_ui_main> n = history.redo(shapes); if (n != null) { loadShapes(n); if (statusCallback != null) statusCallback.accept("Redo"); } }
-
+    public boolean canUndo() { return history.canUndo(); } public boolean canRedo() { return history.canRedo(); }
     public void loadShapes(List<shape_item_ui_main> newShapes) {
         selectExtrude(null, null); selectHole(null, null); selectPattern(null, null); selectShape(null); setActiveFace(null); container.getChildren().clear(); shapes.clear();
         container.getChildren().addAll(axisDrag.getGizmo(), faceOverlay, holeOverlay);

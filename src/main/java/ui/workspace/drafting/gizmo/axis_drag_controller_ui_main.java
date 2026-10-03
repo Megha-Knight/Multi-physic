@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 
 /**
  * axis_drag_controller_ui_main.java
- * Manages the translation gizmo lifecycle and axis-constrained drag operations.
+ * Manages translation gizmo lifecycle and axis-constrained drag operations.
  * Anchors the gizmo to the top of the selected 3D object for clear visibility.
  */
 public class axis_drag_controller_ui_main {
@@ -28,6 +28,8 @@ public class axis_drag_controller_ui_main {
 
     private shape_item_ui_main target = null;
     private Axis draggingAxis = null;
+    private Point3D startGizmoOrigin = null;
+    private double startTargetX = 0, startTargetY = 0, startTargetZ = 0;
     private double axisAnchorScalar = 0;
     private boolean dragging = false;
 
@@ -37,32 +39,19 @@ public class axis_drag_controller_ui_main {
 
     public axis_drag_controller_ui_main(Pane viewport, PerspectiveCamera camera,
                                         camera_controller_ui_main camCtrl, Group shapesGroup) {
-        this.viewport    = viewport;
-        this.camera      = camera;
-        this.camCtrl     = camCtrl;
-        this.shapesGroup = shapesGroup;
+        this.viewport = viewport; this.camera = camera; this.camCtrl = camCtrl; this.shapesGroup = shapesGroup;
         shapesGroup.getChildren().add(gizmo);
     }
 
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; }
-
-    public void attachTo(shape_item_ui_main item) {
-        this.target = item;
-        gizmo.setVisible(false);
-    }
+    public void attachTo(shape_item_ui_main item) { this.target = item; gizmo.setVisible(false); }
 
     public void detach() {
-        target = null;
-        dragging = false;
-        draggingAxis = null;
-        gizmo.setVisible(false);
-        gizmo.clearHighlight();
+        target = null; dragging = false; draggingAxis = null; startGizmoOrigin = null;
+        gizmo.setVisible(false); gizmo.clearHighlight();
     }
 
-    public Axis axisForNode(Node node) {
-        return gizmo.isVisible() ? gizmo.axisForNode(node) : null;
-    }
-
+    public Axis axisForNode(Node node) { return gizmo.isVisible() ? gizmo.axisForNode(node) : null; }
     public boolean isGizmoNode(Node node) { return gizmo.isGizmoNode(node); }
 
     public Point3D getGizmoOrigin() {
@@ -74,12 +63,9 @@ public class axis_drag_controller_ui_main {
         );
     }
 
-    private double getVx(MouseEvent e) { if (viewport != null) { var p = viewport.sceneToLocal(e.getSceneX(), e.getSceneY()); if (p != null) return p.getX(); } return e.getX(); }
-    private double getVy(MouseEvent e) { if (viewport != null) { var p = viewport.sceneToLocal(e.getSceneX(), e.getSceneY()); if (p != null) return p.getY(); } return e.getY(); }
-
     public Axis findAxisNearRay(MouseEvent e) {
         if (!gizmo.isVisible() || target == null) return null;
-        double[] ray = world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, shapesGroup);
+        double[] ray = world_raycaster_ui_main.buildRay(e, viewport, camera, shapesGroup);
         if (ray == null) return null;
         Point3D worldPt = getGizmoOrigin();
         Axis[] axes = {Axis.X, Axis.Y, Axis.Z};
@@ -100,12 +86,12 @@ public class axis_drag_controller_ui_main {
         if (a == null) a = findAxisNearRay(e);
         if (a == null) return false;
 
-        draggingAxis = a;
-        dragging = true;
-        camCtrl.setEnabled(false);
+        draggingAxis = a; dragging = true; camCtrl.setEnabled(false);
+        startGizmoOrigin = getGizmoOrigin();
+        startTargetX = target.getWorldX(); startTargetY = target.getWorldY(); startTargetZ = target.getWorldZ();
 
-        double[] ray = world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, shapesGroup);
-        axisAnchorScalar = computeAxisScalar(ray, a);
+        double[] ray = world_raycaster_ui_main.buildRay(e, viewport, camera, shapesGroup);
+        axisAnchorScalar = computeAxisScalar(ray, a, startGizmoOrigin);
         if (Double.isNaN(axisAnchorScalar)) axisAnchorScalar = 0;
         return true;
     }
@@ -113,17 +99,15 @@ public class axis_drag_controller_ui_main {
     public boolean onDrag(MouseEvent e) {
         if (!dragging || target == null || draggingAxis == null) return false;
 
-        double[] ray = world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, shapesGroup);
-        double currentScalar = computeAxisScalar(ray, draggingAxis);
+        double[] ray = world_raycaster_ui_main.buildRay(e, viewport, camera, shapesGroup);
+        double currentScalar = computeAxisScalar(ray, draggingAxis, startGizmoOrigin);
 
         if (!Double.isNaN(currentScalar) && !Double.isNaN(axisAnchorScalar)) {
             double delta = currentScalar - axisAnchorScalar;
-            axisAnchorScalar = currentScalar;
-
             switch (draggingAxis) {
-                case X -> target.applyWorldDelta(delta, 0, 0);
-                case Y -> target.applyWorldDelta(0, 0, delta);
-                case Z -> target.applyWorldDelta(0, -delta, 0);
+                case X -> target.setWorldTranslation(startTargetX + delta, startTargetY, startTargetZ);
+                case Y -> target.setWorldTranslation(startTargetX, startTargetY, startTargetZ + delta);
+                case Z -> target.setWorldTranslation(startTargetX, startTargetY - delta, startTargetZ);
             }
             updateGizmoPosition();
 
@@ -140,17 +124,14 @@ public class axis_drag_controller_ui_main {
 
     public boolean onReleased() {
         if (!dragging) return false;
-        dragging = false;
-        draggingAxis = null;
-        camCtrl.setEnabled(true);
-        updateGizmoPosition();
+        dragging = false; draggingAxis = null; startGizmoOrigin = null;
+        camCtrl.setEnabled(true); updateGizmoPosition();
         return true;
     }
 
     public void onHover(Axis a) {
         if (!gizmo.isVisible()) return;
-        if (a != null) gizmo.highlight(a);
-        else gizmo.clearHighlight();
+        if (a != null) gizmo.highlight(a); else gizmo.clearHighlight();
     }
 
     public void updateGizmoPosition() {
@@ -159,15 +140,14 @@ public class axis_drag_controller_ui_main {
         gizmo.moveTo(p.getX(), p.getY(), p.getZ(), 0, 0, 0);
     }
 
-    private double computeAxisScalar(double[] ray, Axis axis) {
-        if (ray == null || target == null) return Double.NaN;
-        Point3D worldPt = getGizmoOrigin();
+    private double computeAxisScalar(double[] ray, Axis axis, Point3D origin) {
+        if (ray == null || target == null || origin == null) return Double.NaN;
         Point3D axisDir = switch (axis) {
             case X -> DIR_X;
             case Y -> DIR_Y;
             case Z -> DIR_Z;
         };
-        return world_raycaster_ui_main.projectOnAxis(ray, worldPt, axisDir);
+        return world_raycaster_ui_main.projectOnAxis(ray, origin, axisDir);
     }
 
     private static Point3D getAnchor(shape_item_ui_main item) {

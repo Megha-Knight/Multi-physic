@@ -111,8 +111,8 @@ public class workspace_ui_main extends StackPane {
         shapeEditor = new shape_editor_ui_main(
             drafter.getShapesGroup(), this, subScene, controller,
             e -> {
-                javafx.geometry.Point2D p = this.sceneToLocal(e.getSceneX(), e.getSceneY());
-                return drafter.screenToGround(p != null ? p.getX() : e.getX(), p != null ? p.getY() : e.getY());
+                javafx.geometry.Point2D p = ui.workspace.drafting.gizmo.viewport_coordinate_helper_ui_main.getViewportPoint(e, this);
+                return drafter.screenToGround(p.getX(), p.getY());
             },
             hudDimLabel,
             () -> drafter.getActiveShape().isDrawing(),

@@ -15,6 +15,7 @@ import ui.workspace.shapes.basic_shapes_ui_main;
 import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 import ui.workspace.shapes.primitives.shape_geometry_ui_main;
 import ui.workspace.drafting.faces.face_reference_ui_main;
+import ui.workspace.drafting.gizmo.viewport_coordinate_helper_ui_main;
 
 import java.util.function.Consumer;
 
@@ -50,8 +51,7 @@ public class shape_drafting_ui_main {
 
     public void setShape(basic_shapes_ui_main shape) {
         this.activeShape = (shape != null) ? shape : basic_shapes_ui_main.NONE;
-        this.startPt = null;
-        previewGroup.getChildren().clear();
+        this.startPt = null; previewGroup.getChildren().clear();
 
         if (activeShape.isDrawing()) {
             if (activeShape.is3D()) {
@@ -80,25 +80,29 @@ public class shape_drafting_ui_main {
     public void cancelDrafting() { setShape(basic_shapes_ui_main.NONE); }
     public void cancel()         { cancelDrafting(); }
 
+    private Point3D hitDrafting(MouseEvent e) {
+        return screenToDraftingPlane(viewport_coordinate_helper_ui_main.getViewportX(e, viewportPane), viewport_coordinate_helper_ui_main.getViewportY(e, viewportPane));
+    }
+
     private void attachListeners() {
         viewportPane.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
             if (!activeShape.isDrawing()) return;
             if (e.getButton() == MouseButton.SECONDARY) { cancelDrafting(); e.consume(); return; }
             if (e.getButton() == MouseButton.PRIMARY) {
-                Point3D hit = screenToDraftingPlane(e.getX(), e.getY());
+                Point3D hit = hitDrafting(e);
                 if (hit != null) { startPt = hit; e.consume(); }
             }
         });
 
         viewportPane.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (!activeShape.isDrawing() || startPt == null) return;
-            Point3D hit = screenToDraftingPlane(e.getX(), e.getY());
+            Point3D hit = hitDrafting(e);
             if (hit != null) { updatePreview(startPt, hit); e.consume(); }
         });
 
         viewportPane.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
             if (!activeShape.isDrawing() || startPt == null) return;
-            Point3D hit = screenToDraftingPlane(e.getX(), e.getY());
+            Point3D hit = hitDrafting(e);
             if (hit != null && hit.distance(startPt) > 0.5) {
                 shape_item_ui_main item = new shape_item_ui_main(activeShape, startPt, hit);
                 if (draftingFace != null) {

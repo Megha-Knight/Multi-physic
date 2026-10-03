@@ -1,8 +1,10 @@
 package ui.workspace.drafting.gizmo;
 
+import javafx.geometry.Point2D;
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 
 /**
@@ -13,6 +15,15 @@ import javafx.scene.layout.Pane;
 public final class world_raycaster_ui_main {
 
     private world_raycaster_ui_main() {}
+
+    public static double[] buildRay(MouseEvent e, Pane viewport, PerspectiveCamera camera) {
+        return buildRay(e, viewport, camera, null);
+    }
+
+    public static double[] buildRay(MouseEvent e, Pane viewport, PerspectiveCamera camera, Group coordinateGroup) {
+        Point2D p = viewport_coordinate_helper_ui_main.getViewportPoint(e, viewport);
+        return buildRay(p.getX(), p.getY(), viewport, camera, coordinateGroup);
+    }
 
     public static double[] buildRay(double sx, double sy,
                                     Pane viewport, PerspectiveCamera camera) {
