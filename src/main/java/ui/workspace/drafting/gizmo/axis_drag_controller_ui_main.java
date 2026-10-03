@@ -74,9 +74,12 @@ public class axis_drag_controller_ui_main {
         );
     }
 
+    private double getVx(MouseEvent e) { if (viewport != null) { var p = viewport.sceneToLocal(e.getSceneX(), e.getSceneY()); if (p != null) return p.getX(); } return e.getX(); }
+    private double getVy(MouseEvent e) { if (viewport != null) { var p = viewport.sceneToLocal(e.getSceneX(), e.getSceneY()); if (p != null) return p.getY(); } return e.getY(); }
+
     public Axis findAxisNearRay(MouseEvent e) {
         if (!gizmo.isVisible() || target == null) return null;
-        double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, shapesGroup);
+        double[] ray = world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, shapesGroup);
         if (ray == null) return null;
         Point3D worldPt = getGizmoOrigin();
         Axis[] axes = {Axis.X, Axis.Y, Axis.Z};
@@ -101,7 +104,7 @@ public class axis_drag_controller_ui_main {
         dragging = true;
         camCtrl.setEnabled(false);
 
-        double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, shapesGroup);
+        double[] ray = world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, shapesGroup);
         axisAnchorScalar = computeAxisScalar(ray, a);
         if (Double.isNaN(axisAnchorScalar)) axisAnchorScalar = 0;
         return true;
@@ -110,7 +113,7 @@ public class axis_drag_controller_ui_main {
     public boolean onDrag(MouseEvent e) {
         if (!dragging || target == null || draggingAxis == null) return false;
 
-        double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, shapesGroup);
+        double[] ray = world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, shapesGroup);
         double currentScalar = computeAxisScalar(ray, draggingAxis);
 
         if (!Double.isNaN(currentScalar) && !Double.isNaN(axisAnchorScalar)) {

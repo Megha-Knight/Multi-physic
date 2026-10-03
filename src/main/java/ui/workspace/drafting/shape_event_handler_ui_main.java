@@ -55,16 +55,19 @@ public class shape_event_handler_ui_main {
 
     private void setCursor(Cursor c) { if (subScene != null) subScene.setCursor(c); viewport.setCursor(c); }
 
+    private double getVx(MouseEvent e) { if (viewport != null) { var p = viewport.sceneToLocal(e.getSceneX(), e.getSceneY()); if (p != null) return p.getX(); } return e.getX(); }
+    private double getVy(MouseEvent e) { if (viewport != null) { var p = viewport.sceneToLocal(e.getSceneX(), e.getSceneY()); if (p != null) return p.getY(); } return e.getY(); }
+
     private Point3D raycastPlane(MouseEvent e, double yPlane) {
         if (camera != null && container != null) {
-            Point3D hit = world_raycaster_ui_main.hitPlaneY(world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, container), yPlane);
+            Point3D hit = world_raycaster_ui_main.hitPlaneY(world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, container), yPlane);
             if (hit != null) return hit;
         }
         return groundRaycaster.apply(e);
     }
 
     private void startMode(EditMode m, int hIdx, MouseEvent e) {
-        mode = m; activeHandleIdx = hIdx; startDragX = e.getX(); startDragY = e.getY();
+        mode = m; activeHandleIdx = hIdx; startDragX = getVx(e); startDragY = getVy(e);
         cameraController.setEnabled(false); e.consume();
     }
 
@@ -97,27 +100,19 @@ public class shape_event_handler_ui_main {
         if (e.getButton() != MouseButton.PRIMARY) return;
         editor.recordSnapshot();
         if (sel != null && sel.getType().is3D() && axisDrag.onAxisPressed(hitNode, e)) { startMode(EditMode.AXIS_DRAG, -1, e); return; }
-        int hIdx;
-        if (sel != null && (hIdx = sel.findHandleByNode(hitNode)) >= 0) { startMode(EditMode.RESHAPE_HANDLE, hIdx, e); return; }
-
+        int hIdx; if (sel != null && (hIdx = sel.findHandleByNode(hitNode)) >= 0) { startMode(EditMode.RESHAPE_HANDLE, hIdx, e); return; }
         shape_item_ui_main hitShape = editor.findShapeByNode(hitNode);
-        if (hitShape == null && sel != null) {
-            Point3D hitSel = raycastPlane(e, sel.getWorldCenter().getY());
-            if (hitSel != null && sel.isNear(hitSel, 8.0)) hitShape = sel;
-        }
+        if (hitShape == null && sel != null) { Point3D hitSel = raycastPlane(e, sel.getWorldCenter().getY()); if (hitSel != null && sel.isNear(hitSel, 8.0)) hitShape = sel; }
         if (hitShape == null) { Point3D hit = raycastPlane(e, 0); if (hit != null) hitShape = editor.findShapeNear(hit, 8.0); }
         if (hitShape != null) {
             editor.selectShape(hitShape);
             var hitExt = ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.findExtrudeFromNode(hitNode);
-            if (hitExt != null) {
-                editor.selectExtrude(hitShape, hitExt);
-            } else {
+            if (hitExt != null) editor.selectExtrude(hitShape, hitExt);
+            else {
                 editor.selectExtrude(hitShape, null);
                 if (hitShape.getType().is3D()) {
-                    double[] ray = world_raycaster_ui_main.buildRay(e.getX(), e.getY(), viewport, camera, container);
-                    face_reference_ui_main face = face_picker_ui_main.pickFace(ray, hitShape);
-                    editor.setActiveFace(face);
-                    if (face != null) editor.checkHoleHit(face, hitShape);
+                    face_reference_ui_main face = face_picker_ui_main.pickFace(world_raycaster_ui_main.buildRay(getVx(e), getVy(e), viewport, camera, container), hitShape);
+                    editor.setActiveFace(face); if (face != null) editor.checkHoleHit(face, hitShape);
                 } else editor.setActiveFace(null);
             }
             if (e.getClickCount() == 2) {
@@ -142,10 +137,11 @@ public class shape_event_handler_ui_main {
         shape_item_ui_main sel = editor.getSelectedShape();
         if (sel == null) return;
 
+        double vx = getVx(e), vy = getVy(e);
         if (mode == EditMode.AXIS_DRAG) { if (axisDrag.onDrag(e)) { hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); } e.consume(); return; }
         if (mode == EditMode.ROTATE_SHAPE) {
-            double nx = shape_rotation_helper_ui_main.normalize360(startAngleX - (e.getY() - startDragY) * 0.8);
-            double ny = shape_rotation_helper_ui_main.normalize360(startAngleY + (e.getX() - startDragX) * 0.8);
+            double nx = shape_rotation_helper_ui_main.normalize360(startAngleX - (vy - startDragY) * 0.8);
+            double ny = shape_rotation_helper_ui_main.normalize360(startAngleY + (vx - startDragX) * 0.8);
             sel.setRotation(nx, ny); axisDrag.updateGizmoPosition(); editor.updateActiveFace();
             hudLabel.setText(String.format("%s | Rot Y: %.1f° | Rot X: %.1f°", sel.getName(), sel.getRotationY(), sel.getRotationX()));
             hudLabel.setVisible(true); e.consume(); return;
@@ -157,14 +153,14 @@ public class shape_event_handler_ui_main {
         }
         if (mode == EditMode.MOVE_SHAPE) {
             if (e.isShiftDown()) {
-                sel.applyWorldDelta(0, (e.getY() - startDragY) * 0.8, 0); startDragY = e.getY(); lastHit = raycastPlane(e, sel.getWorldCenter().getY());
+                sel.applyWorldDelta(0, (vy - startDragY) * 0.8, 0); startDragY = vy; lastHit = raycastPlane(e, sel.getWorldCenter().getY());
             } else {
                 Point3D hit = raycastPlane(e, sel.getWorldCenter().getY());
                 if (hit != null && lastHit != null) sel.translate(hit.getX() - lastHit.getX(), hit.getZ() - lastHit.getZ());
                 else {
                     double yr = Math.toRadians(cameraController.getRy().getAngle()), cy = Math.cos(yr), sy = Math.sin(yr);
-                    double mx = (e.getX() - startDragX) * 0.8, my = (e.getY() - startDragY) * 0.8;
-                    sel.translate(mx * cy - my * sy, -mx * sy - my * cy); startDragX = e.getX(); startDragY = e.getY();
+                    double mx = (vx - startDragX) * 0.8, my = (vy - startDragY) * 0.8;
+                    sel.translate(mx * cy - my * sy, -mx * sy - my * cy); startDragX = vx; startDragY = vy;
                 }
                 lastHit = hit;
             }

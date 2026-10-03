@@ -110,7 +110,10 @@ public class workspace_ui_main extends StackPane {
         drafter = new shape_drafting_ui_main(this, camera, controller, hudDimLabel);
         shapeEditor = new shape_editor_ui_main(
             drafter.getShapesGroup(), this, subScene, controller,
-            e -> drafter.screenToGround(e.getX(), e.getY()),
+            e -> {
+                javafx.geometry.Point2D p = this.sceneToLocal(e.getSceneX(), e.getSceneY());
+                return drafter.screenToGround(p != null ? p.getX() : e.getX(), p != null ? p.getY() : e.getY());
+            },
             hudDimLabel,
             () -> drafter.getActiveShape().isDrawing(),
             camera
