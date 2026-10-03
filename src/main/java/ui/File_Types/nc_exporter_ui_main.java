@@ -1,6 +1,7 @@
 package ui.File_Types;
 
 import javafx.geometry.Point3D;
+import ui.workspace.drafting.holes.hole_feature_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
 
@@ -9,12 +10,15 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
  * nc_exporter_ui_main.java
- * CNC Numerical Control (G-code .nc) toolpath and CAD model exporter.
+ * CNC Numerical Control (G-code .nc) toolpath exporter for Astra CAD models.
+ * Generates outer profile contours and parametric hole toolpaths (simple,
+ * through-all, countersinks, counterbores, and patterns).
  */
 public final class nc_exporter_ui_main {
 
@@ -23,12 +27,15 @@ public final class nc_exporter_ui_main {
     public static boolean exportToNc(File file, List<shape_item_ui_main> shapes) {
         if (file == null) return false;
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        double safeZ = computeSafeZ(shapes);
 
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
             pw.println("(==================================================)");
             pw.printf(Locale.US, "( ASTRA CAD/CAM NUMERICAL CONTROL EXPORT: %s )%n", file.getName());
             pw.printf(Locale.US, "( GENERATED: %s )%n", timestamp);
             pw.println("( POST-PROCESSOR: GENERIC 3-AXIS CNC / ISO G-CODE )");
+            pw.println("( CONVENTION: G21 METRIC, G90 ABSOLUTE, G17 XY PLANE )");
+            pw.println("( TOOLS: T1=ENDMILL, T2=DRILL, T3=COUNTERSINK, T4=COUNTERBORE )");
             pw.println("(==================================================)\n");
 
             // Machine initialization
@@ -39,32 +46,34 @@ public final class nc_exporter_ui_main {
             pw.println("G40 G80      (Cancel Cutter Radius Comp & Canned Cycles)");
             pw.println("T1 M06       (Tool #1: Flat End Mill 6mm)");
             pw.println("S6000 M03    (Spindle Clockwise: 6000 RPM)");
-            pw.println("G00 Z15.0000 (Rapid to Safety Clearance)\n");
+            pw.printf(Locale.US, "G00 Z%.4f (Rapid to Safety Clearance)%n%n", safeZ);
+
+            List<nc_hole_toolpath_ui_main.HoleGeom> allHoles = new ArrayList<>();
 
             if (shapes != null) {
+                // Section 1: Outer profile contours
                 for (shape_item_ui_main item : shapes) {
                     pw.println("(--------------------------------------------------)");
                     pw.printf(Locale.US, "( FEATURE: %s [%s] )%n", item.getName(), item.getType().name());
                     pw.printf(Locale.US, "(SHAPE: %s)%n", item.getType().name());
                     pw.printf(Locale.US, "(id: %s)%n", item.getId());
                     pw.printf(Locale.US, "(name: %s)%n", item.getName());
-                    Point3D p1 = item.getP1(), p2 = item.getP2();
-                    pw.printf(Locale.US, "(p1: %.4f, %.4f, %.4f)%n", p1.getX(), p1.getY(), p1.getZ());
-                    pw.printf(Locale.US, "(p2: %.4f, %.4f, %.4f)%n", p2.getX(), p2.getY(), p2.getZ());
-                    if (item.getType().is3D() && (item.getWorldX() != 0 || item.getWorldY() != 0 || item.getWorldZ() != 0)) {
-                        pw.printf(Locale.US, "(tx: %.4f, %.4f, %.4f)%n", item.getWorldX(), item.getWorldY(), item.getWorldZ());
-                    }
-                    if (item.getRotationAngle() != 0) {
-                        pw.printf(Locale.US, "(rot: %.4f)%n", item.getRotationAngle());
-                    }
-
                     writeFeatureToolpath(pw, item);
                     pw.println();
+
+                    for (hole_feature_ui_main h : item.getAllEffectiveHoles()) {
+                        allHoles.add(nc_hole_toolpath_ui_main.resolveHole(item, h));
+                    }
                 }
+
+                // Section 2: Hole drilling and machining cycles
+                nc_hole_toolpath_ui_main.writeDrillOperations(pw, allHoles, safeZ);
+                nc_hole_toolpath_ui_main.writeCountersinkOperations(pw, allHoles, safeZ);
+                nc_hole_toolpath_ui_main.writeCounterboreOperations(pw, allHoles, safeZ);
             }
 
             pw.println("(--------------------------------------------------)");
-            pw.println("G00 Z25.0000 (Retract to Final Clearance)");
+            pw.printf(Locale.US, "G00 Z%.4f (Retract to Final Clearance)%n", safeZ + 10.0);
             pw.println("M05          (Spindle Stop)");
             pw.println("G00 X0.0000 Y0.0000 (Return to Home)");
             pw.println("M30          (End of Program / Reset)");
@@ -73,6 +82,21 @@ public final class nc_exporter_ui_main {
             System.err.println("[Astra] Error exporting NC: " + e.getMessage());
             return false;
         }
+    }
+
+    private static double computeSafeZ(List<shape_item_ui_main> shapes) {
+        double maxZ = 10.0;
+        if (shapes != null) {
+            for (shape_item_ui_main s : shapes) {
+                double sSize = Math.max(Math.abs(s.getP2().getX() - s.getP1().getX()), Math.abs(s.getP2().getZ() - s.getP1().getZ()));
+                if (sSize > maxZ) maxZ = sSize;
+                for (hole_feature_ui_main h : s.getAllEffectiveHoles()) {
+                    nc_hole_toolpath_ui_main.HoleGeom hg = nc_hole_toolpath_ui_main.resolveHole(s, h);
+                    if (hg.center().getZ() > maxZ) maxZ = hg.center().getZ();
+                }
+            }
+        }
+        return maxZ + 15.0;
     }
 
     private static void writeFeatureToolpath(PrintWriter pw, shape_item_ui_main item) {

@@ -8,17 +8,20 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * step_exporter_ui_main.java
- * ISO 10303-21 STEP AP203/AP214 CAD exporter for Astra solid models and profiles.
+ * ISO 10303-21 STEP AP203/AP214 CAD exporter for Astra models.
+ * NOTE ON GEOMETRY HONESTY: Astra STEP export currently represents tessellated
+ * geometry (faceted B-Rep using ADVANCED_FACE planar polygons with shared topology).
+ * It is not an exact analytic/parametric feature-history STEP export.
  */
 public final class step_exporter_ui_main {
 
     private step_exporter_ui_main() {}
+
+    private record SharedVertex(int cartesianPointId, int vertexPointId) {}
 
     public static boolean exportToStep(File file, List<shape_item_ui_main> shapes) {
         if (file == null) return false;
@@ -27,8 +30,8 @@ public final class step_exporter_ui_main {
         String filename = file.getName();
 
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            pw.println("ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('Astra CAD Solid Model','STEP AP203'),'2;1');");
-            pw.printf(Locale.US, "FILE_NAME('%s','%s',('Astra User'),('Astra Multiphysics'),'Astra STEP Exporter 1.0','Astra CAD 2026','');%n", filename, timestamp);
+            pw.println("ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('Astra CAD Tessellated B-Rep Model','STEP AP203'),'2;1');");
+            pw.printf(Locale.US, "FILE_NAME('%s','%s',('Astra User'),('Astra Multiphysics'),'Astra STEP Exporter 1.1','Astra CAD 2026','');%n", filename, timestamp);
             pw.println("FILE_SCHEMA(('CONFIG_CONTROL_DESIGN'));\nENDSEC;\nDATA;");
 
             pw.println("#1=APPLICATION_CONTEXT('configuration controlled 3d designs of mechanical parts');");
@@ -46,27 +49,26 @@ public final class step_exporter_ui_main {
             pw.println("#14=(NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.));");
             pw.println("#15=(NAMED_UNIT(*) SOLID_ANGLE_UNIT() SI_UNIT($,.STERADIAN.));");
 
-            int id = 20;
+            int[] id = new int[]{20};
+            Map<String, SharedVertex> vertexMap = new LinkedHashMap<>();
             List<Integer> faceIds = new ArrayList<>();
 
             for (mesh_exporter_ui_main.Tri t : tris) {
-                int p1Id = id++, p2Id = id++, p3Id = id++;
-                pw.printf(Locale.US, "#%d=CARTESIAN_POINT('',(%.6f,%.6f,%.6f));%n", p1Id, t.a().getX(), t.a().getY(), t.a().getZ());
-                pw.printf(Locale.US, "#%d=CARTESIAN_POINT('',(%.6f,%.6f,%.6f));%n", p2Id, t.b().getX(), t.b().getY(), t.b().getZ());
-                pw.printf(Locale.US, "#%d=CARTESIAN_POINT('',(%.6f,%.6f,%.6f));%n", p3Id, t.c().getX(), t.c().getY(), t.c().getZ());
+                SharedVertex v1 = getOrCreateVertex(t.a(), vertexMap, pw, id);
+                SharedVertex v2 = getOrCreateVertex(t.b(), vertexMap, pw, id);
+                SharedVertex v3 = getOrCreateVertex(t.c(), vertexMap, pw, id);
 
-                int v1Id = id++, v2Id = id++, v3Id = id++;
-                pw.printf("#%d=VERTEX_POINT('',#%d);%n#%d=VERTEX_POINT('',#%d);%n#%d=VERTEX_POINT('',#%d);%n", v1Id, p1Id, v2Id, p2Id, v3Id, p3Id);
+                int loopId = id[0]++, boundId = id[0]++;
+                pw.printf("#%d=POLY_LOOP('',(#%d,#%d,#%d));%n", loopId, v1.vertexPointId(), v2.vertexPointId(), v3.vertexPointId());
+                pw.printf("#%d=FACE_OUTER_BOUND('',#%d,.T.);%n", boundId, loopId);
 
-                int loopId = id++, boundId = id++;
-                pw.printf("#%d=POLY_LOOP('',(#%d,#%d,#%d));%n#%d=FACE_OUTER_BOUND('',#%d,.T.);%n", loopId, v1Id, v2Id, v3Id, boundId, loopId);
-
-                int normDirId = id++, axisPlacementId = id++, planeId = id++;
+                int normDirId = id[0]++, axisPlacementId = id[0]++, planeId = id[0]++;
                 Point3D n = t.n();
                 pw.printf(Locale.US, "#%d=DIRECTION('',(%.6f,%.6f,%.6f));%n", normDirId, n.getX(), n.getY(), n.getZ());
-                pw.printf("#%d=AXIS2_PLACEMENT_3D('',#%d,#%d,$);%n#%d=PLANE('',#%d);%n", axisPlacementId, p1Id, normDirId, planeId, axisPlacementId);
+                pw.printf("#%d=AXIS2_PLACEMENT_3D('',#%d,#%d,$);%n", axisPlacementId, v1.cartesianPointId(), normDirId);
+                pw.printf("#%d=PLANE('',#%d);%n", planeId, axisPlacementId);
 
-                int faceId = id++;
+                int faceId = id[0]++;
                 pw.printf("#%d=ADVANCED_FACE('',(#%d),#%d,.T.);%n", faceId, boundId, planeId);
                 faceIds.add(faceId);
             }
@@ -77,7 +79,7 @@ public final class step_exporter_ui_main {
                 faceRefList.append("#").append(faceIds.get(i));
             }
 
-            int shellId = id++, brepId = id++, shapeRepId = id++;
+            int shellId = id[0]++, brepId = id[0]++, shapeRepId = id[0]++;
             pw.printf("#%d=CLOSED_SHELL('',(%s));%n", shellId, faceRefList.toString());
             pw.printf("#%d=MANIFOLD_SOLID_BREP('AstraSolid',#%d);%n", brepId, shellId);
             pw.printf("#%d=ADVANCED_BREP_SHAPE_REPRESENTATION('AstraRep',(#%d),#10);%n", shapeRepId, brepId);
@@ -89,5 +91,21 @@ public final class step_exporter_ui_main {
             System.err.println("[Astra] Error exporting STEP: " + e.getMessage());
             return false;
         }
+    }
+
+    private static String key(Point3D p) {
+        return String.format(Locale.US, "%.5f,%.5f,%.5f", p.getX(), p.getY(), p.getZ());
+    }
+
+    private static SharedVertex getOrCreateVertex(Point3D p, Map<String, SharedVertex> map, PrintWriter pw, int[] id) {
+        String k = key(p);
+        SharedVertex existing = map.get(k);
+        if (existing != null) return existing;
+        int pId = id[0]++, vId = id[0]++;
+        pw.printf(Locale.US, "#%d=CARTESIAN_POINT('',(%.6f,%.6f,%.6f));%n", pId, p.getX(), p.getY(), p.getZ());
+        pw.printf("#%d=VERTEX_POINT('',#%d);%n", vId, pId);
+        SharedVertex created = new SharedVertex(pId, vId);
+        map.put(k, created);
+        return created;
     }
 }
