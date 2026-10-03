@@ -1,11 +1,14 @@
 package ui.workspace.drafting.faces;
 
 import javafx.geometry.Point3D;
+import ui.workspace.drafting.shape_item_ui_main;
+import ui.workspace.drafting.topology.topology_geometry_helper_ui_main;
 
 /**
  * face_reference_ui_main.java
  * Immutable reference model identifying a selected face on a 3D CAD body.
- * Carries world-space orientation, face origin, and orthonormal in-plane axes (U, V).
+ * Distinguishes persistent identity (ownerShapeId, faceKind, faceId, localU, localV)
+ * from recalculable runtime selection data (worldHitPoint, worldNormal, axes).
  */
 public class face_reference_ui_main {
 
@@ -28,47 +31,48 @@ public class face_reference_ui_main {
                                  double faceWidth, double faceHeight) {
         this.ownerShapeId  = ownerShapeId;
         this.faceKind      = faceKind;
-        this.worldHitPoint = worldHitPoint;
-        this.worldNormal   = worldNormal.normalize();
-        this.faceOrigin    = faceOrigin;
-        this.uAxis         = uAxis.normalize();
-        this.vAxis         = vAxis.normalize();
+        this.worldHitPoint = (worldHitPoint != null) ? worldHitPoint : Point3D.ZERO;
+        this.worldNormal   = (worldNormal != null && worldNormal.magnitude() > 1e-9) ? worldNormal.normalize() : new Point3D(0, -1, 0);
+        this.faceOrigin    = (faceOrigin != null) ? faceOrigin : Point3D.ZERO;
+        this.uAxis         = (uAxis != null && uAxis.magnitude() > 1e-9) ? uAxis.normalize() : new Point3D(1, 0, 0);
+        this.vAxis         = (vAxis != null && vAxis.magnitude() > 1e-9) ? vAxis.normalize() : new Point3D(0, 0, 1);
         this.localHitU     = localHitU;
         this.localHitV     = localHitV;
         this.faceWidth     = faceWidth;
         this.faceHeight    = faceHeight;
     }
 
-    public String getOwnerShapeId()     { return ownerShapeId; }
+    public String getOwnerShapeId()        { return ownerShapeId; }
     public face_kind_ui_main getFaceKind() { return faceKind; }
-    public Point3D getWorldHitPoint()   { return worldHitPoint; }
-    public Point3D getWorldNormal()     { return worldNormal; }
-    public Point3D getFaceOrigin()      { return faceOrigin; }
-    public Point3D getUAxis()           { return uAxis; }
-    public Point3D getVAxis()           { return vAxis; }
-    public double getLocalHitU()        { return localHitU; }
-    public double getLocalHitV()        { return localHitV; }
-    public double getFaceWidth()        { return faceWidth; }
-    public double getFaceHeight()       { return faceHeight; }
-    public boolean isPlanar()           { return faceKind.isPlanar(); }
+    public String getFaceId()              { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":" + faceKind.name() : ""; }
+    public String getTopologyFaceId()      { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":F:" + faceKind.name() : ""; }
+    public Point3D getWorldHitPoint()      { return worldHitPoint; }
+    public Point3D getWorldNormal()        { return worldNormal; }
+    public Point3D getFaceOrigin()         { return faceOrigin; }
+    public Point3D getUAxis()              { return uAxis; }
+    public Point3D getVAxis()              { return vAxis; }
+    public double getLocalHitU()           { return localHitU; }
+    public double getLocalHitV()           { return localHitV; }
+    public double getFaceWidth()           { return faceWidth; }
+    public double getFaceHeight()          { return faceHeight; }
+    public boolean isPlanar()              { return faceKind != null && faceKind.isPlanar(); }
 
-    /**
-     * Converts face-local 2D (u, v) offsets into a 3D world coordinate.
-     */
     public Point3D toWorldPoint(double u, double v) {
         return faceOrigin.add(uAxis.multiply(u)).add(vAxis.multiply(v));
     }
 
-    /**
-     * Projects an arbitrary 3D world point onto the face plane, returning local (u, v).
-     */
     public Point3D toLocalCoords(Point3D worldPoint) {
         Point3D delta = worldPoint.subtract(faceOrigin);
         return new Point3D(delta.dotProduct(uAxis), delta.dotProduct(vAxis), delta.dotProduct(worldNormal));
     }
 
+    public face_reference_ui_main refresh(shape_item_ui_main shape) {
+        if (shape == null || faceKind == null) return this;
+        return topology_geometry_helper_ui_main.reconstructFaceReference(shape, faceKind, localHitU, localHitV);
+    }
+
     @Override
     public String toString() {
-        return String.format("%s on [%s] @ (%.1f, %.1f)", faceKind.getLabel(), ownerShapeId, localHitU, localHitV);
+        return String.format("%s on [%s] @ (%.1f, %.1f) [faceId=%s]", faceKind.getLabel(), ownerShapeId, localHitU, localHitV, getFaceId());
     }
 }

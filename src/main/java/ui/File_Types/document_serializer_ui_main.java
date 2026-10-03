@@ -171,7 +171,7 @@ public final class document_serializer_ui_main {
                     h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth(),
                     h.getCutoutShape(), h.getWidth2()
                 );
-                ch.setState(h.getState()); ch.setVisible(h.isVisible());
+                ch.setState(h.getState()); ch.setVisible(h.isVisible()); ch.setDiagnosticMessage(h.getDiagnosticMessage());
                 item.addHole(ch);
             }
             for (hole_pattern_ui_main p : s.getPatterns()) {
@@ -181,7 +181,7 @@ public final class document_serializer_ui_main {
             }
             for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : s.getExtrusions()) {
                 ui.workspace.drafting.extrude.extrude_feature_ui_main cext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(ext.getId(), ext.getOwnerShapeId(), ext.getName(), ext.getFaceKind(), ext.getProfileShape(), ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight());
-                cext.setState(ext.getState()); cext.setVisible(ext.isVisible());
+                cext.setState(ext.getState()); cext.setVisible(ext.isVisible()); cext.setDiagnosticMessage(ext.getDiagnosticMessage());
                 item.addExtrude(cext);
             }
             copies.add(item);

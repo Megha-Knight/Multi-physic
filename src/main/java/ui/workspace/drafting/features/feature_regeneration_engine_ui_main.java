@@ -54,6 +54,7 @@ public final class feature_regeneration_engine_ui_main {
                 if (host != null && rebuiltShapes.add(host)) {
                     List<javafx.scene.Node> backup = new ArrayList<>(host.getShapeGroup().getChildren());
                     try {
+                        host.revalidateFeatures();
                         host.rebuild();
                         regenCount++;
                         node.setState(feature_state_ui_main.CLEAN);

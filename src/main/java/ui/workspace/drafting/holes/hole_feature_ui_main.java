@@ -7,16 +7,12 @@ import ui.workspace.drafting.faces.face_kind_ui_main;
 /**
  * hole_feature_ui_main.java
  * Parametric Hole Feature model for solid CAD bodies.
- * Supports Simple, Countersink, and Counterbore holes.
- * Total depth convention: depth represents total cavity depth from entry face.
+ * Supports Simple, Countersink, and Counterbore holes with persistent topology identity.
  */
 public class hole_feature_ui_main {
 
     public enum HoleType {
-        SIMPLE("Simple Hole"),
-        COUNTERSINK("Countersink Hole"),
-        COUNTERBORE("Counterbore Hole");
-
+        SIMPLE("Simple Hole"), COUNTERSINK("Countersink Hole"), COUNTERBORE("Counterbore Hole");
         private final String label;
         HoleType(String label) { this.label = label; }
         public String getLabel() { return label; }
@@ -34,46 +30,28 @@ public class hole_feature_ui_main {
     private final String ownerShapeId;
     private final HoleType holeType;
     private final face_kind_ui_main faceKind;
-    private double u;
-    private double v;
-    private double diameter;
-    private double depth;
+    private double u, v, diameter, depth;
     private boolean throughAll;
-
-    // Stage D: Countersink parameters (Ds: countersink diameter, A: included angle in degrees)
-    private double csDiameter;
-    private double csAngle = 90.0;
-
-    // Stage D: Counterbore parameters (Db: counterbore diameter, Hb: counterbore depth)
-    private double cbDiameter;
-    private double cbDepth;
-
-    // 2D Profile Cutout extension
+    private double csDiameter, csAngle = 90.0, cbDiameter, cbDepth, width2 = 0.0;
     private CutoutShape cutoutShape = CutoutShape.CIRCLE;
-    private double width2 = 0.0;
-
     private String name;
+    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    private String diagnosticMessage = null;
+    private boolean visible = true;
 
-    public hole_feature_ui_main(String id, String ownerShapeId, face_kind_ui_main faceKind,
-                                double u, double v, double diameter, double depth, boolean throughAll) {
+    public hole_feature_ui_main(String id, String ownerShapeId, face_kind_ui_main faceKind, double u, double v, double diameter, double depth, boolean throughAll) {
         this(id, ownerShapeId, null, HoleType.SIMPLE, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0, CutoutShape.CIRCLE, 0.0);
     }
 
-    public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
-                                double u, double v, double diameter, double depth, boolean throughAll) {
+    public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind, double u, double v, double diameter, double depth, boolean throughAll) {
         this(id, ownerShapeId, null, holeType, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0, CutoutShape.CIRCLE, 0.0);
     }
 
-    public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
-                                double u, double v, double diameter, double depth, boolean throughAll,
-                                double csDiameter, double csAngle, double cbDiameter, double cbDepth) {
+    public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind, double u, double v, double diameter, double depth, boolean throughAll, double csDiameter, double csAngle, double cbDiameter, double cbDepth) {
         this(id, ownerShapeId, null, holeType, faceKind, u, v, diameter, depth, throughAll, csDiameter, csAngle, cbDiameter, cbDepth, CutoutShape.CIRCLE, 0.0);
     }
 
-    public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind,
-                                double u, double v, double diameter, double depth, boolean throughAll,
-                                double csDiameter, double csAngle, double cbDiameter, double cbDepth,
-                                CutoutShape cutoutShape, double width2) {
+    public hole_feature_ui_main(String id, String ownerShapeId, HoleType holeType, face_kind_ui_main faceKind, double u, double v, double diameter, double depth, boolean throughAll, double csDiameter, double csAngle, double cbDiameter, double cbDepth, CutoutShape cutoutShape, double width2) {
         this(id, ownerShapeId, null, holeType, faceKind, u, v, diameter, depth, throughAll, csDiameter, csAngle, cbDiameter, cbDepth, cutoutShape, width2);
     }
 
@@ -92,18 +70,19 @@ public class hole_feature_ui_main {
         this.width2 = width2;
     }
 
-    public String getId()                  { return id; }
-    public String getOwnerShapeId()        { return ownerShapeId; }
-    public String getName()                { return (name != null && !name.isBlank()) ? name : getDefaultName(); }
-    public void setName(String name)       { this.name = name; }
-    public HoleType getHoleType()          { return holeType; }
+    public String getId() { return id; }
+    public String getOwnerShapeId() { return ownerShapeId; }
+    public String getName() { return (name != null && !name.isBlank()) ? name : getDefaultName(); }
+    public void setName(String name) { this.name = name; }
+    public HoleType getHoleType() { return holeType; }
     public face_kind_ui_main getFaceKind() { return faceKind; }
-
-    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
-    private boolean visible = true;
+    public String getFaceId() { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":" + faceKind.name() : ""; }
+    public String getTopologyFaceId() { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":F:" + faceKind.name() : ""; }
 
     public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
     public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
+    public String getDiagnosticMessage() { return diagnosticMessage; }
+    public void setDiagnosticMessage(String msg) { this.diagnosticMessage = msg; }
     public boolean isVisible() { return visible; }
     public void setVisible(boolean v) { this.visible = v; }
 
@@ -117,6 +96,24 @@ public class hole_feature_ui_main {
     public double getCsAngle() { return csAngle; } public void setCsAngle(double a) { this.csAngle = a; }
     public double getCbDiameter() { return cbDiameter; } public void setCbDiameter(double d) { this.cbDiameter = d; }
     public double getCbDepth() { return cbDepth; } public void setCbDepth(double d) { this.cbDepth = d; }
+
+    public boolean revalidate(ui.workspace.drafting.shape_item_ui_main host) {
+        if (host == null || !host.getId().equals(ownerShapeId)) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
+            diagnosticMessage = "Host body not found";
+            return false;
+        }
+        if (!ui.workspace.drafting.topology.topology_geometry_helper_ui_main.fitsWithinFace(host, faceKind, u, v, getOuterRadius())) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
+            diagnosticMessage = "Hole exceeds face boundary";
+            return false;
+        }
+        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID && "Hole exceeds face boundary".equals(diagnosticMessage)) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+            diagnosticMessage = null;
+        }
+        return true;
+    }
 
     public String getDefaultName() {
         if (cutoutShape != null && cutoutShape != CutoutShape.CIRCLE) {
@@ -132,8 +129,7 @@ public class hole_feature_ui_main {
     public double getConeDepth() {
         if (holeType != HoleType.COUNTERSINK || csAngle <= 0.0 || csAngle >= 180.0) return 0.0;
         double deltaR = (csDiameter - diameter) * 0.5;
-        if (deltaR <= 0.0) return 0.0;
-        return deltaR / Math.tan(Math.toRadians(csAngle * 0.5));
+        return (deltaR <= 0.0) ? 0.0 : deltaR / Math.tan(Math.toRadians(csAngle * 0.5));
     }
 
     public double getOuterRadius() {
@@ -144,11 +140,10 @@ public class hole_feature_ui_main {
         };
     }
 
-    public double getOuterDiameter() {
-        return getOuterRadius() * 2.0;
-    }
+    public double getOuterDiameter() { return getOuterRadius() * 2.0; }
 
     public boolean isValid() {
+        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID) return false;
         if (diameter < 0.1 || faceKind == null || !faceKind.isPlanar()) return false;
         return switch (holeType) {
             case SIMPLE -> (throughAll || depth >= 0.1);
@@ -168,29 +163,24 @@ public class hole_feature_ui_main {
 
     public boolean fitsWithinCylinderCap(double capRadius) {
         if (!isValid() || capRadius <= 0) return false;
-        double r = getOuterRadius();
-        return (Math.hypot(u, v) + r <= capRadius + 1e-4);
+        return (Math.hypot(u, v) + getOuterRadius() <= capRadius + 1e-4);
     }
 
-    public CutoutShape getCutoutShape()         { return cutoutShape != null ? cutoutShape : CutoutShape.CIRCLE; }
-    public void setCutoutShape(CutoutShape s)   { this.cutoutShape = s; }
-    public double getWidth2()                  { return width2; }
-    public void setWidth2(double w)            { this.width2 = w; }
+    public CutoutShape getCutoutShape() { return cutoutShape != null ? cutoutShape : CutoutShape.CIRCLE; }
+    public void setCutoutShape(CutoutShape s) { this.cutoutShape = s; }
+    public double getWidth2() { return width2; }
+    public void setWidth2(double w) { this.width2 = w; }
 
     @Override
     public String toString() {
         String depthStr = throughAll ? "Through-All" : String.format(Locale.US, "Depth: %.1f mm", depth);
         if (cutoutShape != null && cutoutShape != CutoutShape.CIRCLE) {
-            return String.format(Locale.US, "%s Cutout (Size: %.1f mm, %s) on %s",
-                cutoutShape.getLabel(), diameter, depthStr, faceKind.getLabel());
+            return String.format(Locale.US, "%s Cutout (Size: %.1f mm, %s) on %s", cutoutShape.getLabel(), diameter, depthStr, faceKind.getLabel());
         }
         return switch (holeType) {
-            case COUNTERSINK -> String.format(Locale.US, "Countersink (D: %.1f mm, Ds: %.1f mm, %.1f deg, %s) on %s",
-                diameter, csDiameter, csAngle, depthStr, faceKind.getLabel());
-            case COUNTERBORE -> String.format(Locale.US, "Counterbore (D: %.1f mm, Db: %.1f mm, Hb: %.1f mm, %s) on %s",
-                diameter, cbDiameter, cbDepth, depthStr, faceKind.getLabel());
-            default -> String.format(Locale.US, "Simple Hole (Dia: %.1f mm, %s) on %s",
-                diameter, depthStr, faceKind.getLabel());
+            case COUNTERSINK -> String.format(Locale.US, "Countersink (D: %.1f mm, Ds: %.1f mm, %.1f deg, %s) on %s", diameter, csDiameter, csAngle, depthStr, faceKind.getLabel());
+            case COUNTERBORE -> String.format(Locale.US, "Counterbore (D: %.1f mm, Db: %.1f mm, Hb: %.1f mm, %s) on %s", diameter, cbDiameter, cbDepth, depthStr, faceKind.getLabel());
+            default -> String.format(Locale.US, "Simple Hole (Dia: %.1f mm, %s) on %s", diameter, depthStr, faceKind.getLabel());
         };
     }
 }

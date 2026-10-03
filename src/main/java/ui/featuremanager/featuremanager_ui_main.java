@@ -24,8 +24,7 @@ public class featuremanager_ui_main extends BorderPane {
         getStyleClass().add("feature-manager-pane"); setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #C9D1D9; -fx-border-width: 0 1 0 0;");
         Label lbl = new Label("Feature Manager"); lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #1F2933;");
         HBox header = new HBox(lbl); header.setAlignment(Pos.CENTER_LEFT); header.setPadding(new Insets(4, 10, 4, 10)); header.setPrefHeight(26);
-        header.setStyle("-fx-background-color: #F1F5F9; -fx-border-color: #CBD5E1; -fx-border-width: 0 0 1 0;");
-        setTop(header);
+        header.setStyle("-fx-background-color: #F1F5F9; -fx-border-color: #CBD5E1; -fx-border-width: 0 0 1 0;"); setTop(header);
         treeView.setRoot(rootItem); treeView.setShowRoot(false);
         treeView.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
         treeView.setCellFactory(tv -> new FeatureTreeCell());

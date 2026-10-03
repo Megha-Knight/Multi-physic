@@ -38,10 +38,13 @@ public class extrude_feature_ui_main {
     }
 
     private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    private String diagnosticMessage = null;
     private boolean visible = true;
 
     public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
     public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
+    public String getDiagnosticMessage() { return diagnosticMessage; }
+    public void setDiagnosticMessage(String msg) { this.diagnosticMessage = msg; }
     public boolean isVisible() { return visible; }
     public void setVisible(boolean v) { this.visible = v; }
 
@@ -50,6 +53,8 @@ public class extrude_feature_ui_main {
     public String getName()                { return (name != null && !name.isBlank()) ? name : getDefaultName(); }
     public void setName(String name)       { this.name = name; }
     public face_kind_ui_main getFaceKind() { return faceKind; }
+    public String getFaceId()              { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":" + faceKind.name() : ""; }
+    public String getTopologyFaceId()      { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":F:" + faceKind.name() : ""; }
     public CutoutShape getProfileShape()   { return profileShape != null ? profileShape : CutoutShape.CIRCLE; }
     public void setProfileShape(CutoutShape s) { this.profileShape = s; }
 
@@ -65,12 +70,31 @@ public class extrude_feature_ui_main {
     public double getHeight()              { return height; }
     public void setHeight(double h)        { this.height = h; }
 
+    public boolean revalidate(ui.workspace.drafting.shape_item_ui_main host) {
+        if (host == null || !host.getId().equals(ownerShapeId)) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
+            diagnosticMessage = "Host body not found";
+            return false;
+        }
+        if (!ui.workspace.drafting.topology.topology_geometry_helper_ui_main.fitsWithinFace(host, faceKind, u, v, getRadius())) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
+            diagnosticMessage = "Extrusion exceeds face boundary";
+            return false;
+        }
+        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID && "Extrusion exceeds face boundary".equals(diagnosticMessage)) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+            diagnosticMessage = null;
+        }
+        return true;
+    }
+
     public String getDefaultName() {
         String shapeStr = (profileShape != null) ? profileShape.getLabel() : "Boss";
         return String.format(Locale.US, "%s Boss (%.1f x %.1f mm)", shapeStr, diameter, height);
     }
 
     public boolean isValid() {
+        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID) return false;
         return diameter >= 0.1 && height >= 0.1 && faceKind != null && faceKind.isPlanar();
     }
 

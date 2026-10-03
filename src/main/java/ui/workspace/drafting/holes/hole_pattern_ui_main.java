@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import ui.workspace.drafting.shape_item_ui_main;
+import ui.workspace.drafting.topology.topology_geometry_helper_ui_main;
 
 /**
  * hole_pattern_ui_main.java
@@ -28,22 +30,14 @@ public class hole_pattern_ui_main {
         public String getLabel() { return label; }
     }
 
-    private final String id;
-    private final String ownerShapeId;
-    private final String seedHoleId;
+    private final String id, ownerShapeId, seedHoleId;
     private final PatternType patternType;
-
-    // Linear pattern parameters
     private LinearDirection direction = LinearDirection.U_DIR;
     private int count = 2;
-    private double spacing = 15.0;
-
-    // Circular pattern parameters
-    private double centerU = 0.0;
-    private double centerV = 0.0;
-    private double angularSpan = 360.0;
-    private boolean clockwise = false;
-    private boolean fullCircle = true;
+    private double spacing = 15.0, centerU = 0.0, centerV = 0.0, angularSpan = 360.0;
+    private boolean clockwise = false, fullCircle = true, visible = true;
+    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+    private String diagnosticMessage = null;
 
     public static hole_pattern_ui_main createLinear(String ownerId, String seedId, int count, LinearDirection dir, double spacing) {
         return new hole_pattern_ui_main(UUID.randomUUID().toString(), ownerId, seedId, dir, count, spacing);
@@ -51,18 +45,12 @@ public class hole_pattern_ui_main {
     public static hole_pattern_ui_main createCircular(String ownerId, String seedId, int count, double cu, double cv, double span, boolean cw, boolean full) {
         return new hole_pattern_ui_main(UUID.randomUUID().toString(), ownerId, seedId, cu, cv, count, span, cw, full);
     }
-
-    public hole_pattern_ui_main(String id, String ownerShapeId, String seedHoleId,
-                                LinearDirection direction, int count, double spacing) {
+    public hole_pattern_ui_main(String id, String ownerShapeId, String seedHoleId, LinearDirection direction, int count, double spacing) {
         this(id, ownerShapeId, seedHoleId, PatternType.LINEAR, count, direction, spacing, 0, 0, 360, false, true);
     }
-
-    public hole_pattern_ui_main(String id, String ownerShapeId, String seedHoleId,
-                                double centerU, double centerV, int count,
-                                double angularSpan, boolean clockwise, boolean fullCircle) {
+    public hole_pattern_ui_main(String id, String ownerShapeId, String seedHoleId, double centerU, double centerV, int count, double angularSpan, boolean clockwise, boolean fullCircle) {
         this(id, ownerShapeId, seedHoleId, PatternType.CIRCULAR, count, LinearDirection.U_DIR, 15, centerU, centerV, angularSpan, clockwise, fullCircle);
     }
-
     public hole_pattern_ui_main(String id, String ownerShapeId, String seedHoleId, PatternType type, int count,
                                 LinearDirection dir, double spacing, double cu, double cv, double span, boolean cw, boolean full) {
         this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
@@ -70,10 +58,6 @@ public class hole_pattern_ui_main {
         this.direction = (dir != null) ? dir : LinearDirection.U_DIR; this.count = count; this.spacing = spacing;
         this.centerU = cu; this.centerV = cv; this.angularSpan = span; this.clockwise = cw; this.fullCircle = full;
     }
-
-    private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
-    private boolean visible = true;
-    private String diagnosticMessage = null;
 
     public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
     public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
@@ -125,8 +109,7 @@ public class hole_pattern_ui_main {
         } else {
             double du0 = seed.getU() - centerU, dv0 = seed.getV() - centerV;
             double radius = Math.hypot(du0, dv0), baseAngle = Math.atan2(dv0, du0);
-            double step = (fullCircle || Math.abs(angularSpan - 360.0) < 1e-4)
-                    ? (2.0 * Math.PI / count) : (Math.toRadians(angularSpan) / (count - 1));
+            double step = (fullCircle || Math.abs(angularSpan - 360.0) < 1e-4) ? (2.0 * Math.PI / count) : (Math.toRadians(angularSpan) / (count - 1));
             double dirSign = clockwise ? -1.0 : 1.0;
             for (int i = 1; i < count; i++) {
                 double a = baseAngle + dirSign * i * step;
@@ -151,6 +134,29 @@ public class hole_pattern_ui_main {
         return derived;
     }
 
+    public boolean revalidate(shape_item_ui_main host) {
+        if (host == null || !host.getId().equals(ownerShapeId)) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID; diagnosticMessage = "Host body not found"; return false;
+        }
+        hole_feature_ui_main seed = null;
+        for (hole_feature_ui_main h : host.getHoles()) if (h.getId().equals(seedHoleId)) { seed = h; break; }
+        if (seed == null) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID; diagnosticMessage = "Missing seed hole: " + seedHoleId; return false;
+        }
+        if (seed.getState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID; diagnosticMessage = "Seed hole is invalid"; return false;
+        }
+        for (Pos2D p : getAllPositions(seed)) {
+            if (!topology_geometry_helper_ui_main.fitsWithinFace(host, seed.getFaceKind(), p.u(), p.v(), seed.getOuterRadius())) {
+                state = ui.workspace.drafting.features.feature_state_ui_main.INVALID; diagnosticMessage = "Pattern instances exceed face boundary"; return false;
+            }
+        }
+        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID && diagnosticMessage != null && (diagnosticMessage.contains("boundary") || diagnosticMessage.contains("Seed"))) {
+            state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN; diagnosticMessage = null;
+        }
+        return true;
+    }
+
     public boolean isValid(hole_feature_ui_main seed) {
         if (seed == null || !seed.isValid() || count < 2 || count > 1000) return false;
         if (patternType == PatternType.LINEAR) return spacing >= 0.1;
@@ -161,18 +167,13 @@ public class hole_pattern_ui_main {
     public boolean fitsWithinFace(hole_feature_ui_main seed, double faceW, double faceH) {
         if (!isValid(seed) || faceW <= 0 || faceH <= 0) return false;
         double r = seed.getOuterRadius(), hw = faceW * 0.5, hh = faceH * 0.5;
-        for (Pos2D p : getAllPositions(seed)) {
-            if (Math.abs(p.u()) + r > hw + 1e-4 || Math.abs(p.v()) + r > hh + 1e-4) return false;
-        }
+        for (Pos2D p : getAllPositions(seed)) if (Math.abs(p.u()) + r > hw + 1e-4 || Math.abs(p.v()) + r > hh + 1e-4) return false;
         return true;
     }
 
     public boolean fitsWithinCylinderCap(hole_feature_ui_main seed, double capRadius) {
         if (!isValid(seed) || capRadius <= 0) return false;
-        double r = seed.getOuterRadius();
-        for (Pos2D p : getAllPositions(seed)) {
-            if (Math.hypot(p.u(), p.v()) + r > capRadius + 1e-4) return false;
-        }
+        for (Pos2D p : getAllPositions(seed)) if (Math.hypot(p.u(), p.v()) + seed.getOuterRadius() > capRadius + 1e-4) return false;
         return true;
     }
 
@@ -182,9 +183,7 @@ public class hole_pattern_ui_main {
         double minClearance = 2.0 * seed.getOuterRadius() - 1e-4;
         for (int i = 0; i < pts.size(); i++) {
             for (int j = i + 1; j < pts.size(); j++) {
-                if (Math.hypot(pts.get(i).u() - pts.get(j).u(), pts.get(i).v() - pts.get(j).v()) < minClearance) {
-                    return true;
-                }
+                if (Math.hypot(pts.get(i).u() - pts.get(j).u(), pts.get(i).v() - pts.get(j).v()) < minClearance) return true;
             }
         }
         return false;

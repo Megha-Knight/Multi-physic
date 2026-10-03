@@ -36,31 +36,9 @@ public final class face_picker_ui_main {
 
     public static face_reference_ui_main refreshFace(face_reference_ui_main prev, shape_item_ui_main shape) {
         if (prev == null || shape == null || !shape.getType().is3D()) return null;
-        Hit h = getFaceLocal(shape, prev.getFaceKind());
-        if (h == null) return prev;
-        Point3D c = shape.getCenter();
-        double rx = shape.getRotationX(), ry = shape.getRotationY(), wx = shape.getWorldX(), wy = shape.getWorldY(), wz = shape.getWorldZ();
-        Point3D worldOrigin = shape_rotation_helper_ui_main.transformPoint(h.localOrigin, c, rx, ry, wx, wy, wz);
-        Point3D worldNorm = shape_rotation_helper_ui_main.transformNormal(h.localNormal, rx, ry).normalize();
-        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(h.localU, rx, ry).normalize(), worldV = shape_rotation_helper_ui_main.transformNormal(h.localV, rx, ry).normalize();
-        Point3D worldHit = worldOrigin.add(worldU.multiply(prev.getLocalHitU())).add(worldV.multiply(prev.getLocalHitV()));
-        return new face_reference_ui_main(shape.getId(), prev.getFaceKind(), worldHit, worldNorm,
-            worldOrigin, worldU, worldV, prev.getLocalHitU(), prev.getLocalHitV(), h.w, h.h);
-    }
-
-    private static Hit getFaceLocal(shape_item_ui_main s, face_kind_ui_main kind) {
-        Point3D p1 = s.getP1(), p2 = s.getP2();
-        if (s.getType() == basic_shapes_ui_main.CUBE || s.getType() == basic_shapes_ui_main.CUBOID) return getBoxFace(p1, p2, kind, s.getType() == basic_shapes_ui_main.CUBE);
-        if (s.getType() == basic_shapes_ui_main.CYLINDER) {
-            double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-            if (kind == face_kind_ui_main.TOP_CAP) return new Hit(0, kind, null, new Point3D(0, -1, 0), new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(1, 0, 0), new Point3D(0, 0, 1), r * 2, r * 2);
-            if (kind == face_kind_ui_main.BOTTOM_CAP) return new Hit(0, kind, null, new Point3D(0, 1, 0), new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(1, 0, 0), new Point3D(0, 0, -1), r * 2, r * 2);
-        }
-        if (s.getType() == basic_shapes_ui_main.CONE && kind == face_kind_ui_main.BASE_CAP) {
-            double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-            return new Hit(0, kind, null, new Point3D(0, 1, 0), new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(1, 0, 0), new Point3D(0, 0, -1), r * 2, r * 2);
-        }
-        return null;
+        return ui.workspace.drafting.topology.topology_geometry_helper_ui_main.reconstructFaceReference(
+            shape, prev.getFaceKind(), prev.getLocalHitU(), prev.getLocalHitV()
+        );
     }
 
     private static Hit getBoxFace(Point3D p1, Point3D p2, face_kind_ui_main kind, boolean isCube) {

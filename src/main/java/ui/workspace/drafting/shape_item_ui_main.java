@@ -53,17 +53,14 @@ public class shape_item_ui_main {
     public shape_item_ui_main(String id, String name, basic_shapes_ui_main type, Point3D p1, Point3D p2, double wx, double wy, double wz, double rx, double ry) {
         this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
         this.name = name; this.type = type; this.p1 = p1; this.p2 = p2;
-        rootGroup.getTransforms().addAll(worldTx, worldRy, worldRx);
-        rootGroup.getChildren().addAll(shapeGroup, handlesGroup);
-        setWorldTranslation(wx, wy, wz);
-        setRotation(rx, ry);
+        rootGroup.getTransforms().addAll(worldTx, worldRy, worldRx); rootGroup.getChildren().addAll(shapeGroup, handlesGroup);
+        setWorldTranslation(wx, wy, wz); setRotation(rx, ry);
     }
 
     public void applyWorldDelta(double dx, double dy, double dz) { worldX += dx; worldY += dy; worldZ += dz; worldTx.setX(worldX); worldTx.setY(worldY); worldTx.setZ(worldZ); }
     public void setWorldTranslation(double x, double y, double z) { worldX = x; worldY = y; worldZ = z; worldTx.setX(x); worldTx.setY(y); worldTx.setZ(z); }
     public void setRotation(double rx, double ry) {
-        this.rotationX = shape_rotation_helper_ui_main.normalize360(rx);
-        this.rotationY = shape_rotation_helper_ui_main.normalize360(ry);
+        this.rotationX = shape_rotation_helper_ui_main.normalize360(rx); this.rotationY = shape_rotation_helper_ui_main.normalize360(ry);
         updateRotationPivot(); worldRx.setAngle(this.rotationX); worldRy.setAngle(this.rotationY);
     }
     public void setRotationAngle(double deg) { setRotation(this.rotationX, deg); }
@@ -92,9 +89,7 @@ public class shape_item_ui_main {
     public void addPattern(hole_pattern_ui_main p) { if (p != null) { patterns.add(p); rebuild(); } }
     public void removePattern(String pId) { patterns.removeIf(p -> p.getId().equals(pId)); rebuild(); }
     public void clearPatterns() { patterns.clear(); rebuild(); }
-
-    public List<ui.workspace.drafting.extrude.extrude_feature_ui_main> getExtrusions() { return extrusions; }
-    public boolean hasExtrusions() { return !extrusions.isEmpty(); }
+    public List<ui.workspace.drafting.extrude.extrude_feature_ui_main> getExtrusions() { return extrusions; } public boolean hasExtrusions() { return !extrusions.isEmpty(); }
     public void addExtrude(ui.workspace.drafting.extrude.extrude_feature_ui_main ext) { if (ext != null) { extrusions.add(ext); rebuild(); } }
     public void removeExtrude(String id) { extrusions.removeIf(e -> e.getId().equals(id)); if (id != null && id.equals(selectedExtrudeId)) selectedExtrudeId = null; rebuild(); }
     public void clearExtrusions() { extrusions.clear(); selectedExtrudeId = null; rebuild(); }
@@ -172,7 +167,15 @@ public class shape_item_ui_main {
     public boolean isRotationHandle(int idx) { return false; }
     public void moveHandle(int index, Point3D newPos) {
         Point3D[] updated = shape_handles_ui_main.moveHandle(type, p1, p2, index, newPos);
-        this.p1 = updated[0]; this.p2 = updated[1]; updateRotationPivot(); rebuild();
+        this.p1 = updated[0]; this.p2 = updated[1]; updateRotationPivot(); revalidateFeatures(); rebuild();
+    }
+    public void revalidateFeatures() {
+        for (hole_feature_ui_main h : holes) h.revalidate(this);
+        for (hole_pattern_ui_main p : patterns) p.revalidate(this);
+        for (ui.workspace.drafting.extrude.extrude_feature_ui_main e : extrusions) e.revalidate(this);
+    }
+    public ui.workspace.drafting.topology.topology_body_ui_main getTopology() {
+        return ui.workspace.drafting.topology.topology_body_ui_main.buildTopology(this);
     }
     public boolean containsNode(Node node) { for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup) return true; return false; }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }
@@ -188,7 +191,7 @@ public class shape_item_ui_main {
     public String formatDimensions() { return shape_item_formatter_ui_main.formatDimensions(this); }
     public String getId() { return id; } public String getName() { return name != null ? name : ""; }
     public void setName(String name) { this.name = name; }
-    public void setP1P2(Point3D np1, Point3D np2) { this.p1 = np1; this.p2 = np2; updateRotationPivot(); rebuild(); }
+    public void setP1P2(Point3D np1, Point3D np2) { this.p1 = np1; this.p2 = np2; updateRotationPivot(); revalidateFeatures(); rebuild(); }
     public Group getRootGroup() { return rootGroup; } public Group getShapeGroup() { return shapeGroup; } public basic_shapes_ui_main getType() { return type; }
     public Point3D getP1() { return p1; } public Point3D getP2() { return p2; }
     public boolean isSelected() { return selected; } public void setSelected(boolean sel) { this.selected = sel; rebuild(); }
