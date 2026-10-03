@@ -18,6 +18,7 @@ This document codifies the active paired engineering workflow for the MultiPhysi
 - **Verify**: Run the project's regression test suite:
   `powershell -ExecutionPolicy Bypass -File scratch/run_all_tests.ps1`
   and feature-specific test scripts (e.g. `run_test_cuboid.ps1`).
+- **Non-Blocking Test Standard**: All test harnesses initializing JavaFX MUST wrap execution in `try-finally { System.exit(exitCode); }` to terminate background threads and prevent command hangs. Always ensure clean compilation before executing tests (see `test_execution_safety.md`).
 - **Autonomous Self-Healing**: If any compilation error or test failure occurs, inspect the exact error, fix the implementation autonomously, and rerun tests until all assertions are green.
 
 ---

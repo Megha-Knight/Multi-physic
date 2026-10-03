@@ -17,6 +17,7 @@ public class extrude_feature_ui_main {
     private double diameter;
     private double width2 = 0.0;
     private double height;
+    private String sketchId = null;
 
     public extrude_feature_ui_main(String id, String ownerShapeId, String name, face_kind_ui_main faceKind,
                                   CutoutShape profileShape, double u, double v, double diameter, double width2, double height) {
@@ -69,6 +70,8 @@ public class extrude_feature_ui_main {
     public void setWidth2(double w)        { this.width2 = w; }
     public double getHeight()              { return height; }
     public void setHeight(double h)        { this.height = h; }
+    public String getSketchId()            { return sketchId; }
+    public void setSketchId(String sid)    { this.sketchId = sid; }
 
     public boolean revalidate(ui.workspace.drafting.shape_item_ui_main host) {
         if (host == null || !host.getId().equals(ownerShapeId)) {
@@ -76,12 +79,20 @@ public class extrude_feature_ui_main {
             diagnosticMessage = "Host body not found";
             return false;
         }
+        if (sketchId != null) {
+            var sk = host.getSketch(sketchId);
+            if (sk == null || !sk.isValid()) {
+                state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
+                diagnosticMessage = "Sketch is invalid or missing";
+                return false;
+            }
+        }
         if (!ui.workspace.drafting.topology.topology_geometry_helper_ui_main.fitsWithinFace(host, faceKind, u, v, getRadius())) {
             state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
             diagnosticMessage = "Extrusion exceeds face boundary";
             return false;
         }
-        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID && "Extrusion exceeds face boundary".equals(diagnosticMessage)) {
+        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID && ("Extrusion exceeds face boundary".equals(diagnosticMessage) || "Sketch is invalid or missing".equals(diagnosticMessage))) {
             state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
             diagnosticMessage = null;
         }

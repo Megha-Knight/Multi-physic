@@ -88,8 +88,35 @@ public final class document_parse_helper_ui_main {
                 if (p.length >= 9) {
                     try { name = java.net.URLDecoder.decode(p[8].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { name = p[8].trim(); }
                 }
-                out.add(new ui.workspace.drafting.extrude.extrude_feature_ui_main(id, parentId, name, kind, shape, u, v, dia, w2, h));
+                var ext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(id, parentId, name, kind, shape, u, v, dia, w2, h);
+                if (p.length >= 10 && !p[9].trim().isEmpty() && !p[9].trim().equalsIgnoreCase("NONE")) {
+                    ext.setSketchId(p[9].trim());
+                }
+                out.add(ext);
             }
         } catch (Exception ignored) {}
+    }
+
+    public static void commitShape(List<ui.workspace.drafting.shape_item_ui_main> list, ui.workspace.shapes.basic_shapes_ui_main type, String id, String name,
+                                   Point3D p1, Point3D p2, double tx, double ty, double tz, double rotX, double rotY,
+                                   Point3D uAxis, Point3D vAxis, Point3D norm, String faceOwner, face_kind_ui_main faceKind,
+                                   List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns,
+                                   List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions,
+                                   List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches) {
+        if (type == null || p1 == null || p2 == null) return;
+        var item = new ui.workspace.drafting.shape_item_ui_main(id, name, type, p1, p2, tx, ty, tz, rotX, rotY);
+        if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
+        for (hole_feature_ui_main h : holes) item.addHole(h);
+        for (hole_pattern_ui_main p : patterns) {
+            hole_feature_ui_main seed = null;
+            for (hole_feature_ui_main h : item.getHoles()) if (h.getId().equals(p.getSeedHoleId())) { seed = h; break; }
+            if (seed == null || seed.getId().contains("-inst-") || !seed.getOwnerShapeId().equals(item.getId())) continue;
+            boolean matchesPat = false;
+            for (hole_pattern_ui_main ep : patterns) if (ep.getId().equals(seed.getId())) { matchesPat = true; break; }
+            if (!matchesPat) item.addPattern(p);
+        }
+        for (var ext : extrusions) item.addExtrude(ext);
+        for (var sk : sketches) item.addSketch(sk);
+        list.add(item);
     }
 }

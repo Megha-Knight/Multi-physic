@@ -21,12 +21,20 @@ public final class feature_graph_builder_ui_main {
             if (s.isOnFace() && s.getFaceOwnerId() != null) {
                 sNode.addDependency(s.getFaceOwnerId(), dependency_type_ui_main.HOST_BODY);
             }
+            for (ui.workspace.drafting.sketch.sketch_feature_ui_main sk : s.getSketches()) {
+                feature_node_ui_main skNode = new feature_node_ui_main(sk.getId(), sk.getName(), feature_type_ui_main.SKETCH, s.getId());
+                skNode.setState(sk.getState());
+                if (sk.getState() == feature_state_ui_main.INVALID) skNode.setInvalid(sk.getDiagnosticMessage());
+                graph.registerFeature(skNode);
+                skNode.addDependency(s.getId(), dependency_type_ui_main.HOST_BODY);
+            }
             for (extrude_feature_ui_main e : s.getExtrusions()) {
                 feature_node_ui_main eNode = new feature_node_ui_main(e.getId(), e.getName(), feature_type_ui_main.EXTRUDE_FEATURE, s.getId());
                 eNode.setState(e.getState());
                 if (e.getState() == feature_state_ui_main.INVALID) eNode.setInvalid(e.getDiagnosticMessage());
                 graph.registerFeature(eNode);
                 eNode.addDependency(s.getId(), dependency_type_ui_main.HOST_BODY);
+                if (e.getSketchId() != null) eNode.addDependency(e.getSketchId(), dependency_type_ui_main.SKETCH_PROFILE);
             }
             for (hole_feature_ui_main h : s.getHoles()) {
                 feature_node_ui_main hNode = new feature_node_ui_main(h.getId(), h.getName(), feature_type_ui_main.HOLE_FEATURE, s.getId());
@@ -67,6 +75,12 @@ public final class feature_graph_builder_ui_main {
                 feature_node_ui_main hn = graph.getFeature(h.getId());
                 if (hn != null && hn.getState() == feature_state_ui_main.INVALID) {
                     h.setState(hn.getState()); h.setDiagnosticMessage(hn.getDiagnosticMessage());
+                }
+            }
+            for (ui.workspace.drafting.sketch.sketch_feature_ui_main sk : s.getSketches()) {
+                feature_node_ui_main skn = graph.getFeature(sk.getId());
+                if (skn != null && skn.getState() == feature_state_ui_main.INVALID) {
+                    sk.setState(skn.getState()); sk.setDiagnosticMessage(skn.getDiagnosticMessage());
                 }
             }
             for (hole_pattern_ui_main p : s.getPatterns()) {

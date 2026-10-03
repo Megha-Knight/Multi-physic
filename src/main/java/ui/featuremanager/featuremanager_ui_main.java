@@ -65,6 +65,7 @@ public class featuremanager_ui_main extends BorderPane {
             for (shape_item_ui_main s : editor.getShapes()) {
                 TreeItem<feature_tree_node_ui_main> sNode = new TreeItem<>(feature_tree_node_ui_main.forShape(s));
                 sNode.setExpanded(true); rootItem.getChildren().add(sNode);
+                for (var sk : s.getSketches()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forSketch(s, sk)));
                 for (hole_feature_ui_main h : s.getHoles()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forHole(s, h)));
                 for (hole_pattern_ui_main p : s.getPatterns()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forPattern(s, p)));
                 for (extrude_feature_ui_main ext : s.getExtrusions()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forExtrude(s, ext)));

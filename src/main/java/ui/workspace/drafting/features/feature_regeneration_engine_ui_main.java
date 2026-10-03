@@ -74,9 +74,10 @@ public final class feature_regeneration_engine_ui_main {
 
     private static shape_item_ui_main resolveHost(feature_node_ui_main node, Map<String, shape_item_ui_main> map) {
         if (node.getType() == feature_type_ui_main.SOLID_BODY || node.getType() == feature_type_ui_main.BASE_SOLID ||
-            node.getType() == feature_type_ui_main.SKETCH_PROFILE || node.getType() == feature_type_ui_main.SKETCH) {
+            node.getType() == feature_type_ui_main.SKETCH_PROFILE) {
             return map.get(node.getId());
         }
+        if (node.getType() == feature_type_ui_main.SKETCH && map.containsKey(node.getId())) return map.get(node.getId());
         return (node.getOwnerId() != null) ? map.get(node.getOwnerId()) : null;
     }
 
@@ -84,8 +85,16 @@ public final class feature_regeneration_engine_ui_main {
         shape_item_ui_main host = resolveHost(fn, map);
         if (host == null) return;
         if (fn.getType() == feature_type_ui_main.SOLID_BODY || fn.getType() == feature_type_ui_main.BASE_SOLID ||
-            fn.getType() == feature_type_ui_main.SKETCH_PROFILE || fn.getType() == feature_type_ui_main.SKETCH) {
+            fn.getType() == feature_type_ui_main.SKETCH_PROFILE) {
             host.setState(fn.getState());
+        } else if (fn.getType() == feature_type_ui_main.SKETCH) {
+            for (var sk : host.getSketches()) {
+                if (sk.getId().equals(fn.getId())) {
+                    sk.setState(fn.getState()); sk.setVisible(fn.isVisible());
+                    if (fn.getState() == feature_state_ui_main.INVALID) sk.setDiagnosticMessage(fn.getDiagnosticMessage());
+                    break;
+                }
+            }
         } else if (fn.getType() == feature_type_ui_main.HOLE_FEATURE || fn.getType() == feature_type_ui_main.HOLE) {
             for (hole_feature_ui_main h : host.getHoles()) {
                 if (h.getId().equals(fn.getId())) {
