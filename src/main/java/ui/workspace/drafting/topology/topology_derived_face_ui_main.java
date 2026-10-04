@@ -77,6 +77,10 @@ public class topology_derived_face_ui_main extends topology_face_ui_main {
     public String getDiagnosticMessage() { return diagnosticMessage; }
     public void setDiagnosticMessage(String msg) { this.diagnosticMessage = msg; }
 
+    private boolean selected = false;
+    public boolean isSelected() { return selected; }
+    public void setSelected(boolean sel) { this.selected = sel; }
+
     public topology_face_appearance_ui_main getAppearanceOverride() { return appearanceOverride; }
     public void setAppearanceOverride(topology_face_appearance_ui_main app) { this.appearanceOverride = app; }
     public boolean hasAppearanceOverride() { return appearanceOverride != null; }

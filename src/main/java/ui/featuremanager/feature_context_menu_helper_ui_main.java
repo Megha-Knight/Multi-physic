@@ -38,8 +38,10 @@ public final class feature_context_menu_helper_ui_main {
             color.setOnAction(e -> openColorPicker(s, df.getId(), editor));
             MenuItem reset = new MenuItem("Reset Color");
             reset.setOnAction(e -> {
+                if (editor != null) editor.recordSnapshot();
                 shape_face_appearance_helper_ui_main.clearAppearance(s.getId(), df.getId());
                 df.setAppearanceOverride(null);
+                s.rebuild();
                 if (editor != null) editor.notifyShapesChanged();
             });
             cm.getItems().addAll(sel, color, reset);
@@ -86,23 +88,28 @@ public final class feature_context_menu_helper_ui_main {
         Stage st = new Stage();
         st.initModality(Modality.APPLICATION_MODAL);
         st.setTitle("Derived Face Appearance");
-        ColorPicker cp = new ColorPicker(Color.web("#F59E0B"));
+        var cur = shape_face_appearance_helper_ui_main.getAppearance(shape.getId(), faceId);
+        Color initCol = (cur != null && cur.diffuseColor() != null) ? cur.diffuseColor() : Color.web("#F59E0B");
+        double initOp = (cur != null) ? cur.opacity() : 0.50;
+        ColorPicker cp = new ColorPicker(initCol);
+        Slider opSlider = new Slider(0.0, 1.0, initOp);
+        Label opLabel = new Label(String.format(java.util.Locale.US, "Opacity: %.0f%%", initOp * 100));
+        opSlider.valueProperty().addListener((o, ov, nv) -> opLabel.setText(String.format(java.util.Locale.US, "Opacity: %.0f%%", nv.doubleValue() * 100)));
         Button apply = new Button("Apply"), cancel = new Button("Cancel");
         apply.setOnAction(e -> {
-            topology_face_appearance_ui_main app = new topology_face_appearance_ui_main(cp.getValue(), 0.85, true);
+            if (editor != null) editor.recordSnapshot();
+            topology_face_appearance_ui_main app = new topology_face_appearance_ui_main(cp.getValue(), opSlider.getValue(), true);
             shape_face_appearance_helper_ui_main.setAppearance(shape.getId(), faceId, app);
-            if (editor != null) {
-                editor.recordSnapshot();
-                editor.notifyShapesChanged();
-            }
+            shape.rebuild();
+            if (editor != null) editor.notifyShapesChanged();
             st.close();
         });
         cancel.setOnAction(e -> st.close());
         HBox btns = new HBox(8, cancel, apply);
         btns.setAlignment(Pos.CENTER_RIGHT);
-        VBox root = new VBox(12, new Label("Select appearance color for " + faceId + ":"), cp, btns);
+        VBox root = new VBox(10, new Label("Color for " + faceId + ":"), cp, opLabel, opSlider, btns);
         root.setPadding(new Insets(12));
-        st.setScene(new Scene(root, 280, 140));
+        st.setScene(new Scene(root, 300, 180));
         st.show();
     }
 

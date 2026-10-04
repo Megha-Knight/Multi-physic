@@ -109,7 +109,7 @@ public final class hole_mesh_builder_ui_main {
         hole_mesh_triangulator_ui_main.addQuad(p0, p1, p2, p3, pts, fcs);
     }
 
-    private static face_kind_ui_main getOppositeFace(face_kind_ui_main f) {
+    public static face_kind_ui_main getOppositeFace(face_kind_ui_main f) {
         return switch (f) {
             case TOP, TOP_CAP -> face_kind_ui_main.BOTTOM;
             case BOTTOM, BOTTOM_CAP -> face_kind_ui_main.TOP;

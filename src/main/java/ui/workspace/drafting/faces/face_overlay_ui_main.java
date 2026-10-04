@@ -59,6 +59,39 @@ public class face_overlay_ui_main extends Group {
         setVisible(true);
     }
 
+    public void highlightDerivedFace(ui.workspace.drafting.shape_item_ui_main shape, ui.workspace.drafting.topology.topology_derived_face_ui_main df) {
+        getChildren().clear();
+        if (shape == null || df == null) { setVisible(false); return; }
+        face_reference_ui_main ref = ui.workspace.drafting.topology.topology_geometry_helper_ui_main.reconstructFaceReference(
+            shape, df.getSourceFaceKind(), df.getLocalCenter().getX(), df.getLocalCenter().getY());
+        if (ref == null) { setVisible(false); return; }
+        Point3D n = ref.getWorldNormal(), u = ref.getUAxis(), v = ref.getVAxis();
+        Point3D origin = ref.getFaceOrigin().add(n.multiply(0.15));
+        double r = df.getRadius();
+
+        switch (df.getRegionKind()) {
+            case HOLE_WALL, BORE_WALL -> {
+                Point3D topC = origin.add(u.multiply(df.getLocalCenter().getX())).add(v.multiply(df.getLocalCenter().getY()));
+                buildCircularBoundary(topC, u, v, r);
+                Point3D botC = topC.add(n.multiply(-df.getDepth()));
+                buildCircularBoundary(botC, u, v, r);
+            }
+            case HOLE_FLOOR -> {
+                Point3D floorC = origin.add(u.multiply(df.getLocalCenter().getX())).add(v.multiply(df.getLocalCenter().getY())).add(n.multiply(-df.getDepth()));
+                buildCircularBoundary(floorC, u, v, r);
+            }
+            case REMAINING_FACE -> {
+                if (ref.getFaceKind().isCylinderCap()) buildCircularBoundary(origin, u, v, ref.getFaceWidth() * 0.5);
+                else buildRectBoundary(origin, u, v, ref.getFaceWidth(), ref.getFaceHeight());
+                for (var loop : df.getInnerLoops()) {
+                    Point3D holeC = origin.add(u.multiply(loop.getCenter().getX())).add(v.multiply(loop.getCenter().getY()));
+                    buildCircularBoundary(holeC, u, v, loop.getRadius());
+                }
+            }
+        }
+        setVisible(true);
+    }
+
     private void buildRectBoundary(Point3D center, Point3D u, Point3D v, double w, double h) {
         double hw = w * 0.5, hh = h * 0.5;
         Point3D c1 = center.add(u.multiply(hw)).add(v.multiply(hh));

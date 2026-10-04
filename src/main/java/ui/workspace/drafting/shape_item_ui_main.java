@@ -87,15 +87,11 @@ public class shape_item_ui_main {
     public void removePattern(String pId) { patterns.removeIf(p -> p.getId().equals(pId)); rebuild(); }
     public void clearPatterns() { patterns.clear(); rebuild(); }
     public List<ui.workspace.drafting.extrude.extrude_feature_ui_main> getExtrusions() { return extrusions; } public boolean hasExtrusions() { return !extrusions.isEmpty(); }
-    public void addExtrude(ui.workspace.drafting.extrude.extrude_feature_ui_main ext) { if (ext != null) { extrusions.add(ext); rebuild(); } }
-    public void removeExtrude(String id) { extrusions.removeIf(e -> e.getId().equals(id)); if (id != null && id.equals(selectedExtrudeId)) selectedExtrudeId = null; rebuild(); }
-    public void clearExtrusions() { extrusions.clear(); selectedExtrudeId = null; rebuild(); }
-    public String getSelectedExtrudeId() { return selectedExtrudeId; } public void setSelectedExtrudeId(String id) { this.selectedExtrudeId = id; rebuild(); }
+    public void addExtrude(ui.workspace.drafting.extrude.extrude_feature_ui_main ext) { if (ext != null) { extrusions.add(ext); rebuild(); } } public void removeExtrude(String id) { extrusions.removeIf(e -> e.getId().equals(id)); if (id != null && id.equals(selectedExtrudeId)) selectedExtrudeId = null; rebuild(); }
+    public void clearExtrusions() { extrusions.clear(); selectedExtrudeId = null; rebuild(); } public String getSelectedExtrudeId() { return selectedExtrudeId; } public void setSelectedExtrudeId(String id) { this.selectedExtrudeId = id; rebuild(); }
     public List<ui.workspace.drafting.sketch.sketch_feature_ui_main> getSketches() { return sketches; } public boolean hasSketches() { return !sketches.isEmpty(); }
-    public void addSketch(ui.workspace.drafting.sketch.sketch_feature_ui_main s) { if (s != null) { sketches.add(s); rebuild(); } }
-    public void removeSketch(String sId) { sketches.removeIf(s -> s.getId().equals(sId)); rebuild(); }
-    public void clearSketches() { sketches.clear(); rebuild(); }
-    public ui.workspace.drafting.sketch.sketch_feature_ui_main getSketch(String id) { for (var s : sketches) if (s.getId().equals(id)) return s; return null; }
+    public void addSketch(ui.workspace.drafting.sketch.sketch_feature_ui_main s) { if (s != null) { sketches.add(s); rebuild(); } } public void removeSketch(String sId) { sketches.removeIf(s -> s.getId().equals(sId)); rebuild(); }
+    public void clearSketches() { sketches.clear(); rebuild(); } public ui.workspace.drafting.sketch.sketch_feature_ui_main getSketch(String id) { for (var s : sketches) if (s.getId().equals(id)) return s; return null; }
 
     public List<hole_feature_ui_main> getAllEffectiveHoles() {
         List<hole_feature_ui_main> eff = new java.util.ArrayList<>();
@@ -146,6 +142,7 @@ public class shape_item_ui_main {
             default -> null;
         };
         if (geo != null) shapeGroup.getChildren().add(geo);
+        if (!eff.isEmpty()) shapeGroup.getChildren().add(ui.workspace.drafting.topology.derived_region_visual_builder_ui_main.buildDerivedRegionVisuals(this, getTopology()));
         for (var ext : extrusions) {
             if (ext.isVisible() && ext.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) {
                 shapeGroup.getChildren().add(ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.buildExtrudeNode(this, ext, selected, selectedExtrudeId != null && selectedExtrudeId.equals(ext.getId())));

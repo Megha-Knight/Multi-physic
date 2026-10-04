@@ -32,4 +32,5 @@ public enum basic_shapes_ui_main {
     public boolean is3D() {
         return this == CUBE || this == CUBOID || this == CYLINDER || this == SPHERE || this == CONE;
     }
+    public boolean isBox() { return this == CUBE || this == CUBOID; }
 }

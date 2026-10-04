@@ -33,32 +33,46 @@ public final class face_selection_resolver_ui_main {
 
         topology_face_ui_main baseFace = body.getFace(faceKind);
 
-        // Check if pick hits any hole feature on this face
+        // 1 & 2: Check holes on this face (Floor -> Wall -> Bore Wall)
         for (hole_feature_ui_main h : shape.getAllEffectiveHoles()) {
-            if (h.getFaceKind() != faceKind) continue;
-            double du = u - h.getU(), dv = v - h.getV();
-            double dist = Math.hypot(du, dv);
-            if (dist <= h.getRadius() + 1e-3) {
-                // Inside hole boundary -> Select Wall or Floor
-                for (topology_derived_face_ui_main df : body.getDerivedFaces()) {
-                    if (h.getId().equals(df.getCreatingFeatureId())) {
-                        if (h.isThroughAll() && df.getRegionKind() == hole_region_kind_ui_main.BORE_WALL) {
-                            return new FaceSelectionResult(baseFace, df, h);
-                        } else if (!h.isThroughAll() && df.getRegionKind() == hole_region_kind_ui_main.HOLE_WALL) {
-                            return new FaceSelectionResult(baseFace, df, h);
-                        }
+            if (h.getFaceKind() == faceKind) {
+                double dist = Math.hypot(u - h.getU(), v - h.getV());
+                if (dist <= h.getRadius() + 1e-3) {
+                    if (h.isThroughAll()) {
+                        topology_derived_face_ui_main bore = findDerivedFace(body, h.getId(), hole_region_kind_ui_main.BORE_WALL);
+                        if (bore != null) return new FaceSelectionResult(baseFace, bore, h);
+                    } else {
+                        // Priority 1: Hole Wall (cylindrical surface visible from face plane)
+                        topology_derived_face_ui_main wall = findDerivedFace(body, h.getId(), hole_region_kind_ui_main.HOLE_WALL);
+                        if (wall != null) return new FaceSelectionResult(baseFace, wall, h);
+                        // Priority 2: Hole Floor fallback
+                        topology_derived_face_ui_main floor = findDerivedFace(body, h.getId(), hole_region_kind_ui_main.HOLE_FLOOR);
+                        if (floor != null) return new FaceSelectionResult(baseFace, floor, h);
                     }
+                }
+            } else if (h.isThroughAll() && ui.workspace.shapes.holes.hole_intersection_helper_ui_main.isOpposingFace(h.getFaceKind(), faceKind)) {
+                // Exit face of through hole
+                double dist = Math.hypot(u - h.getU(), v - h.getV());
+                if (dist <= h.getRadius() + 1e-3) {
+                    topology_derived_face_ui_main bore = findDerivedFace(body, h.getId(), hole_region_kind_ui_main.BORE_WALL);
+                    if (bore != null) return new FaceSelectionResult(baseFace, bore, h);
                 }
             }
         }
 
-        // Check for remaining face on this face
+        // Priority 3: Remaining face
         String remId = body.getId() + ":F:" + faceKind.name() + ":REMAINING";
         topology_derived_face_ui_main rem = body.getDerivedFaceById(remId);
-        if (rem != null) {
-            return new FaceSelectionResult(baseFace, rem, null);
-        }
+        if (rem != null) return new FaceSelectionResult(baseFace, rem, null);
 
+        // Priority 4: Base face fallback
         return new FaceSelectionResult(baseFace, null, null);
+    }
+
+    private static topology_derived_face_ui_main findDerivedFace(topology_body_ui_main body, String fid, hole_region_kind_ui_main rk) {
+        for (topology_derived_face_ui_main df : body.getDerivedFaces()) {
+            if (fid.equals(df.getCreatingFeatureId()) && df.getRegionKind() == rk) return df;
+        }
+        return null;
     }
 }

@@ -99,7 +99,9 @@ public class shape_event_handler_ui_main {
             if (hitExt != null) editor.selectExtrude(hitShape, hitExt);
             else {
                 editor.selectExtrude(hitShape, null);
-                if (hitShape.getType().is3D()) {
+                if (hitNode != null && hitNode.getUserData() instanceof ui.workspace.drafting.topology.topology_derived_face_ui_main df) {
+                    editor.selectDerivedFace(hitShape, df);
+                } else if (hitShape.getType().is3D()) {
                     face_reference_ui_main face = face_picker_ui_main.pickFace(world_raycaster_ui_main.buildRay(e, viewport, camera, container), hitShape);
                     editor.setActiveFace(face); if (face != null) editor.checkHoleHit(face, hitShape);
                 } else editor.setActiveFace(null);

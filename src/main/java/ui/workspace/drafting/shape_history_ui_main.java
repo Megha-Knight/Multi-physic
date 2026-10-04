@@ -15,27 +15,37 @@ public class shape_history_ui_main {
 
     private static final int MAX_HISTORY = 40;
 
-    private final Deque<List<shape_item_ui_main>> undoStack = new ArrayDeque<>();
-    private final Deque<List<shape_item_ui_main>> redoStack = new ArrayDeque<>();
+    private record HistoryEntry(List<shape_item_ui_main> shapes,
+                                java.util.Map<String, java.util.Map<String, ui.workspace.drafting.topology.topology_face_appearance_ui_main>> appearances) {}
+
+    private final Deque<HistoryEntry> undoStack = new ArrayDeque<>();
+    private final Deque<HistoryEntry> redoStack = new ArrayDeque<>();
     private shape_item_ui_main clipboard = null;
 
     public void pushSnapshot(List<shape_item_ui_main> current) {
         if (current == null) return;
         if (undoStack.size() >= MAX_HISTORY) undoStack.removeLast();
-        undoStack.push(document_serializer_ui_main.cloneShapes(current));
+        undoStack.push(new HistoryEntry(document_serializer_ui_main.cloneShapes(current),
+            ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.getGlobalSnapshot()));
         redoStack.clear();
     }
 
     public List<shape_item_ui_main> undo(List<shape_item_ui_main> current) {
         if (undoStack.isEmpty()) return null;
-        redoStack.push(document_serializer_ui_main.cloneShapes(current));
-        return undoStack.pop();
+        redoStack.push(new HistoryEntry(document_serializer_ui_main.cloneShapes(current),
+            ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.getGlobalSnapshot()));
+        HistoryEntry entry = undoStack.pop();
+        ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.restoreGlobalSnapshot(entry.appearances);
+        return entry.shapes;
     }
 
     public List<shape_item_ui_main> redo(List<shape_item_ui_main> current) {
         if (redoStack.isEmpty()) return null;
-        undoStack.push(document_serializer_ui_main.cloneShapes(current));
-        return redoStack.pop();
+        undoStack.push(new HistoryEntry(document_serializer_ui_main.cloneShapes(current),
+            ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.getGlobalSnapshot()));
+        HistoryEntry entry = redoStack.pop();
+        ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.restoreGlobalSnapshot(entry.appearances);
+        return entry.shapes;
     }
 
     public void copy(shape_item_ui_main item) {

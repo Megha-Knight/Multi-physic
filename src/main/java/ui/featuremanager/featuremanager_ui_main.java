@@ -39,15 +39,15 @@ public class featuremanager_ui_main extends BorderPane {
                 else if (val.isHole()) editor.selectHole(val.getParentShape(), val.getHole());
                 else if (val.isPattern()) editor.selectPattern(val.getParentShape(), val.getPattern());
                 else if (val.isExtrude()) editor.selectExtrude(val.getParentShape(), val.getExtrude());
-                else if (val.isDerivedFace()) { editor.selectShape(val.getParentShape()); editor.selectHole(val.getParentShape(), val.getHole()); }
+                else if (val.isDerivedFace()) { editor.selectDerivedFace(val.getParentShape(), val.getDerivedFace()); }
             } finally { syncLock = false; }
         });
 
         treeView.setOnMouseClicked(e -> {
-            if (e.getTarget() == treeView && editor != null) { editor.selectPattern(null, null); editor.selectExtrude(null, null); editor.selectHole(null, null); editor.selectShape(null); }
+            if (e.getTarget() == treeView && editor != null) { editor.selectPattern(null, null); editor.selectExtrude(null, null); editor.selectHole(null, null); editor.selectDerivedFace(null, null); editor.selectShape(null); }
         });
         legacyListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (!syncLock && editor != null) { syncLock = true; try { editor.selectShape(newVal); if (newVal != null) { editor.selectHole(newVal, null); editor.selectExtrude(newVal, null); } } finally { syncLock = false; } }
+            if (!syncLock && editor != null) { syncLock = true; try { editor.selectShape(newVal); if (newVal != null) { editor.selectHole(newVal, null); editor.selectExtrude(newVal, null); editor.selectDerivedFace(newVal, null); } } finally { syncLock = false; } }
         });
         setCenter(treeView);
     }
@@ -57,6 +57,7 @@ public class featuremanager_ui_main extends BorderPane {
         editor.setOnShapesChanged(this::refresh);
         editor.setOnSelectionChanged(s -> syncFromCanvas()); editor.setOnHoleSelectionChanged((s, h) -> syncFromCanvas());
         editor.setOnPatternSelectionChanged((s, p) -> syncFromCanvas()); editor.setOnExtrudeSelectionChanged((s, ext) -> syncFromCanvas());
+        editor.setOnDerivedFaceSelectionChanged((s, df) -> syncFromCanvas());
         refresh();
     }
 
@@ -73,8 +74,17 @@ public class featuremanager_ui_main extends BorderPane {
                     TreeItem<feature_tree_node_ui_main> hNode = new TreeItem<>(feature_tree_node_ui_main.forHole(s, h));
                     var body = s.getTopology();
                     if (body != null) {
-                        for (var df : body.getDerivedFacesForFeature(h.getId())) {
-                            hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, df)));
+                        if (h.isThroughAll()) {
+                            var remEntry = body.getDerivedFaceById(s.getId() + ":F:" + h.getFaceKind().name() + ":REMAINING");
+                            if (remEntry != null) hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, remEntry)));
+                            for (var df : body.getDerivedFacesForFeature(h.getId())) hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, df)));
+                            var oppK = ui.workspace.shapes.holes.hole_mesh_builder_ui_main.getOppositeFace(h.getFaceKind());
+                            if (oppK != null) {
+                                var remExit = body.getDerivedFaceById(s.getId() + ":F:" + oppK.name() + ":REMAINING");
+                                if (remExit != null) hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, remExit)));
+                            }
+                        } else {
+                            for (var df : body.getDerivedFacesForFeature(h.getId())) hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, df)));
                         }
                     }
                     sNode.getChildren().add(hNode);
@@ -93,12 +103,22 @@ public class featuremanager_ui_main extends BorderPane {
     private void syncFromCanvas() {
         if (editor == null) return;
         shape_item_ui_main selShape = editor.getSelectedShape();
-        hole_feature_ui_main selHole = editor.getSelectedHole(); hole_pattern_ui_main selPat = editor.getSelectedPattern(); extrude_feature_ui_main selExt = editor.getSelectedExtrude();
+        hole_feature_ui_main selHole = editor.getSelectedHole(); hole_pattern_ui_main selPat = editor.getSelectedPattern();
+        extrude_feature_ui_main selExt = editor.getSelectedExtrude(); String selDfId = editor.getSelectedDerivedFaceId();
         if (selShape == null) { treeView.getSelectionModel().clearSelection(); legacyListView.getSelectionModel().clearSelection(); return; }
         legacyListView.getSelectionModel().select(selShape);
 
         for (TreeItem<feature_tree_node_ui_main> sItem : rootItem.getChildren()) {
             if (sItem.getValue().getShape() == selShape) {
+                if (selDfId != null) {
+                    for (var hItem : sItem.getChildren()) {
+                        for (var dfItem : hItem.getChildren()) {
+                            if (dfItem.getValue().isDerivedFace() && selDfId.equals(dfItem.getValue().getDerivedFace().getId())) {
+                                sItem.setExpanded(true); hItem.setExpanded(true); treeView.getSelectionModel().select(dfItem); treeView.scrollTo(treeView.getRow(dfItem)); return;
+                            }
+                        }
+                    }
+                }
                 if (selHole != null) for (var hItem : sItem.getChildren()) if (hItem.getValue().getHole() == selHole) { sItem.setExpanded(true); treeView.getSelectionModel().select(hItem); treeView.scrollTo(treeView.getRow(hItem)); return; }
                 if (selPat != null) for (var pItem : sItem.getChildren()) if (pItem.getValue().getPattern() == selPat) { sItem.setExpanded(true); treeView.getSelectionModel().select(pItem); treeView.scrollTo(treeView.getRow(pItem)); return; }
                 if (selExt != null) for (var eItem : sItem.getChildren()) if (eItem.getValue().getExtrude() == selExt) { sItem.setExpanded(true); treeView.getSelectionModel().select(eItem); treeView.scrollTo(treeView.getRow(eItem)); return; }

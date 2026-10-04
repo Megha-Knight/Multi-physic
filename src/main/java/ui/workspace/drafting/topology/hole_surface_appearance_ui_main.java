@@ -12,13 +12,13 @@ public final class hole_surface_appearance_ui_main {
     private hole_surface_appearance_ui_main() {}
 
     public static final Color DEFAULT_HOLE_WALL_COLOR = Color.web("#F59E0B"); // Translucent warm amber/yellow
-    public static final double DEFAULT_HOLE_WALL_OPACITY = 0.70;
+    public static final double DEFAULT_HOLE_WALL_OPACITY = 0.50;
 
     public static final Color DEFAULT_HOLE_FLOOR_COLOR = Color.web("#FBBF24"); // Translucent amber cap
-    public static final double DEFAULT_HOLE_FLOOR_OPACITY = 0.85;
+    public static final double DEFAULT_HOLE_FLOOR_OPACITY = 0.50;
 
     public static final Color DEFAULT_BORE_WALL_COLOR = Color.web("#F59E0B");
-    public static final double DEFAULT_BORE_WALL_OPACITY = 0.75;
+    public static final double DEFAULT_BORE_WALL_OPACITY = 0.50;
 
     public static final Color SELECTION_HIGHLIGHT_COLOR = Color.web(framework_ui_main.PRIMARY_BRAND_COLOR);
     public static final Color HOVER_HIGHLIGHT_COLOR = Color.web("#38BDF8");

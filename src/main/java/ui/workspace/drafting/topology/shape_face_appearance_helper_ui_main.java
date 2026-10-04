@@ -58,4 +58,17 @@ public final class shape_face_appearance_helper_ui_main {
     public static synchronized void clearAll() {
         OVERRIDES.clear();
     }
+
+    public static synchronized Map<String, Map<String, topology_face_appearance_ui_main>> getGlobalSnapshot() {
+        Map<String, Map<String, topology_face_appearance_ui_main>> snap = new LinkedHashMap<>();
+        for (var entry : OVERRIDES.entrySet()) snap.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
+        return snap;
+    }
+
+    public static synchronized void restoreGlobalSnapshot(Map<String, Map<String, topology_face_appearance_ui_main>> snap) {
+        OVERRIDES.clear();
+        if (snap != null) {
+            for (var entry : snap.entrySet()) OVERRIDES.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
+        }
+    }
 }
