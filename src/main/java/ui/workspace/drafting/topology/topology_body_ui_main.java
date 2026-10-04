@@ -78,6 +78,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
             body.addFace(new topology_face_ui_main(body.getId(), face_kind_ui_main.SPHERE_SURFACE, 100, 100));
         }
         hole_topology_builder_ui_main.populateDerivedFaces(body, shape);
+        machining_feature_topology_builder_ui_main.populateMachiningTopology(body, shape);
         return body;
     }
 

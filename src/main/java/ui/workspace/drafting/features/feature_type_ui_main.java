@@ -14,7 +14,10 @@ public enum feature_type_ui_main {
     PATTERN("Pattern"),
     PATTERN_FEATURE("Pattern"),
     EXTRUDE("Extrusion"),
-    EXTRUDE_FEATURE("Extrusion");
+    EXTRUDE_FEATURE("Extrusion"),
+    FILLET("Fillet"),
+    CHAMFER("Chamfer"),
+    DRAFT("Draft");
 
     private final String label;
 

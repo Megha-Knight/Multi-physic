@@ -97,12 +97,59 @@ public final class document_parse_helper_ui_main {
         } catch (Exception ignored) {}
     }
 
+    public static void parseChamferLine(String str, String parentId, List<ui.workspace.drafting.machining.chamfer_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 3) {
+                String id = p[0].trim(), edgeId = p[1].trim();
+                double dist = Double.parseDouble(p[2].trim());
+                String name = null;
+                if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                out.add(new ui.workspace.drafting.machining.chamfer_feature_ui_main(id, parentId, name, edgeId, dist));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void parseFilletLine(String str, String parentId, List<ui.workspace.drafting.machining.fillet_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 3) {
+                String id = p[0].trim(), edgeId = p[1].trim();
+                double rad = Double.parseDouble(p[2].trim());
+                String name = null;
+                if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                out.add(new ui.workspace.drafting.machining.fillet_feature_ui_main(id, parentId, name, edgeId, rad));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void parseDraftLine(String str, String parentId, List<ui.workspace.drafting.machining.draft_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 3) {
+                String id = p[0].trim();
+                face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
+                double angle = Double.parseDouble(p[2].trim());
+                face_kind_ui_main neutral = null;
+                if (p.length >= 4 && !p[3].trim().equalsIgnoreCase("NONE")) {
+                    try { neutral = face_kind_ui_main.valueOf(p[3].trim()); } catch (Exception ignored) {}
+                }
+                String name = null;
+                if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                out.add(new ui.workspace.drafting.machining.draft_feature_ui_main(id, parentId, name, kind, angle, neutral));
+            }
+        } catch (Exception ignored) {}
+    }
+
     public static void commitShape(List<ui.workspace.drafting.shape_item_ui_main> list, ui.workspace.shapes.basic_shapes_ui_main type, String id, String name,
                                    Point3D p1, Point3D p2, double tx, double ty, double tz, double rotX, double rotY,
                                    Point3D uAxis, Point3D vAxis, Point3D norm, String faceOwner, face_kind_ui_main faceKind,
                                    List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns,
                                    List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions,
-                                   List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches) {
+                                   List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches,
+                                   List<ui.workspace.drafting.machining.chamfer_feature_ui_main> chamfers,
+                                   List<ui.workspace.drafting.machining.fillet_feature_ui_main> fillets,
+                                   List<ui.workspace.drafting.machining.draft_feature_ui_main> drafts) {
         if (type == null || p1 == null || p2 == null) return;
         var item = new ui.workspace.drafting.shape_item_ui_main(id, name, type, p1, p2, tx, ty, tz, rotX, rotY);
         if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
@@ -117,6 +164,9 @@ public final class document_parse_helper_ui_main {
         }
         for (var ext : extrusions) item.addExtrude(ext);
         for (var sk : sketches) item.addSketch(sk);
+        if (chamfers != null) for (var c : chamfers) item.addChamfer(c);
+        if (fillets != null) for (var f : fillets) item.addFillet(f);
+        if (drafts != null) for (var d : drafts) item.addDraft(d);
         list.add(item);
     }
 }
