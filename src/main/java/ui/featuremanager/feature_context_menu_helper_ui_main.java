@@ -33,7 +33,7 @@ public final class feature_context_menu_helper_ui_main {
             var df = item.getDerivedFace();
             var s = item.getParentShape();
             MenuItem sel = new MenuItem("Select Derived Face");
-            sel.setOnAction(e -> { if (editor != null && s != null) editor.selectShape(s); });
+            sel.setOnAction(e -> { if (editor != null && s != null) editor.selectDerivedFace(s, df); });
             MenuItem color = new MenuItem("Change Color...");
             color.setOnAction(e -> openColorPicker(s, df.getId(), editor));
             MenuItem reset = new MenuItem("Reset Color");
