@@ -138,7 +138,7 @@ public class shape_item_ui_main {
             case CUBOID    -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCuboid(p1, p2, false, selected) : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCuboidWithHoles(p1, p2, eff, false, selected);
             case CYLINDER  -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCylinder(p1, p2, false, selected) : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCylinderWithHoles(p1, p2, eff, false, selected);
             case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, false, selected);
-            case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, false, selected);
+            case CONE      -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCone(p1, p2, false, selected) : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildConeWithHoles(p1, p2, eff, false, selected);
             default -> null;
         };
         if (geo != null) shapeGroup.getChildren().add(geo);

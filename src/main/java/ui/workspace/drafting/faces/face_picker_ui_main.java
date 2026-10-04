@@ -141,7 +141,7 @@ public final class face_picker_ui_main {
                 if (p.getY() >= -h && p.getY() <= 0) {
                     Point3D n = new Point3D(p.getX() - p1.getX(), k * r, p.getZ() - p1.getZ()).normalize();
                     Point3D u = new Point3D(-n.getZ(), 0, n.getX()).normalize();
-                    best = new Hit(t, face_kind_ui_main.CONE_LATERAL, p, n, apex, u, u.crossProduct(n).normalize(), r * 2, h);
+                    best = new Hit(t, face_kind_ui_main.CONE_LATERAL, p, n, apex, u, n.crossProduct(u).normalize(), r * 2, h);
                 }
             }
         }
@@ -157,7 +157,7 @@ public final class face_picker_ui_main {
         if (t <= 1e-4) return null;
         Point3D p = ro.add(rd.multiply(t)), n = p.subtract(sc).normalize();
         Point3D u = (Math.abs(n.getY()) > 0.9) ? new Point3D(1, 0, 0).crossProduct(n).normalize() : new Point3D(0, 1, 0).crossProduct(n).normalize();
-        return new Hit(t, face_kind_ui_main.SPHERE_SURFACE, p, n, sc, u, u.crossProduct(n).normalize(), r * 2, r * 2);
+        return new Hit(t, face_kind_ui_main.SPHERE_SURFACE, p, n, sc, u, n.crossProduct(u).normalize(), r * 2, r * 2);
     }
 
     public static Point3D inverseTransformPoint(Point3D p, Point3D c, double rxDeg, double ryDeg, double wx, double wy, double wz) {

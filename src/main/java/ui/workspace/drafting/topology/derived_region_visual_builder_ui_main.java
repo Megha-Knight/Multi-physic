@@ -46,10 +46,18 @@ public final class derived_region_visual_builder_ui_main {
     private static MeshView buildMeshViewForRegion(shape_item_ui_main shape, topology_derived_face_ui_main df) {
         face_kind_ui_main kind = df.getSourceFaceKind();
         if (kind == null) return null;
-        Frame f = getFaceFrame(shape, kind);
-        if (f == null) return null;
+        Frame f;
+        Point3D center;
+        if (kind.isLateral()) {
+            f = getCurvedHoleFrame(shape, kind, df.getLocalCenter().getX(), df.getLocalCenter().getY());
+            if (f == null) return null;
+            center = f.origin();
+        } else {
+            f = getFaceFrame(shape, kind);
+            if (f == null) return null;
+            center = f.origin().add(f.u().multiply(df.getLocalCenter().getX())).add(f.v().multiply(df.getLocalCenter().getY()));
+        }
 
-        Point3D center = f.origin().add(f.u().multiply(df.getLocalCenter().getX())).add(f.v().multiply(df.getLocalCenter().getY()));
         Point3D inDir = f.n().multiply(-1.0); // inwards into the solid
 
         TriangleMesh mesh = switch (df.getRegionKind()) {
@@ -137,6 +145,29 @@ public final class derived_region_visual_builder_ui_main {
         return m;
     }
 
+    private static Frame getCurvedHoleFrame(shape_item_ui_main s, face_kind_ui_main kind, double u, double v) {
+        Point3D p1 = s.getP1(), p2 = s.getP2();
+        double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
+        double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
+        if (kind == face_kind_ui_main.CYLINDER_LATERAL) {
+            double theta = (r > 1e-4) ? (u / r) : 0;
+            Point3D center = new Point3D(p1.getX() + r * Math.cos(theta), -h * 0.5 + v, p1.getZ() + r * Math.sin(theta));
+            Point3D norm = new Point3D(Math.cos(theta), 0, Math.sin(theta)).normalize();
+            Point3D uAx = new Point3D(-Math.sin(theta), 0, Math.cos(theta)).normalize(), vAx = new Point3D(0, -1, 0);
+            return new Frame(center, norm, uAx, vAx);
+        }
+        if (kind == face_kind_ui_main.CONE_LATERAL) {
+            double y = Math.max(-h, Math.min(0, -h * 0.5 + v));
+            double ry = Math.max(0.1, r * (-y / h));
+            double theta = (ry > 1e-4) ? (u / ry) : 0;
+            Point3D center = new Point3D(p1.getX() + ry * Math.cos(theta), y, p1.getZ() + ry * Math.sin(theta));
+            Point3D norm = new Point3D(Math.cos(theta) * h, r, Math.sin(theta) * h).normalize();
+            Point3D uAx = new Point3D(-Math.sin(theta), 0, Math.cos(theta)).normalize(), vAx = uAx.crossProduct(norm).normalize();
+            return new Frame(center, norm, uAx, vAx);
+        }
+        return null;
+    }
+
     private static Frame getFaceFrame(shape_item_ui_main s, face_kind_ui_main kind) {
         Point3D p1 = s.getP1(), p2 = s.getP2();
         if (s.getType().isBox()) {
@@ -145,10 +176,11 @@ public final class derived_region_visual_builder_ui_main {
             Point3D c = new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY() - h * 0.5, (p1.getZ() + p2.getZ()) * 0.5);
             return hole_mesh_triangulator_ui_main.getCubeFaceFrame(c, Math.max(w, Math.max(h, d)), kind);
         } else if (s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CYLINDER) {
-            double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ()));
-            double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
+            double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
             if (kind == face_kind_ui_main.TOP_CAP) return new Frame(new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(0, -1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, 1));
             if (kind == face_kind_ui_main.BOTTOM_CAP) return new Frame(new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(0, 1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, -1));
+        } else if (s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CONE) {
+            if (kind == face_kind_ui_main.BASE_CAP) return new Frame(new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(0, 1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, -1));
         }
         return null;
     }

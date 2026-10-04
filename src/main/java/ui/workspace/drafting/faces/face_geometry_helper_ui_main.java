@@ -12,8 +12,8 @@ public final class face_geometry_helper_ui_main {
     private face_geometry_helper_ui_main() {}
 
     public record FaceInfo(Point3D origin, Point3D uAxis, Point3D vAxis, Point3D normal,
-                           double width, double height, double thickness, double cylinderRadius) {
-        public boolean isCylinderCap() { return cylinderRadius > 0.0; }
+                           double width, double height, double thickness, double cylinderRadius, boolean isCap) {
+        public boolean isCylinderCap() { return isCap && cylinderRadius > 0.0; }
     }
 
     public static double computeCylinderRadius(Point3D p1, Point3D p2) {
@@ -35,15 +35,29 @@ public final class face_geometry_helper_ui_main {
             if (kind == face_kind_ui_main.TOP_CAP || kind == face_kind_ui_main.TOP) {
                 return new FaceInfo(new Point3D(p1.getX(), -h, p1.getZ()),
                         new Point3D(1, 0, 0), new Point3D(0, 0, 1), new Point3D(0, -1, 0),
-                        r * 2.0, r * 2.0, h, r);
+                        r * 2.0, r * 2.0, h, r, true);
             }
             if (kind == face_kind_ui_main.BOTTOM_CAP || kind == face_kind_ui_main.BOTTOM) {
                 return new FaceInfo(new Point3D(p1.getX(), 0, p1.getZ()),
                         new Point3D(1, 0, 0), new Point3D(0, 0, -1), new Point3D(0, 1, 0),
-                        r * 2.0, r * 2.0, h, r);
+                        r * 2.0, r * 2.0, h, r, true);
             }
-            return new FaceInfo(p1, new Point3D(1, 0, 0), new Point3D(0, 0, 1), new Point3D(0, -1, 0),
-                    r * 2.0, r * 2.0, h, r);
+            return new FaceInfo(new Point3D(p1.getX(), -h * 0.5, p1.getZ()),
+                    new Point3D(1, 0, 0), new Point3D(0, -1, 0), new Point3D(0, 0, 1),
+                    2 * Math.PI * r, h, r, r, false);
+        }
+
+        if (shape.getType() == basic_shapes_ui_main.CONE) {
+            double r = computeCylinderRadius(p1, p2);
+            double h = computeCylinderHeight(p1, p2, r);
+            if (kind == face_kind_ui_main.BASE_CAP || kind == face_kind_ui_main.BOTTOM) {
+                return new FaceInfo(new Point3D(p1.getX(), 0, p1.getZ()),
+                        new Point3D(1, 0, 0), new Point3D(0, 0, -1), new Point3D(0, 1, 0),
+                        r * 2.0, r * 2.0, h, r, true);
+            }
+            return new FaceInfo(new Point3D(p1.getX(), -h * 0.5, p1.getZ()),
+                    new Point3D(1, 0, 0), new Point3D(0, -1, 0), new Point3D(0, 0, 1),
+                    2 * Math.PI * r, h, r, r, false);
         }
 
         double w, h, d;
@@ -66,7 +80,7 @@ public final class face_geometry_helper_ui_main {
             case LEFT, RIGHT -> { fw = d; fh = h; }
             default -> { fw = w; fh = d; }
         }
-        return new FaceInfo(fr.origin(), fr.u(), fr.v(), fr.n(), fw, fh, th, 0.0);
+        return new FaceInfo(fr.origin(), fr.u(), fr.v(), fr.n(), fw, fh, th, 0.0, false);
     }
 
     public static boolean fitsWithinFace(FaceInfo info, double u, double v, double outerRadius) {
@@ -80,6 +94,6 @@ public final class face_geometry_helper_ui_main {
 
     private static FaceInfo createDefault() {
         return new FaceInfo(Point3D.ZERO, new Point3D(1, 0, 0), new Point3D(0, 0, 1),
-                new Point3D(0, -1, 0), 100.0, 100.0, 100.0, 0.0);
+                new Point3D(0, -1, 0), 100.0, 100.0, 100.0, 0.0, false);
     }
 }

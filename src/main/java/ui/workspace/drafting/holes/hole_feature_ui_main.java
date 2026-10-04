@@ -146,7 +146,7 @@ public class hole_feature_ui_main {
 
     public boolean isValid() {
         if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID) return false;
-        if (diameter < 0.1 || faceKind == null || !faceKind.isPlanar()) return false;
+        if (diameter < 0.1 || faceKind == null) return false;
         return switch (holeType) {
             case SIMPLE -> (throughAll || depth >= 0.1);
             case COUNTERSINK -> (csDiameter > diameter + 1e-4) && (csAngle > 0.1 && csAngle < 179.9)

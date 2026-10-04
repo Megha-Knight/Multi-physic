@@ -36,5 +36,8 @@ public enum face_kind_ui_main {
 
     public String getLabel() { return label; }
     public boolean isPlanar() { return planar; }
+    public boolean isCurved() { return !planar; }
+    public boolean isLateral() { return this == CYLINDER_LATERAL || this == CONE_LATERAL; }
     public boolean isCylinderCap() { return this == TOP_CAP || this == BOTTOM_CAP; }
 }
+

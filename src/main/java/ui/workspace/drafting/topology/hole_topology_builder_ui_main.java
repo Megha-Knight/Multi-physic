@@ -22,7 +22,6 @@ public final class hole_topology_builder_ui_main {
         if (holes == null || holes.isEmpty()) return;
 
         for (topology_face_ui_main baseFace : body.getFaces()) {
-            if (!baseFace.isPlanar()) continue;
             face_kind_ui_main kind = baseFace.getFaceKind();
             List<hole_feature_ui_main> faceHoles = getHolesOnFace(holes, kind);
             List<hole_feature_ui_main> exitHoles = getThroughHolesExitingFace(holes, kind);
@@ -128,10 +127,15 @@ public final class hole_topology_builder_ui_main {
 
     private static double getSolidThickness(shape_item_ui_main s, face_kind_ui_main kind) {
         Point3D p1 = s.getP1(), p2 = s.getP2();
+        if (s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CYLINDER || s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CONE) {
+            double r = Math.max(0.1, p1.distance(new Point3D(p2.getX(), 0, p2.getZ())));
+            double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
+            return kind.isLateral() ? r * 2.0 : h;
+        }
         double w = Math.abs(p2.getX() - p1.getX()), h = Math.abs(p2.getY() - p1.getY()), d = Math.abs(p2.getZ() - p1.getZ());
         if (h <= 0.1) h = Math.max(6.0, Math.min(w, d) * 0.5);
         return switch (kind) {
-            case TOP, BOTTOM, TOP_CAP, BOTTOM_CAP -> h;
+            case TOP, BOTTOM, TOP_CAP, BOTTOM_CAP, BASE_CAP -> h;
             case FRONT, BACK -> d;
             case LEFT, RIGHT -> w;
             default -> Math.max(w, Math.max(h, d));

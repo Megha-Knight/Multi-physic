@@ -28,10 +28,12 @@ public final class edge_machining_analyzer_ui_main {
         var collision = checkIntersections(shape, hole, srcFaceId);
         if (collision != null) return collision;
 
-        if (kind.isCylinderCap()) {
+        if (kind.isCylinderCap() || kind == face_kind_ui_main.BASE_CAP) {
             return analyzeCylinderCap(shape, body, hole, kind, srcFaceId);
         }
-
+        if (kind.isLateral()) {
+            return analyzeLateralFace(shape, body, hole, kind, srcFaceId);
+        }
         return analyzeBoxFace(shape, body, hole, kind, srcFaceId);
     }
 
@@ -59,16 +61,10 @@ public final class edge_machining_analyzer_ui_main {
             face_kind_ui_main kind, String srcFaceId) {
         var bounds = topology_geometry_helper_ui_main.getFaceBounds(shape, kind);
         double fw = bounds[0], fh = bounds[1], r = hole.getOuterRadius();
-        double u = hole.getU(), v = hole.getV();
-        double hw = fw * 0.5, hh = fh * 0.5;
-
-        double dUn = u + hw, dUp = hw - u, dVn = v + hh, dVp = hh - v;
-        double minDu = Math.min(dUn, dUp), minDv = Math.min(dVn, dVp);
-        double margin = Math.min(minDu, minDv);
-
+        double u = hole.getU(), v = hole.getV(), hw = fw * 0.5, hh = fh * 0.5;
+        double minDu = Math.min(u + hw, hw - u), minDv = Math.min(v + hh, hh - v), margin = Math.min(minDu, minDv);
         boolean overU = (minDu < r - TANGENT_TOLERANCE), overV = (minDv < r - TANGENT_TOLERANCE);
         boolean tanU = Math.abs(minDu - r) <= TANGENT_TOLERANCE, tanV = Math.abs(minDv - r) <= TANGENT_TOLERANCE;
-
         String bId = (body != null) ? body.getId() : shape.getId();
 
         if ((overU && overV) || (overU && tanV) || (tanU && overV)) {
@@ -77,33 +73,46 @@ public final class edge_machining_analyzer_ui_main {
             face_kind_ui_main adjKind = getAdjacentFaceForDirection(kind, minDu < minDv, u >= 0, v >= 0);
             double overlap = Math.max(r - minDu, r - minDv);
             String diag = String.format("Feature crosses a body corner (%s). Hole intersects face boundary; multi-face hole topology is not supported yet.", vName);
-            return boundary_relationship_ui_main.crossesCorner(
-                kind, srcFaceId, bId + ":V:" + vName, vName, bId + ":E:" + edgeName, edgeName,
-                adjKind, bId + ":F:" + adjKind.name(), overlap, diag
-            );
+            return boundary_relationship_ui_main.crossesCorner(kind, srcFaceId, bId + ":V:" + vName, vName, bId + ":E:" + edgeName, edgeName, adjKind, bId + ":F:" + adjKind.name(), overlap, diag);
         }
-
         if (overU || overV) {
             boolean isU = overU;
             String edgeName = getEdgeNameForDirection(kind, isU, u >= 0, v >= 0);
             face_kind_ui_main adjKind = getAdjacentFaceForDirection(kind, isU, u >= 0, v >= 0);
             double overlap = isU ? (r - minDu) : (r - minDv);
             String diag = String.format("Feature crosses adjacent face boundary (%s via %s). Hole intersects face boundary; multi-face hole topology is not supported yet.", adjKind.getLabel(), edgeName);
-            return boundary_relationship_ui_main.crossesEdge(
-                kind, srcFaceId, bId + ":E:" + edgeName, edgeName, adjKind, bId + ":F:" + adjKind.name(), overlap, diag
-            );
+            return boundary_relationship_ui_main.crossesEdge(kind, srcFaceId, bId + ":E:" + edgeName, edgeName, adjKind, bId + ":F:" + adjKind.name(), overlap, diag);
         }
-
         if (tanU || tanV) {
             boolean isU = tanU;
             String edgeName = getEdgeNameForDirection(kind, isU, u >= 0, v >= 0);
             face_kind_ui_main adjKind = getAdjacentFaceForDirection(kind, isU, u >= 0, v >= 0);
             String diag = String.format("Feature touches host-face boundary (%s). Hole intersects face boundary; multi-face hole topology is not supported yet.", edgeName);
-            return boundary_relationship_ui_main.tangent(
-                kind, srcFaceId, bId + ":E:" + edgeName, edgeName, adjKind, bId + ":F:" + adjKind.name(), margin, diag
-            );
+            return boundary_relationship_ui_main.tangent(kind, srcFaceId, bId + ":E:" + edgeName, edgeName, adjKind, bId + ":F:" + adjKind.name(), margin, diag);
         }
+        return boundary_relationship_ui_main.contained(kind, srcFaceId, margin - r);
+    }
 
+    private static boundary_relationship_ui_main analyzeLateralFace(
+            shape_item_ui_main shape, topology_body_ui_main body, hole_feature_ui_main hole,
+            face_kind_ui_main kind, String srcFaceId) {
+        var bounds = topology_geometry_helper_ui_main.getFaceBounds(shape, kind);
+        double hh = bounds[1] * 0.5, r = hole.getOuterRadius(), v = Math.abs(hole.getV());
+        double margin = hh - v;
+        String bId = (body != null) ? body.getId() : shape.getId();
+        boolean isTop = hole.getV() >= 0;
+        String rimEdge = (kind == face_kind_ui_main.CONE_LATERAL) ? "BASE_RIM" : (isTop ? "TOP_RIM" : "BOTTOM_RIM");
+        face_kind_ui_main adj = (kind == face_kind_ui_main.CONE_LATERAL) ? face_kind_ui_main.BASE_CAP : (isTop ? face_kind_ui_main.TOP_CAP : face_kind_ui_main.BOTTOM_CAP);
+
+        if (v + r > hh + TANGENT_TOLERANCE) {
+            double overlap = (v + r) - hh;
+            String diag = String.format("Feature crosses adjacent face boundary (%s via %s). Hole intersects face boundary; multi-face hole topology is not supported yet.", adj.getLabel(), rimEdge);
+            return boundary_relationship_ui_main.crossesEdge(kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, adj, bId + ":F:" + adj.name(), overlap, diag);
+        }
+        if (Math.abs(v + r - hh) <= TANGENT_TOLERANCE) {
+            String diag = String.format("Feature touches host-face boundary (%s). Hole intersects face boundary; multi-face hole topology is not supported yet.", rimEdge);
+            return boundary_relationship_ui_main.tangent(kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, adj, bId + ":F:" + adj.name(), margin - r, diag);
+        }
         return boundary_relationship_ui_main.contained(kind, srcFaceId, margin - r);
     }
 
@@ -111,25 +120,18 @@ public final class edge_machining_analyzer_ui_main {
             shape_item_ui_main shape, topology_body_ui_main body, hole_feature_ui_main hole,
             face_kind_ui_main kind, String srcFaceId) {
         var bounds = topology_geometry_helper_ui_main.getFaceBounds(shape, kind);
-        double capRadius = bounds[0] * 0.5, r = hole.getOuterRadius();
-        double distCenter = Math.hypot(hole.getU(), hole.getV());
-        double margin = capRadius - distCenter;
-        String bId = (body != null) ? body.getId() : shape.getId();
-        String rimEdge = (kind == face_kind_ui_main.TOP_CAP || kind == face_kind_ui_main.TOP) ? "TOP_RIM" : "BOTTOM_RIM";
-        face_kind_ui_main adj = face_kind_ui_main.CYLINDER_LATERAL;
+        double capRadius = bounds[0] * 0.5, r = hole.getOuterRadius(), distCenter = Math.hypot(hole.getU(), hole.getV()), margin = capRadius - distCenter;
+        String bId = (body != null) ? body.getId() : shape.getId(), rimEdge = (kind == face_kind_ui_main.TOP_CAP || kind == face_kind_ui_main.TOP) ? "TOP_RIM" : (kind == face_kind_ui_main.BASE_CAP ? "BASE_RIM" : "BOTTOM_RIM");
+        face_kind_ui_main adj = (kind == face_kind_ui_main.BASE_CAP) ? face_kind_ui_main.CONE_LATERAL : face_kind_ui_main.CYLINDER_LATERAL;
 
         if (distCenter + r > capRadius + TANGENT_TOLERANCE) {
             double overlap = (distCenter + r) - capRadius;
-            String diag = String.format("Feature crosses adjacent face boundary (Cylinder Lateral via %s). Hole intersects face boundary; multi-face hole topology is not supported yet.", rimEdge);
-            return boundary_relationship_ui_main.crossesEdge(
-                kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, adj, bId + ":F:" + adj.name(), overlap, diag
-            );
+            String diag = String.format("Feature crosses adjacent face boundary (%s via %s). Hole intersects face boundary; multi-face hole topology is not supported yet.", adj.getLabel(), rimEdge);
+            return boundary_relationship_ui_main.crossesEdge(kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, adj, bId + ":F:" + adj.name(), overlap, diag);
         }
         if (Math.abs(distCenter + r - capRadius) <= TANGENT_TOLERANCE) {
             String diag = String.format("Feature touches host-face boundary (%s). Hole intersects face boundary; multi-face hole topology is not supported yet.", rimEdge);
-            return boundary_relationship_ui_main.tangent(
-                kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, adj, bId + ":F:" + adj.name(), margin, diag
-            );
+            return boundary_relationship_ui_main.tangent(kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, adj, bId + ":F:" + adj.name(), margin, diag);
         }
         return boundary_relationship_ui_main.contained(kind, srcFaceId, margin - r);
     }
@@ -170,3 +172,4 @@ public final class edge_machining_analyzer_ui_main {
         };
     }
 }
+

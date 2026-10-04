@@ -137,6 +137,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\topology_validator_
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\topology_vertex_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\basic_shapes_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\holes\hole_advanced_mesh_helper_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\shapes\holes\hole_cone_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\holes\hole_cuboid_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\holes\hole_cylinder_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\holes\hole_intersection_helper_ui_main.java
