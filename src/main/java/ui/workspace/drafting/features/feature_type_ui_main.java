@@ -17,7 +17,11 @@ public enum feature_type_ui_main {
     EXTRUDE_FEATURE("Extrusion"),
     FILLET("Fillet"),
     CHAMFER("Chamfer"),
-    DRAFT("Draft");
+    DRAFT("Draft"),
+    BOOLEAN("Boolean Operation"),
+    BOOLEAN_UNION("Boolean Union"),
+    BOOLEAN_SUBTRACT("Boolean Subtract"),
+    BOOLEAN_INTERSECT("Boolean Intersect");
 
     private final String label;
 

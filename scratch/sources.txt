@@ -51,6 +51,13 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_handles_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_history_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_item_formatter_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_item_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\boolean_box_mesh_helper_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\boolean_csg_helper_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\boolean_feature_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\boolean_mesh_builder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\boolean_op_type_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\boolean_solid_evaluator_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\shape_boolean_holder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\dimensions\dimension_editor_dialog_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\dimensions\shape_dimension_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_dialog_ui_main.java
@@ -123,6 +130,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_snap_type_ui_m
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_solver_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_tool_type_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_view_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\boolean_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\boundary_condition_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\boundary_relationship_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\derived_region_advanced_mesh_ui_main.java

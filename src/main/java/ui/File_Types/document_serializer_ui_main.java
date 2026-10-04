@@ -6,12 +6,7 @@ import ui.workspace.drafting.holes.hole_feature_ui_main;
 import ui.workspace.drafting.holes.hole_pattern_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,28 +16,27 @@ public final class document_serializer_ui_main {
 
     public static boolean saveToFile(File file, List<shape_item_ui_main> shapes) {
         if (file == null) return false;
-        String name = file.getName().toLowerCase();
-        if (name.endsWith(".step") || name.endsWith(".stp")) return step_exporter_ui_main.exportToStep(file, shapes);
-        if (name.endsWith(".stl")) return mesh_exporter_ui_main.exportToStl(file, shapes);
-        if (name.endsWith(".obj")) return mesh_exporter_ui_main.exportToObj(file, shapes);
-        if (name.endsWith(".nc")) return nc_exporter_ui_main.exportToNc(file, shapes);
+        String n = file.getName().toLowerCase();
+        if (n.endsWith(".step") || n.endsWith(".stp")) return step_exporter_ui_main.exportToStep(file, shapes);
+        if (n.endsWith(".stl")) return mesh_exporter_ui_main.exportToStl(file, shapes);
+        if (n.endsWith(".obj")) return mesh_exporter_ui_main.exportToObj(file, shapes);
+        if (n.endsWith(".nc")) return nc_exporter_ui_main.exportToNc(file, shapes);
         return saveToNd(file, shapes);
     }
 
     public static boolean saveToNd(File file, List<shape_item_ui_main> shapes) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.5\n");
+            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.6\n");
             if (shapes != null) {
                 for (shape_item_ui_main s : shapes) {
                     pw.println("SHAPE: " + s.getType().name());
-                    pw.println("id: " + s.getId());
-                    pw.println("name: " + s.getName());
+                    pw.println("id: " + s.getId()); pw.println("name: " + s.getName());
                     Point3D p1 = s.getP1(), p2 = s.getP2();
-                    pw.printf(java.util.Locale.US, "p1: %.4f, %.4f, %.4f%n", p1.getX(), p1.getY(), p1.getZ());
-                    pw.printf(java.util.Locale.US, "p2: %.4f, %.4f, %.4f%n", p2.getX(), p2.getY(), p2.getZ());
+                    pw.printf(java.util.Locale.US, "p1: %.4f, %.4f, %.4f%np2: %.4f, %.4f, %.4f%n", p1.getX(), p1.getY(), p1.getZ(), p2.getX(), p2.getY(), p2.getZ());
                     if (s.getWorldX() != 0 || s.getWorldY() != 0 || s.getWorldZ() != 0) pw.printf(java.util.Locale.US, "tx: %.4f, %.4f, %.4f%n", s.getWorldX(), s.getWorldY(), s.getWorldZ());
                     if (s.getRotationY() != 0) pw.printf(java.util.Locale.US, "rot: %.4f%n", s.getRotationY());
                     if (s.getRotationX() != 0) pw.printf(java.util.Locale.US, "rotX: %.4f%n", s.getRotationX());
+                    if (s.isConsumed()) pw.println("consumed: true," + (s.getConsumedBy() != null ? s.getConsumedBy() : "NONE"));
                     if (s.isOnFace()) {
                         Point3D u = s.getUAxis(), v = s.getVAxis(), n = s.getFaceNormal();
                         pw.printf(java.util.Locale.US, "uAxis: %.4f, %.4f, %.4f%nvAxis: %.4f, %.4f, %.4f%nnorm: %.4f, %.4f, %.4f%n", u.getX(), u.getY(), u.getZ(), v.getX(), v.getY(), v.getZ(), n.getX(), n.getY(), n.getZ());
@@ -50,13 +44,13 @@ public final class document_serializer_ui_main {
                         if (s.getFaceKind() != null) pw.println("faceKind: " + s.getFaceKind().name());
                     }
                     for (hole_feature_ui_main h : s.getHoles()) {
-                        String enc = ""; try { enc = java.net.URLEncoder.encode(h.getName(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                        String enc = encode(h.getName());
                         pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b, %s, %.4f, %.4f, %.4f, %.4f, %s, %.4f, %s%n",
                             h.getId(), h.getFaceKind().name(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(),
                             h.getHoleType().name(), h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth(), h.getCutoutShape().name(), h.getWidth2(), enc);
                     }
-                    for (ui.workspace.drafting.extrude.extrude_feature_ui_main ext : s.getExtrusions()) {
-                        String enc = ""; try { enc = java.net.URLEncoder.encode(ext.getName(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                    for (var ext : s.getExtrusions()) {
+                        String enc = encode(ext.getName());
                         pw.printf(java.util.Locale.US, "extrude: %s, %s, %s, %.4f, %.4f, %.4f, %.4f, %.4f, %s, %s%n",
                             ext.getId(), ext.getFaceKind().name(), ext.getProfileShape().name(), ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight(), enc, ext.getSketchId() != null ? ext.getSketchId() : "NONE");
                     }
@@ -64,18 +58,10 @@ public final class document_serializer_ui_main {
                         pw.printf(java.util.Locale.US, "pattern: %s, %s, %s, %s, %d, %s, %.4f, %.4f, %.4f, %.4f, %b, %b%n",
                             p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType().name(), p.getInstanceCount(), p.getLinearDirection().name(), p.getLinearSpacing(), p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(), p.isClockwise(), p.isFullCircle());
                     }
-                    for (var c : s.getChamfers()) {
-                        String enc = ""; try { enc = java.net.URLEncoder.encode(c.getName(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                        pw.printf(java.util.Locale.US, "chamfer: %s, %s, %.4f, %s%n", c.getId(), c.getEdgeId(), c.getDistance(), enc);
-                    }
-                    for (var f : s.getFillets()) {
-                        String enc = ""; try { enc = java.net.URLEncoder.encode(f.getName(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                        pw.printf(java.util.Locale.US, "fillet: %s, %s, %.4f, %s%n", f.getId(), f.getEdgeId(), f.getRadius(), enc);
-                    }
-                    for (var d : s.getDrafts()) {
-                        String enc = ""; try { enc = java.net.URLEncoder.encode(d.getName(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                        pw.printf(java.util.Locale.US, "draft: %s, %s, %.4f, %s, %s%n", d.getId(), d.getFaceKind().name(), d.getDraftAngle(), d.getNeutralKind() != null ? d.getNeutralKind().name() : "NONE", enc);
-                    }
+                    for (var c : s.getChamfers()) pw.printf(java.util.Locale.US, "chamfer: %s, %s, %.4f, %s%n", c.getId(), c.getEdgeId(), c.getDistance(), encode(c.getName()));
+                    for (var f : s.getFillets()) pw.printf(java.util.Locale.US, "fillet: %s, %s, %.4f, %s%n", f.getId(), f.getEdgeId(), f.getRadius(), encode(f.getName()));
+                    for (var d : s.getDrafts()) pw.printf(java.util.Locale.US, "draft: %s, %s, %.4f, %s, %s%n", d.getId(), d.getFaceKind().name(), d.getDraftAngle(), d.getNeutralKind() != null ? d.getNeutralKind().name() : "NONE", encode(d.getName()));
+                    for (var b : s.getBooleans()) pw.printf(java.util.Locale.US, "boolean: %s, %s, %s, %s, %s%n", b.getId(), b.getOpType().name(), b.getTargetBodyId(), b.getToolBodyId(), encode(b.getName()));
                     for (var sk : s.getSketches()) ui.workspace.drafting.sketch.sketch_serializer_ui_main.writeSketch(pw, sk);
                     for (var e : ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.getOverridesForShape(s.getId()).entrySet()) pw.println("face_app: " + e.getKey() + "," + e.getValue().formatNd());
                     pw.println();
@@ -85,12 +71,17 @@ public final class document_serializer_ui_main {
         } catch (Exception e) { return false; }
     }
 
+    private static String encode(String str) {
+        if (str == null) return "";
+        try { return java.net.URLEncoder.encode(str, java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) { return ""; }
+    }
+
     public static List<shape_item_ui_main> loadFromFile(File file) {
         List<shape_item_ui_main> list = new ArrayList<>();
         if (file == null || !file.exists() || file.length() == 0) return list;
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line, id = null, name = null, faceOwner = null;
-            face_kind_ui_main faceKind = null; basic_shapes_ui_main currentType = null;
+            String line, id = null, name = null, faceOwner = null, consumedBy = null;
+            boolean consumed = false; face_kind_ui_main faceKind = null; basic_shapes_ui_main currentType = null;
             Point3D p1 = null, p2 = null, uAxis = null, vAxis = null, norm = null;
             double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0;
             List<hole_feature_ui_main> pendingHoles = new ArrayList<>();
@@ -100,6 +91,7 @@ public final class document_serializer_ui_main {
             List<ui.workspace.drafting.machining.chamfer_feature_ui_main> pendingChamfers = new ArrayList<>();
             List<ui.workspace.drafting.machining.fillet_feature_ui_main> pendingFillets = new ArrayList<>();
             List<ui.workspace.drafting.machining.draft_feature_ui_main> pendingDrafts = new ArrayList<>();
+            List<ui.workspace.drafting.booleans.boolean_feature_ui_main> pendingBooleans = new ArrayList<>();
             ui.workspace.drafting.sketch.sketch_feature_ui_main currentSketch = null;
 
             while ((line = br.readLine()) != null) {
@@ -109,11 +101,11 @@ public final class document_serializer_ui_main {
 
                 if (line.startsWith("SHAPE:")) {
                     if (currentSketch != null) { pendingSketches.add(currentSketch); currentSketch = null; }
-                    document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts);
+                    document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans);
                     try { currentType = basic_shapes_ui_main.valueOf(line.substring(6).trim()); } catch (Exception ex) { currentType = null; }
-                    id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0;
+                    id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0; consumed = false; consumedBy = null;
                     uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null;
-                    pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear(); pendingSketches.clear(); pendingChamfers.clear(); pendingFillets.clear(); pendingDrafts.clear();
+                    pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear(); pendingSketches.clear(); pendingChamfers.clear(); pendingFillets.clear(); pendingDrafts.clear(); pendingBooleans.clear();
                 } else if (line.startsWith("id:")) id = line.substring(3).trim();
                 else if (line.startsWith("name:")) name = line.substring(5).trim();
                 else if (line.startsWith("p1:")) p1 = document_parse_helper_ui_main.parsePoint(line.substring(3).trim());
@@ -121,6 +113,7 @@ public final class document_serializer_ui_main {
                 else if (line.startsWith("tx:")) { Point3D p = document_parse_helper_ui_main.parsePoint(line.substring(3).trim()); tx = p.getX(); ty = p.getY(); tz = p.getZ(); }
                 else if (line.startsWith("rot:")) { try { rotY = Double.parseDouble(line.substring(4).trim()); } catch (Exception ignored) {} }
                 else if (line.startsWith("rotX:")) { try { rotX = Double.parseDouble(line.substring(5).trim()); } catch (Exception ignored) {} }
+                else if (line.startsWith("consumed:")) { String[] cp = line.substring(9).trim().split(","); consumed = Boolean.parseBoolean(cp[0].trim()); if (cp.length > 1 && !cp[1].trim().equalsIgnoreCase("NONE")) consumedBy = cp[1].trim(); }
                 else if (line.startsWith("uAxis:")) uAxis = document_parse_helper_ui_main.parsePoint(line.substring(6).trim());
                 else if (line.startsWith("vAxis:")) vAxis = document_parse_helper_ui_main.parsePoint(line.substring(6).trim());
                 else if (line.startsWith("norm:")) norm = document_parse_helper_ui_main.parsePoint(line.substring(5).trim());
@@ -132,6 +125,7 @@ public final class document_serializer_ui_main {
                 else if (line.startsWith("chamfer:")) document_parse_helper_ui_main.parseChamferLine(line.substring(8).trim(), id, pendingChamfers);
                 else if (line.startsWith("fillet:")) document_parse_helper_ui_main.parseFilletLine(line.substring(7).trim(), id, pendingFillets);
                 else if (line.startsWith("draft:")) document_parse_helper_ui_main.parseDraftLine(line.substring(6).trim(), id, pendingDrafts);
+                else if (line.startsWith("boolean:")) document_parse_helper_ui_main.parseBooleanLine(line.substring(8).trim(), id, pendingBooleans);
                 else if (line.startsWith("sketch:")) {
                     if (currentSketch != null) pendingSketches.add(currentSketch);
                     currentSketch = ui.workspace.drafting.sketch.sketch_serializer_ui_main.parseSketchHeader(line);
@@ -146,7 +140,7 @@ public final class document_serializer_ui_main {
                 }
             }
             if (currentSketch != null) pendingSketches.add(currentSketch);
-            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts);
+            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans);
         } catch (Exception ignored) {}
         return list;
     }
@@ -158,7 +152,7 @@ public final class document_serializer_ui_main {
             shape_item_ui_main item = new shape_item_ui_main(s.getId(), s.getName(), s.getType(), s.getP1(), s.getP2(),
                     s.getWorldX(), s.getWorldY(), s.getWorldZ(), s.getRotationX(), s.getRotationY());
             if (s.isOnFace()) item.setFacePlane(s.getUAxis(), s.getVAxis(), s.getFaceNormal(), s.getFaceOwnerId(), s.getFaceKind());
-            item.setState(s.getState());
+            item.setState(s.getState()); item.setConsumed(s.isConsumed()); item.setConsumedBy(s.getConsumedBy());
             for (hole_feature_ui_main h : s.getHoles()) {
                 var ch = new hole_feature_ui_main(h.getId(), h.getOwnerShapeId(), h.getName(), h.getHoleType(), h.getFaceKind(),
                     h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(), h.getCsDiameter(), h.getCsAngle(),
@@ -176,18 +170,10 @@ public final class document_serializer_ui_main {
                 cext.setSketchId(ext.getSketchId()); cext.setState(ext.getState()); cext.setVisible(ext.isVisible()); cext.setDiagnosticMessage(ext.getDiagnosticMessage());
                 item.addExtrude(cext);
             }
-            for (var c : s.getChamfers()) {
-                var cc = new ui.workspace.drafting.machining.chamfer_feature_ui_main(c.getId(), c.getOwnerShapeId(), c.getName(), c.getEdgeId(), c.getDistance());
-                cc.setState(c.getState()); cc.setVisible(c.isVisible()); item.addChamfer(cc);
-            }
-            for (var f : s.getFillets()) {
-                var cf = new ui.workspace.drafting.machining.fillet_feature_ui_main(f.getId(), f.getOwnerShapeId(), f.getName(), f.getEdgeId(), f.getRadius());
-                cf.setState(f.getState()); cf.setVisible(f.isVisible()); item.addFillet(cf);
-            }
-            for (var d : s.getDrafts()) {
-                var cd = new ui.workspace.drafting.machining.draft_feature_ui_main(d.getId(), d.getOwnerShapeId(), d.getName(), d.getFaceKind(), d.getDraftAngle(), d.getNeutralKind());
-                cd.setState(d.getState()); cd.setVisible(d.isVisible()); item.addDraft(cd);
-            }
+            for (var c : s.getChamfers()) item.addChamfer(new ui.workspace.drafting.machining.chamfer_feature_ui_main(c.getId(), c.getOwnerShapeId(), c.getName(), c.getEdgeId(), c.getDistance()));
+            for (var f : s.getFillets()) item.addFillet(new ui.workspace.drafting.machining.fillet_feature_ui_main(f.getId(), f.getOwnerShapeId(), f.getName(), f.getEdgeId(), f.getRadius()));
+            for (var d : s.getDrafts()) item.addDraft(new ui.workspace.drafting.machining.draft_feature_ui_main(d.getId(), d.getOwnerShapeId(), d.getName(), d.getFaceKind(), d.getDraftAngle(), d.getNeutralKind()));
+            for (var b : s.getBooleans()) item.addBoolean(b.copy());
             for (var sk : s.getSketches()) item.addSketch(sk.copy());
             ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.copyOverrides(s.getId(), item.getId());
             copies.add(item);

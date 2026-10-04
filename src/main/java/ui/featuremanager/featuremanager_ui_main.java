@@ -94,6 +94,7 @@ public class featuremanager_ui_main extends BorderPane {
                 for (var c : s.getChamfers()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forChamfer(s, c)));
                 for (var f : s.getFillets()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forFillet(s, f)));
                 for (var d : s.getDrafts()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDraft(s, d)));
+                for (var b : s.getBooleans()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forBoolean(s, b)));
             }
             legacyListView.getItems().setAll(editor.getShapes());
             syncFromCanvas();
@@ -133,8 +134,8 @@ public class featuremanager_ui_main extends BorderPane {
     public static String formatItemLabel(shape_item_ui_main item) {
         if (item == null) return "";
         String lbl = item.getName();
-        int h = item.getHoles().size(), ext = item.getExtrusions().size(), pat = item.getPatterns().size(), ch = item.getChamfers().size(), fil = item.getFillets().size(), dr = item.getDrafts().size();
-        if (h > 0 || ext > 0 || pat > 0 || ch > 0 || fil > 0 || dr > 0) {
+        int h = item.getHoles().size(), ext = item.getExtrusions().size(), pat = item.getPatterns().size(), ch = item.getChamfers().size(), fil = item.getFillets().size(), dr = item.getDrafts().size(), bl = item.getBooleans().size();
+        if (h > 0 || ext > 0 || pat > 0 || ch > 0 || fil > 0 || dr > 0 || bl > 0) {
             java.util.List<String> p = new java.util.ArrayList<>();
             if (h > 0) p.add(h + (h == 1 ? " Hole" : " Holes"));
             if (pat > 0) p.add(pat + (pat == 1 ? " Pattern" : " Patterns"));
@@ -142,6 +143,7 @@ public class featuremanager_ui_main extends BorderPane {
             if (ch > 0) p.add(ch + (ch == 1 ? " Chamfer" : " Chamfers"));
             if (fil > 0) p.add(fil + (fil == 1 ? " Fillet" : " Fillets"));
             if (dr > 0) p.add(dr + (dr == 1 ? " Draft" : " Drafts"));
+            if (bl > 0) p.add(bl + (bl == 1 ? " Boolean" : " Booleans"));
             lbl += " [" + String.join(", ", p) + "]";
         }
         return lbl;

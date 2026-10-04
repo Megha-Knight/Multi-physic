@@ -5,7 +5,6 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
-import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
@@ -17,7 +16,6 @@ import ui.workspace.drafting.faces.face_kind_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
 import ui.workspace.drafting.holes.hole_pattern_ui_main;
 import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -32,15 +30,16 @@ public class shape_item_ui_main {
     private final Rotate worldRy = new Rotate(0, Rotate.Y_AXIS), worldRx = new Rotate(0, Rotate.X_AXIS);
 
     private final Group rootGroup = new Group(), shapeGroup = new Group(), handlesGroup = new Group();
-    private boolean selected = false;
+    private boolean selected = false, consumed = false;
+    private String consumedBy = null, faceOwnerId = null, selectedExtrudeId = null;
     private Point3D uAxis = new Point3D(1, 0, 0), vAxis = new Point3D(0, 0, 1), normal = new Point3D(0, -1, 0);
-    private String faceOwnerId = null;
     private face_kind_ui_main faceKind = null;
     private final List<hole_feature_ui_main> holes = new java.util.ArrayList<>();
     private final List<hole_pattern_ui_main> patterns = new java.util.ArrayList<>();
     private final List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions = new java.util.ArrayList<>();
     private final List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches = new java.util.ArrayList<>();
-    private String selectedExtrudeId = null;
+    private final ui.workspace.drafting.machining.shape_machining_holder_ui_main machining = new ui.workspace.drafting.machining.shape_machining_holder_ui_main();
+    private final ui.workspace.drafting.booleans.shape_boolean_holder_ui_main booleans = new ui.workspace.drafting.booleans.shape_boolean_holder_ui_main();
 
     private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
     public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
@@ -69,6 +68,8 @@ public class shape_item_ui_main {
     public Point3D getWorldCenter() { Point3D c = getCenter(); return new Point3D(worldX + c.getX(), worldY + c.getY(), worldZ + c.getZ()); }
     public Point3D getUAxis() { return uAxis; } public Point3D getVAxis() { return vAxis; } public Point3D getFaceNormal() { return normal; }
     public String getFaceOwnerId() { return faceOwnerId; } public face_kind_ui_main getFaceKind() { return faceKind; } public boolean isOnFace() { return faceOwnerId != null; }
+    public boolean isConsumed() { return consumed; } public void setConsumed(boolean c) { this.consumed = c; rootGroup.setVisible(!c); }
+    public String getConsumedBy() { return consumedBy; } public void setConsumedBy(String cb) { this.consumedBy = cb; }
 
     public List<hole_feature_ui_main> getHoles() { return holes; } public boolean hasHoles() { return !holes.isEmpty(); }
     public void addHole(hole_feature_ui_main h) { if (h != null) { holes.add(h); rebuild(); } }
@@ -90,7 +91,6 @@ public class shape_item_ui_main {
     public void clearSketches() { sketches.clear(); rebuild(); }
     public ui.workspace.drafting.sketch.sketch_feature_ui_main getSketch(String id) { for (var s : sketches) if (s.getId().equals(id)) return s; return null; }
 
-    private final ui.workspace.drafting.machining.shape_machining_holder_ui_main machining = new ui.workspace.drafting.machining.shape_machining_holder_ui_main();
     public ui.workspace.drafting.machining.shape_machining_holder_ui_main getMachiningHolder() { return machining; }
     public List<ui.workspace.drafting.machining.chamfer_feature_ui_main> getChamfers() { return machining.getChamfers(); }
     public void addChamfer(ui.workspace.drafting.machining.chamfer_feature_ui_main c) { machining.addChamfer(c); rebuild(); }
@@ -108,16 +108,20 @@ public class shape_item_ui_main {
     public void clearDrafts() { machining.clearDrafts(); rebuild(); }
     public ui.workspace.drafting.machining.draft_feature_ui_main getDraft(String id) { return machining.getDraft(id); }
 
+    public ui.workspace.drafting.booleans.shape_boolean_holder_ui_main getBooleanHolder() { return booleans; }
+    public List<ui.workspace.drafting.booleans.boolean_feature_ui_main> getBooleans() { return booleans.getBooleans(); }
+    public boolean hasBooleans() { return booleans.hasBooleans(); }
+    public void addBoolean(ui.workspace.drafting.booleans.boolean_feature_ui_main b) { booleans.addBoolean(b); rebuild(); }
+    public void removeBoolean(String bId) { booleans.removeBoolean(bId); rebuild(); }
+    public void clearBooleans() { booleans.clearBooleans(); rebuild(); }
+    public ui.workspace.drafting.booleans.boolean_feature_ui_main getBoolean(String bId) { return booleans.getBoolean(bId); }
+
     public List<hole_feature_ui_main> getAllEffectiveHoles() {
         List<hole_feature_ui_main> eff = new java.util.ArrayList<>();
         for (hole_feature_ui_main h : holes) if (h.isVisible() && h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) eff.add(h);
         for (hole_pattern_ui_main pat : patterns) {
             if (!pat.isVisible() || pat.getState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) continue;
-            for (hole_feature_ui_main h : holes) {
-                if (h.getId().equals(pat.getSeedHoleId()) && h.isValid() && h.isVisible() && h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) {
-                    eff.addAll(pat.generateDerivedHoles(h)); break;
-                }
-            }
+            for (hole_feature_ui_main h : holes) if (h.getId().equals(pat.getSeedHoleId()) && h.isValid() && h.isVisible() && h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) { eff.addAll(pat.generateDerivedHoles(h)); break; }
         }
         return eff;
     }
@@ -127,12 +131,10 @@ public class shape_item_ui_main {
         for (shape_item_ui_main s : shapes) if (s != null && faceOwnerId.equals(s.getId())) return true;
         return false;
     }
-
     public void setFacePlane(Point3D u, Point3D v, Point3D n, String ownerId, face_kind_ui_main kind) {
         if (u != null) this.uAxis = u; if (v != null) this.vAxis = v; if (n != null) this.normal = n;
         this.faceOwnerId = ownerId; this.faceKind = kind; rebuild();
     }
-
     public void translate(double dx, double dz) { applyWorldDelta(dx, 0, dz); }
 
     public void rebuild() {
@@ -168,14 +170,8 @@ public class shape_item_ui_main {
         }
     }
     public List<Point3D> getControlHandles() { return shape_handles_ui_main.getControlHandles(type, p1, p2); }
-    public void moveHandle(int index, Point3D newPos) { Point3D[] u = shape_handles_ui_main.moveHandle(type, p1, p2, index, newPos); this.p1 = u[0]; this.p2 = u[1]; updateRotationPivot(); revalidateFeatures(); rebuild(); }
-    public void revalidateFeatures() {
-        for (hole_feature_ui_main h : holes) h.revalidate(this);
-        for (hole_pattern_ui_main p : patterns) p.revalidate(this);
-        for (var e : extrusions) e.revalidate(this);
-        for (var s : sketches) s.revalidate(this);
-        machining.revalidate(this);
-    }
+    public void moveHandle(int idx, Point3D p) { Point3D[] u = shape_handles_ui_main.moveHandle(type, p1, p2, idx, p); this.p1 = u[0]; this.p2 = u[1]; updateRotationPivot(); revalidateFeatures(); rebuild(); }
+    public void revalidateFeatures() { for (var h : holes) h.revalidate(this); for (var p : patterns) p.revalidate(this); for (var e : extrusions) e.revalidate(this); for (var s : sketches) s.revalidate(this); machining.revalidate(this); booleans.revalidate(this, java.util.Collections.emptyList()); }
     public ui.workspace.drafting.topology.topology_body_ui_main getTopology() { return ui.workspace.drafting.topology.topology_body_ui_main.buildTopology(this); }
     public boolean containsNode(Node node) { for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup) return true; return false; }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }
@@ -189,8 +185,7 @@ public class shape_item_ui_main {
     }
     public boolean isNear(Point3D groundPt, double threshold) { return shape_rotation_helper_ui_main.isPointNearShape(this, groundPt, threshold); }
     public String formatDimensions() { return shape_item_formatter_ui_main.formatDimensions(this); }
-    public String getId() { return id; } public String getName() { return name != null ? name : ""; }
-    public void setName(String name) { this.name = name; }
+    public String getId() { return id; } public String getName() { return name != null ? name : ""; } public void setName(String name) { this.name = name; }
     public void setP1P2(Point3D np1, Point3D np2) { this.p1 = np1; this.p2 = np2; updateRotationPivot(); revalidateFeatures(); rebuild(); }
     public Group getRootGroup() { return rootGroup; } public Group getShapeGroup() { return shapeGroup; } public basic_shapes_ui_main getType() { return type; }
     public Point3D getP1() { return p1; } public Point3D getP2() { return p2; }

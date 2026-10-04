@@ -79,6 +79,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
         }
         hole_topology_builder_ui_main.populateDerivedFaces(body, shape);
         machining_feature_topology_builder_ui_main.populateMachiningTopology(body, shape);
+        boolean_topology_builder_ui_main.populateBooleanTopology(body, shape);
         return body;
     }
 

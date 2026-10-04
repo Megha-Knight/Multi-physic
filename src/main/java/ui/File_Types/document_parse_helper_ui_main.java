@@ -29,24 +29,17 @@ public final class document_parse_helper_ui_main {
                 double csDia = 0, csAngle = 90.0, cbDia = 0, cbDepth = 0;
                 if (p.length >= 12) {
                     try { type = hole_feature_ui_main.HoleType.valueOf(p[7].trim()); } catch (Exception ignored) {}
-                    csDia = Double.parseDouble(p[8].trim());
-                    csAngle = Double.parseDouble(p[9].trim());
-                    cbDia = Double.parseDouble(p[10].trim());
-                    cbDepth = Double.parseDouble(p[11].trim());
+                    csDia = Double.parseDouble(p[8].trim()); csAngle = Double.parseDouble(p[9].trim());
+                    cbDia = Double.parseDouble(p[10].trim()); cbDepth = Double.parseDouble(p[11].trim());
                 }
                 hole_feature_ui_main.CutoutShape cShape = hole_feature_ui_main.CutoutShape.CIRCLE;
-                double w2 = 0.0;
-                String hName = null;
+                double w2 = 0.0; String hName = null;
                 if (p.length >= 14) {
                     try { cShape = hole_feature_ui_main.CutoutShape.valueOf(p[12].trim()); } catch (Exception ignored) {}
                     try { w2 = Double.parseDouble(p[13].trim()); } catch (Exception ignored) {}
                 }
-                if (p.length >= 15) {
-                    try { hName = java.net.URLDecoder.decode(p[14].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { hName = p[14].trim(); }
-                }
-                out.add(new hole_feature_ui_main(
-                    id, parentId, hName, type, kind, u, v, dia, depth, through, csDia, csAngle, cbDia, cbDepth, cShape, w2
-                ));
+                if (p.length >= 15) try { hName = java.net.URLDecoder.decode(p[14].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { hName = p[14].trim(); }
+                out.add(new hole_feature_ui_main(id, parentId, hName, type, kind, u, v, dia, depth, through, csDia, csAngle, cbDia, cbDepth, cShape, w2));
             }
         } catch (Exception ignored) {}
     }
@@ -55,21 +48,13 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 12) {
-                String id = p[0].trim();
-                String ownerId = p[1].trim().isEmpty() ? parentId : p[1].trim();
-                String seedId = p[2].trim();
+                String id = p[0].trim(), ownerId = p[1].trim().isEmpty() ? parentId : p[1].trim(), seedId = p[2].trim();
                 hole_pattern_ui_main.PatternType pType = hole_pattern_ui_main.PatternType.valueOf(p[3].trim());
                 int count = Integer.parseInt(p[4].trim());
-                hole_pattern_ui_main.LinearDirection dir = ("ALONG_V".equalsIgnoreCase(p[5].trim()) || "V_DIR".equalsIgnoreCase(p[5].trim()))
-                        ? hole_pattern_ui_main.LinearDirection.V_DIR : hole_pattern_ui_main.LinearDirection.U_DIR;
-                double spacing = Double.parseDouble(p[6].trim());
-                double cU = Double.parseDouble(p[7].trim()), cV = Double.parseDouble(p[8].trim());
-                double span = Double.parseDouble(p[9].trim());
-                boolean cw = Boolean.parseBoolean(p[10].trim());
-                boolean full = Boolean.parseBoolean(p[11].trim());
-                if (count >= 2 && !seedId.contains("-inst-") && !seedId.equals(id)) {
-                    out.add(new hole_pattern_ui_main(id, ownerId, seedId, pType, count, dir, spacing, cU, cV, span, cw, full));
-                }
+                hole_pattern_ui_main.LinearDirection dir = ("ALONG_V".equalsIgnoreCase(p[5].trim()) || "V_DIR".equalsIgnoreCase(p[5].trim())) ? hole_pattern_ui_main.LinearDirection.V_DIR : hole_pattern_ui_main.LinearDirection.U_DIR;
+                double spacing = Double.parseDouble(p[6].trim()), cU = Double.parseDouble(p[7].trim()), cV = Double.parseDouble(p[8].trim()), span = Double.parseDouble(p[9].trim());
+                boolean cw = Boolean.parseBoolean(p[10].trim()), full = Boolean.parseBoolean(p[11].trim());
+                if (count >= 2 && !seedId.contains("-inst-") && !seedId.equals(id)) out.add(new hole_pattern_ui_main(id, ownerId, seedId, pType, count, dir, spacing, cU, cV, span, cw, full));
             }
         } catch (Exception ignored) {}
     }
@@ -78,20 +63,13 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 8) {
-                String id = p[0].trim();
-                face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
+                String id = p[0].trim(); face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
                 hole_feature_ui_main.CutoutShape shape = hole_feature_ui_main.CutoutShape.valueOf(p[2].trim());
-                double u = Double.parseDouble(p[3].trim()), v = Double.parseDouble(p[4].trim());
-                double dia = Double.parseDouble(p[5].trim()), w2 = Double.parseDouble(p[6].trim());
-                double h = Double.parseDouble(p[7].trim());
+                double u = Double.parseDouble(p[3].trim()), v = Double.parseDouble(p[4].trim()), dia = Double.parseDouble(p[5].trim()), w2 = Double.parseDouble(p[6].trim()), h = Double.parseDouble(p[7].trim());
                 String name = null;
-                if (p.length >= 9) {
-                    try { name = java.net.URLDecoder.decode(p[8].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { name = p[8].trim(); }
-                }
+                if (p.length >= 9) try { name = java.net.URLDecoder.decode(p[8].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { name = p[8].trim(); }
                 var ext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(id, parentId, name, kind, shape, u, v, dia, w2, h);
-                if (p.length >= 10 && !p[9].trim().isEmpty() && !p[9].trim().equalsIgnoreCase("NONE")) {
-                    ext.setSketchId(p[9].trim());
-                }
+                if (p.length >= 10 && !p[9].trim().isEmpty() && !p[9].trim().equalsIgnoreCase("NONE")) ext.setSketchId(p[9].trim());
                 out.add(ext);
             }
         } catch (Exception ignored) {}
@@ -101,9 +79,8 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 3) {
-                String id = p[0].trim(), edgeId = p[1].trim();
+                String id = p[0].trim(), edgeId = p[1].trim(), name = null;
                 double dist = Double.parseDouble(p[2].trim());
-                String name = null;
                 if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
                 out.add(new ui.workspace.drafting.machining.chamfer_feature_ui_main(id, parentId, name, edgeId, dist));
             }
@@ -114,9 +91,8 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 3) {
-                String id = p[0].trim(), edgeId = p[1].trim();
+                String id = p[0].trim(), edgeId = p[1].trim(), name = null;
                 double rad = Double.parseDouble(p[2].trim());
-                String name = null;
                 if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
                 out.add(new ui.workspace.drafting.machining.fillet_feature_ui_main(id, parentId, name, edgeId, rad));
             }
@@ -127,16 +103,26 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 3) {
-                String id = p[0].trim();
-                face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
-                double angle = Double.parseDouble(p[2].trim());
-                face_kind_ui_main neutral = null;
-                if (p.length >= 4 && !p[3].trim().equalsIgnoreCase("NONE")) {
-                    try { neutral = face_kind_ui_main.valueOf(p[3].trim()); } catch (Exception ignored) {}
-                }
-                String name = null;
+                String id = p[0].trim(); face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
+                double angle = Double.parseDouble(p[2].trim()); face_kind_ui_main neutral = null; String name = null;
+                if (p.length >= 4 && !p[3].trim().equalsIgnoreCase("NONE")) try { neutral = face_kind_ui_main.valueOf(p[3].trim()); } catch (Exception ignored) {}
                 if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
                 out.add(new ui.workspace.drafting.machining.draft_feature_ui_main(id, parentId, name, kind, angle, neutral));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void parseBooleanLine(String str, String parentId, List<ui.workspace.drafting.booleans.boolean_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 4) {
+                String id = p[0].trim();
+                ui.workspace.drafting.booleans.boolean_op_type_ui_main op = ui.workspace.drafting.booleans.boolean_op_type_ui_main.valueOf(p[1].trim());
+                String targetId = p[2].trim().isEmpty() ? parentId : p[2].trim();
+                String toolId = p[3].trim();
+                String name = null;
+                if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                out.add(new ui.workspace.drafting.booleans.boolean_feature_ui_main(id, targetId, toolId, op, name));
             }
         } catch (Exception ignored) {}
     }
@@ -144,15 +130,19 @@ public final class document_parse_helper_ui_main {
     public static void commitShape(List<ui.workspace.drafting.shape_item_ui_main> list, ui.workspace.shapes.basic_shapes_ui_main type, String id, String name,
                                    Point3D p1, Point3D p2, double tx, double ty, double tz, double rotX, double rotY,
                                    Point3D uAxis, Point3D vAxis, Point3D norm, String faceOwner, face_kind_ui_main faceKind,
+                                   boolean consumed, String consumedBy,
                                    List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns,
                                    List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions,
                                    List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches,
                                    List<ui.workspace.drafting.machining.chamfer_feature_ui_main> chamfers,
                                    List<ui.workspace.drafting.machining.fillet_feature_ui_main> fillets,
-                                   List<ui.workspace.drafting.machining.draft_feature_ui_main> drafts) {
+                                   List<ui.workspace.drafting.machining.draft_feature_ui_main> drafts,
+                                   List<ui.workspace.drafting.booleans.boolean_feature_ui_main> booleans) {
         if (type == null || p1 == null || p2 == null) return;
         var item = new ui.workspace.drafting.shape_item_ui_main(id, name, type, p1, p2, tx, ty, tz, rotX, rotY);
         if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
+        item.setConsumed(consumed);
+        if (consumedBy != null) item.setConsumedBy(consumedBy);
         for (hole_feature_ui_main h : holes) item.addHole(h);
         for (hole_pattern_ui_main p : patterns) {
             hole_feature_ui_main seed = null;
@@ -167,6 +157,7 @@ public final class document_parse_helper_ui_main {
         if (chamfers != null) for (var c : chamfers) item.addChamfer(c);
         if (fillets != null) for (var f : fillets) item.addFillet(f);
         if (drafts != null) for (var d : drafts) item.addDraft(d);
+        if (booleans != null) for (var b : booleans) item.addBoolean(b);
         list.add(item);
     }
 }
