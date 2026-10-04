@@ -99,6 +99,15 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\draft_mesh_builder
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\fillet_feature_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\fillet_mesh_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\shape_machining_holder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shape_shell_holder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_direction_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_editor_dialog_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_feature_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_mesh_builder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_mesh_quad_helper_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_solid_evaluator_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_validation_result_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_validator_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_arc_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_canvas_mapper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_circle_ui_main.java
@@ -141,6 +150,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\hole_surface_appear
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\hole_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\machining_feature_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\shape_face_appearance_helper_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\shell_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\topology_body_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\topology_boundary_loop_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\topology_derived_face_ui_main.java

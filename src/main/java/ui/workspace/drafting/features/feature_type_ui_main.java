@@ -21,7 +21,9 @@ public enum feature_type_ui_main {
     BOOLEAN("Boolean Operation"),
     BOOLEAN_UNION("Boolean Union"),
     BOOLEAN_SUBTRACT("Boolean Subtract"),
-    BOOLEAN_INTERSECT("Boolean Intersect");
+    BOOLEAN_INTERSECT("Boolean Intersect"),
+    SHELL("Shell / Thickness"),
+    SHELL_FEATURE("Shell");
 
     private final String label;
 
