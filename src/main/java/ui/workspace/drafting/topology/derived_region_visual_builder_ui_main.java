@@ -61,7 +61,7 @@ public final class derived_region_visual_builder_ui_main {
         Point3D inDir = f.n().multiply(-1.0); // inwards into the solid
 
         TriangleMesh mesh = switch (df.getRegionKind()) {
-            case HOLE_WALL, BORE_WALL -> createCylindricalWallMesh(center, inDir, f.u(), f.v(), df.getRadius(), df.getDepth());
+            case HOLE_WALL, BORE_WALL -> derived_region_advanced_mesh_ui_main.createAdvancedWallMesh(center, inDir, f.u(), f.v(), df, shape);
             case HOLE_FLOOR -> createDiskMesh(center.add(inDir.multiply(df.getDepth())), f.n(), f.u(), f.v(), df.getRadius());
             default -> null;
         };
@@ -81,39 +81,6 @@ public final class derived_region_visual_builder_ui_main {
         PhongMaterial mat = new PhongMaterial(diffuse);
         mat.setSpecularColor(Color.color(1, 1, 1, 0.4));
         return mat;
-    }
-
-    private static TriangleMesh createCylindricalWallMesh(Point3D topCenter, Point3D inDir, Point3D uAxis, Point3D vAxis, double r, double depth) {
-        TriangleMesh m = new TriangleMesh();
-        m.getTexCoords().setAll(0, 0, 1, 0, 0, 1, 1, 1);
-        float[] pts = new float[SEGS * 2 * 3];
-        Point3D botCenter = topCenter.add(inDir.multiply(depth));
-
-        for (int i = 0; i < SEGS; i++) {
-            double a = i * 2.0 * Math.PI / SEGS;
-            Point3D rad = uAxis.multiply(r * Math.cos(a)).add(vAxis.multiply(r * Math.sin(a)));
-            Point3D ptTop = topCenter.add(rad);
-            Point3D ptBot = botCenter.add(rad);
-
-            int pIdx = i * 6;
-            pts[pIdx] = (float) ptTop.getX(); pts[pIdx + 1] = (float) ptTop.getY(); pts[pIdx + 2] = (float) ptTop.getZ();
-            pts[pIdx + 3] = (float) ptBot.getX(); pts[pIdx + 4] = (float) ptBot.getY(); pts[pIdx + 5] = (float) ptBot.getZ();
-        }
-        m.getPoints().setAll(pts);
-
-        int[] fcs = new int[SEGS * 2 * 6];
-        for (int i = 0; i < SEGS; i++) {
-            int next = (i + 1) % SEGS;
-            int t1 = i * 2, b1 = i * 2 + 1, t2 = next * 2, b2 = next * 2 + 1;
-            int fIdx = i * 12;
-            fcs[fIdx] = t1; fcs[fIdx + 1] = 0; fcs[fIdx + 2] = b1; fcs[fIdx + 3] = 2; fcs[fIdx + 4] = b2; fcs[fIdx + 5] = 3;
-            fcs[fIdx + 6] = t1; fcs[fIdx + 7] = 0; fcs[fIdx + 8] = b2; fcs[fIdx + 9] = 3; fcs[fIdx + 10] = t2; fcs[fIdx + 11] = 1;
-        }
-        m.getFaces().setAll(fcs);
-        int[] sg = new int[fcs.length / 6];
-        java.util.Arrays.fill(sg, 1);
-        m.getFaceSmoothingGroups().setAll(sg);
-        return m;
     }
 
     private static TriangleMesh createDiskMesh(Point3D center, Point3D norm, Point3D uAxis, Point3D vAxis, double r) {

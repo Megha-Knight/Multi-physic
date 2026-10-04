@@ -118,6 +118,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_tool_type_ui_m
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_view_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\boundary_condition_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\boundary_relationship_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\derived_region_advanced_mesh_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\derived_region_visual_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\edge_machining_analyzer_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\hole_region_kind_ui_main.java

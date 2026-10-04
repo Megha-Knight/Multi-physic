@@ -80,7 +80,7 @@ public final class hole_topology_builder_ui_main {
 
         for (hole_feature_ui_main h : entryHoles) {
             if (h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) {
-                rem.addLoop(topology_boundary_loop_ui_main.createCircular("IN_HOLE_" + h.getId(), false, new Point3D(h.getU(), h.getV(), 0), h.getRadius()));
+                rem.addLoop(topology_boundary_loop_ui_main.createCircular("IN_HOLE_" + h.getId(), false, new Point3D(h.getU(), h.getV(), 0), h.getOuterRadius()));
             }
         }
         for (hole_feature_ui_main h : exitHoles) {
