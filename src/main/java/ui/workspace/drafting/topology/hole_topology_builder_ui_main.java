@@ -29,8 +29,7 @@ public final class hole_topology_builder_ui_main {
 
             if (faceHoles.isEmpty() && exitHoles.isEmpty()) continue;
 
-            validateHoleIntersections(faceHoles);
-            validateHoleBoundaries(shape, kind, faceHoles, baseFace.getWidth(), baseFace.getHeight());
+            validateHoles(shape, body, faceHoles);
 
             topology_derived_face_ui_main remaining = buildRemainingFace(body, kind, baseFace, faceHoles, exitHoles);
             body.addDerivedFace(remaining);
@@ -42,21 +41,13 @@ public final class hole_topology_builder_ui_main {
         }
     }
 
-    private static void validateHoleIntersections(List<hole_feature_ui_main> holes) {
-        if (holes == null || holes.size() < 2) return;
-        for (int i = 0; i < holes.size(); i++) {
-            hole_feature_ui_main h1 = holes.get(i);
-            if (h1.getState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) continue;
-            for (int j = i + 1; j < holes.size(); j++) {
-                hole_feature_ui_main h2 = holes.get(j);
-                if (h2.getState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) continue;
-                if (h1.getFaceKind() == h2.getFaceKind()) {
-                    double dist = Math.hypot(h1.getU() - h2.getU(), h1.getV() - h2.getV());
-                    if (dist < (h1.getRadius() + h2.getRadius()) - 1e-3) {
-                        h2.setState(ui.workspace.drafting.features.feature_state_ui_main.INVALID);
-                        h2.setDiagnosticMessage("Intersecting holes detected. Multi-cavity intersection topology is not supported yet.");
-                    }
-                }
+    private static void validateHoles(shape_item_ui_main shape, topology_body_ui_main body, List<hole_feature_ui_main> holes) {
+        for (hole_feature_ui_main h : holes) {
+            boundary_relationship_ui_main rel = edge_machining_analyzer_ui_main.analyzeHole(shape, body, h);
+            h.setBoundaryRelationship(rel);
+            if (rel != null && !rel.isValid()) {
+                h.setState(ui.workspace.drafting.features.feature_state_ui_main.INVALID);
+                h.setDiagnosticMessage(rel.getDiagnosticMessage());
             }
         }
     }
@@ -75,20 +66,6 @@ public final class hole_topology_builder_ui_main {
             }
         }
         return list;
-    }
-
-    private static void validateHoleBoundaries(shape_item_ui_main shape, face_kind_ui_main kind,
-                                                List<hole_feature_ui_main> holes, double w, double h) {
-        for (hole_feature_ui_main hole : holes) {
-            double r = hole.getOuterRadius();
-            boolean fits = (kind.isCylinderCap())
-                ? (Math.hypot(hole.getU(), hole.getV()) + r <= (w * 0.5) + 1e-4)
-                : (Math.abs(hole.getU()) + r <= (w * 0.5) + 1e-4 && Math.abs(hole.getV()) + r <= (h * 0.5) + 1e-4);
-            if (!fits) {
-                hole.setState(ui.workspace.drafting.features.feature_state_ui_main.INVALID);
-                hole.setDiagnosticMessage("Hole intersects face boundary; multi-face hole topology is not supported yet.");
-            }
-        }
     }
 
     private static topology_derived_face_ui_main buildRemainingFace(topology_body_ui_main body, face_kind_ui_main kind,

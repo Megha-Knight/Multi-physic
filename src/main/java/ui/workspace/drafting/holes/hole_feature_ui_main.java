@@ -3,11 +3,12 @@ package ui.workspace.drafting.holes;
 import java.util.Locale;
 import java.util.UUID;
 import ui.workspace.drafting.faces.face_kind_ui_main;
+import ui.workspace.drafting.topology.boundary_relationship_ui_main;
+import ui.workspace.drafting.topology.edge_machining_analyzer_ui_main;
 
 /**
  * hole_feature_ui_main.java
- * Parametric Hole Feature model for solid CAD bodies.
- * Supports Simple, Countersink, and Counterbore holes with persistent topology identity.
+ * Parametric Hole Feature model for solid CAD bodies with topology boundary awareness.
  */
 public class hole_feature_ui_main {
 
@@ -26,18 +27,15 @@ public class hole_feature_ui_main {
         public String getLabel() { return label; }
     }
 
-    private final String id;
-    private final String ownerShapeId;
+    private final String id, ownerShapeId;
     private final HoleType holeType;
     private final face_kind_ui_main faceKind;
-    private double u, v, diameter, depth;
-    private boolean throughAll;
-    private double csDiameter, csAngle = 90.0, cbDiameter, cbDepth, width2 = 0.0;
+    private double u, v, diameter, depth, csDiameter, csAngle = 90.0, cbDiameter, cbDepth, width2 = 0.0;
+    private boolean throughAll, visible = true;
     private CutoutShape cutoutShape = CutoutShape.CIRCLE;
-    private String name;
+    private String name, diagnosticMessage = null;
     private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
-    private String diagnosticMessage = null;
-    private boolean visible = true;
+    private boundary_relationship_ui_main boundaryRelationship = null;
 
     public hole_feature_ui_main(String id, String ownerShapeId, face_kind_ui_main faceKind, double u, double v, double diameter, double depth, boolean throughAll) {
         this(id, ownerShapeId, null, HoleType.SIMPLE, faceKind, u, v, diameter, depth, throughAll, 0, 90.0, 0, 0, CutoutShape.CIRCLE, 0.0);
@@ -85,6 +83,8 @@ public class hole_feature_ui_main {
     public void setDiagnosticMessage(String msg) { this.diagnosticMessage = msg; }
     public boolean isVisible() { return visible; }
     public void setVisible(boolean v) { this.visible = v; }
+    public boundary_relationship_ui_main getBoundaryRelationship() { return boundaryRelationship; }
+    public void setBoundaryRelationship(boundary_relationship_ui_main rel) { this.boundaryRelationship = rel; }
 
     public double getU() { return u; } public void setU(double u) { this.u = u; }
     public double getV() { return v; } public void setV(double v) { this.v = v; }
@@ -101,14 +101,16 @@ public class hole_feature_ui_main {
         if (host == null || !host.getId().equals(ownerShapeId)) {
             state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
             diagnosticMessage = "Host body not found";
+            boundaryRelationship = null;
             return false;
         }
-        if (!ui.workspace.drafting.topology.topology_geometry_helper_ui_main.fitsWithinFace(host, faceKind, u, v, getOuterRadius())) {
+        boundaryRelationship = edge_machining_analyzer_ui_main.analyzeHole(host, host.getTopology(), this);
+        if (boundaryRelationship != null && !boundaryRelationship.isValid()) {
             state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
-            diagnosticMessage = "Hole exceeds face boundary";
+            diagnosticMessage = boundaryRelationship.getDiagnosticMessage();
             return false;
         }
-        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID && "Hole exceeds face boundary".equals(diagnosticMessage)) {
+        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID) {
             state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
             diagnosticMessage = null;
         }

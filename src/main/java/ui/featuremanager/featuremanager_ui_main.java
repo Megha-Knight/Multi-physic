@@ -73,7 +73,7 @@ public class featuremanager_ui_main extends BorderPane {
                 for (hole_feature_ui_main h : s.getHoles()) {
                     TreeItem<feature_tree_node_ui_main> hNode = new TreeItem<>(feature_tree_node_ui_main.forHole(s, h));
                     var body = s.getTopology();
-                    if (body != null) {
+                    if (body != null && h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) {
                         if (h.isThroughAll()) {
                             var remEntry = body.getDerivedFaceById(s.getId() + ":F:" + h.getFaceKind().name() + ":REMAINING");
                             if (remEntry != null) hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, remEntry)));
