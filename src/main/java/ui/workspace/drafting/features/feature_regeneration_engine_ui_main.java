@@ -49,7 +49,10 @@ public final class feature_regeneration_engine_ui_main {
             feature_node_ui_main node = graph.getFeature(featId);
             if (node == null) continue;
 
-            if (node.getState() == feature_state_ui_main.DIRTY || node.getState() == feature_state_ui_main.CLEAN || node.getState() == feature_state_ui_main.VALID) {
+            if (node.getState() == feature_state_ui_main.CLEAN) {
+                continue; // nothing changed, no reason to touch this shape
+            }
+            if (node.getState() == feature_state_ui_main.DIRTY) {
                 shape_item_ui_main host = resolveHost(node, shapeMap);
                 if (host != null && rebuiltShapes.add(host)) {
                     List<javafx.scene.Node> backup = new ArrayList<>(host.getShapeGroup().getChildren());
@@ -63,7 +66,7 @@ public final class feature_regeneration_engine_ui_main {
                         node.setInvalid("Regeneration error: " + t.getMessage());
                         invalidCount++;
                     }
-                } else if (node.getState() == feature_state_ui_main.DIRTY) {
+                } else {
                     node.setState(feature_state_ui_main.CLEAN);
                 }
                 syncEntityState(node, shapeMap);

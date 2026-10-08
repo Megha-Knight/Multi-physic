@@ -92,8 +92,10 @@ public class ribbon_ui_main extends HBox {
             if (onShapeSelected != null) onShapeSelected.accept(shape);
         });
 
-        sketchButton = new splitbutton_ui_main("Sketch", loadIcon("/icons/rectangle.png"), 84.0, false,
-            () -> { if (onSketchRequested != null) onSketchRequested.run(); });
+        sketchButton = new splitbutton_ui_main("Sketch", loadIcon("/icons/rectangle.png"), 84.0, true,
+            () -> panelCoordinator.toggle(sketchPanel));
+        sketchButton.setDropAction(() -> panelCoordinator.toggle(sketchPanel));
+        sketchButton.addMenuItem("Start Sketch", () -> { if (onSketchRequested != null) onSketchRequested.run(); });
         extrudeButton = new splitbutton_ui_main("Extrude", ribbonicons_ui_main.createExtrudeIcon(iconSz, iconColor), 84.0, true,
             () -> panelCoordinator.toggle(extrudePanel));
         extrudeButton.setDropAction(() -> panelCoordinator.toggle(extrudePanel));
