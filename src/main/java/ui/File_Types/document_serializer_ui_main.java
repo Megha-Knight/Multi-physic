@@ -26,7 +26,7 @@ public final class document_serializer_ui_main {
 
     public static boolean saveToNd(File file, List<shape_item_ui_main> shapes) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.6\n");
+            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.7\n");
             if (shapes != null) {
                 for (shape_item_ui_main s : shapes) {
                     pw.println("SHAPE: " + s.getType().name());
@@ -48,23 +48,18 @@ public final class document_serializer_ui_main {
                             h.getId(), h.getFaceKind().name(), h.getU(), h.getV(), h.getDiameter(), h.getDepth(), h.isThroughAll(),
                             h.getHoleType().name(), h.getCsDiameter(), h.getCsAngle(), h.getCbDiameter(), h.getCbDepth(), h.getCutoutShape().name(), h.getWidth2(), encode(h.getName()));
                     }
-                    for (var ext : s.getExtrusions()) {
-                        pw.printf(java.util.Locale.US, "extrude: %s, %s, %s, %.4f, %.4f, %.4f, %.4f, %.4f, %s, %s%n",
-                            ext.getId(), ext.getFaceKind().name(), ext.getProfileShape().name(), ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight(), encode(ext.getName()), ext.getSketchId() != null ? ext.getSketchId() : "NONE");
-                    }
-                    for (hole_pattern_ui_main p : s.getPatterns()) {
-                        pw.printf(java.util.Locale.US, "pattern: %s, %s, %s, %s, %d, %s, %.4f, %.4f, %.4f, %.4f, %b, %b%n",
-                            p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType().name(), p.getInstanceCount(), p.getLinearDirection().name(), p.getLinearSpacing(), p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(), p.isClockwise(), p.isFullCircle());
-                    }
+                    for (var ext : s.getExtrusions()) pw.printf(java.util.Locale.US, "extrude: %s, %s, %s, %.4f, %.4f, %.4f, %.4f, %.4f, %s, %s%n", ext.getId(), ext.getFaceKind().name(), ext.getProfileShape().name(), ext.getU(), ext.getV(), ext.getDiameter(), ext.getWidth2(), ext.getHeight(), encode(ext.getName()), ext.getSketchId() != null ? ext.getSketchId() : "NONE");
+                    for (hole_pattern_ui_main p : s.getPatterns()) pw.printf(java.util.Locale.US, "pattern: %s, %s, %s, %s, %d, %s, %.4f, %.4f, %.4f, %.4f, %b, %b%n", p.getId(), p.getOwnerShapeId(), p.getSeedHoleId(), p.getPatternType().name(), p.getInstanceCount(), p.getLinearDirection().name(), p.getLinearSpacing(), p.getCircularCenterU(), p.getCircularCenterV(), p.getAngularSpan(), p.isClockwise(), p.isFullCircle());
                     for (var c : s.getChamfers()) pw.printf(java.util.Locale.US, "chamfer: %s, %s, %.4f, %s%n", c.getId(), c.getEdgeId(), c.getDistance(), encode(c.getName()));
                     for (var f : s.getFillets()) pw.printf(java.util.Locale.US, "fillet: %s, %s, %.4f, %s%n", f.getId(), f.getEdgeId(), f.getRadius(), encode(f.getName()));
                     for (var d : s.getDrafts()) pw.printf(java.util.Locale.US, "draft: %s, %s, %.4f, %s, %s%n", d.getId(), d.getFaceKind().name(), d.getDraftAngle(), d.getNeutralKind() != null ? d.getNeutralKind().name() : "NONE", encode(d.getName()));
                     for (var b : s.getBooleans()) pw.printf(java.util.Locale.US, "boolean: %s, %s, %s, %s, %s%n", b.getId(), b.getOpType().name(), b.getTargetBodyId(), b.getToolBodyId(), encode(b.getName()));
                     for (var sh : s.getShells()) {
                         String rf = String.join("+", sh.getRemovedFaces().stream().map(Enum::name).toList());
-                        if (rf.isEmpty()) rf = "NONE";
-                        pw.printf(java.util.Locale.US, "shell: %s, %.4f, %s, %s, %s%n", sh.getId(), sh.getThickness(), sh.getDirection().name(), rf, encode(sh.getName()));
+                        pw.printf(java.util.Locale.US, "shell: %s, %.4f, %s, %s, %s%n", sh.getId(), sh.getThickness(), sh.getDirection().name(), rf.isEmpty() ? "NONE" : rf, encode(sh.getName()));
                     }
+                    for (var lf : s.getLofts()) pw.printf(java.util.Locale.US, "loft: %s, %b, %s%n", lf.getId(), lf.isSolid(), encode(lf.getName()));
+                    for (var sw : s.getSweeps()) pw.printf(java.util.Locale.US, "sweep: %s, %s, %b, %s%n", sw.getId(), sw.getOrientation().name(), sw.isSolid(), encode(sw.getName()));
                     for (var sk : s.getSketches()) ui.workspace.drafting.sketch.sketch_serializer_ui_main.writeSketch(pw, sk);
                     for (var e : ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.getOverridesForShape(s.getId()).entrySet()) pw.println("face_app: " + e.getKey() + "," + e.getValue().formatNd());
                     pw.println();
@@ -96,6 +91,8 @@ public final class document_serializer_ui_main {
             List<ui.workspace.drafting.machining.draft_feature_ui_main> pendingDrafts = new ArrayList<>();
             List<ui.workspace.drafting.booleans.boolean_feature_ui_main> pendingBooleans = new ArrayList<>();
             List<ui.workspace.drafting.shell.shell_feature_ui_main> pendingShells = new ArrayList<>();
+            List<ui.workspace.drafting.loft.loft_feature_ui_main> pendingLofts = new ArrayList<>();
+            List<ui.workspace.drafting.sweep.sweep_feature_ui_main> pendingSweeps = new ArrayList<>();
             ui.workspace.drafting.sketch.sketch_feature_ui_main currentSketch = null;
 
             while ((line = br.readLine()) != null) {
@@ -105,11 +102,11 @@ public final class document_serializer_ui_main {
 
                 if (line.startsWith("SHAPE:")) {
                     if (currentSketch != null) { pendingSketches.add(currentSketch); currentSketch = null; }
-                    document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells);
+                    document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps);
                     try { currentType = basic_shapes_ui_main.valueOf(line.substring(6).trim()); } catch (Exception ex) { currentType = null; }
                     id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0; consumed = false; consumedBy = null;
                     uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null;
-                    pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear(); pendingSketches.clear(); pendingChamfers.clear(); pendingFillets.clear(); pendingDrafts.clear(); pendingBooleans.clear(); pendingShells.clear();
+                    pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear(); pendingSketches.clear(); pendingChamfers.clear(); pendingFillets.clear(); pendingDrafts.clear(); pendingBooleans.clear(); pendingShells.clear(); pendingLofts.clear(); pendingSweeps.clear();
                 } else if (line.startsWith("id:")) id = line.substring(3).trim();
                 else if (line.startsWith("name:")) name = line.substring(5).trim();
                 else if (line.startsWith("p1:")) p1 = document_parse_helper_ui_main.parsePoint(line.substring(3).trim());
@@ -131,6 +128,8 @@ public final class document_serializer_ui_main {
                 else if (line.startsWith("draft:")) document_parse_helper_ui_main.parseDraftLine(line.substring(6).trim(), id, pendingDrafts);
                 else if (line.startsWith("boolean:")) document_parse_helper_ui_main.parseBooleanLine(line.substring(8).trim(), id, pendingBooleans);
                 else if (line.startsWith("shell:")) document_parse_helper_ui_main.parseShellLine(line.substring(6).trim(), id, pendingShells);
+                else if (line.startsWith("loft:")) document_parse_helper_ui_main.parseLoftLine(line.substring(5).trim(), id, pendingLofts);
+                else if (line.startsWith("sweep:")) document_parse_helper_ui_main.parseSweepLine(line.substring(6).trim(), id, pendingSweeps);
                 else if (line.startsWith("sketch:")) {
                     if (currentSketch != null) pendingSketches.add(currentSketch);
                     currentSketch = ui.workspace.drafting.sketch.sketch_serializer_ui_main.parseSketchHeader(line);
@@ -145,7 +144,7 @@ public final class document_serializer_ui_main {
                 }
             }
             if (currentSketch != null) pendingSketches.add(currentSketch);
-            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells);
+            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps);
         } catch (Exception ignored) {}
         return list;
     }
@@ -180,6 +179,8 @@ public final class document_serializer_ui_main {
             for (var d : s.getDrafts()) item.addDraft(new ui.workspace.drafting.machining.draft_feature_ui_main(d.getId(), d.getOwnerShapeId(), d.getName(), d.getFaceKind(), d.getDraftAngle(), d.getNeutralKind()));
             for (var b : s.getBooleans()) item.addBoolean(b.copy());
             for (var sh : s.getShells()) item.addShell(sh.copy());
+            for (var lf : s.getLofts()) item.addLoft(lf.copy());
+            for (var sw : s.getSweeps()) item.addSweep(sw.copy());
             for (var sk : s.getSketches()) item.addSketch(sk.copy());
             ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.copyOverrides(s.getId(), item.getId());
             copies.add(item);

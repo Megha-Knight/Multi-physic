@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.UUID;
 
 public class shape_item_ui_main {
-
     private final String id;
     private String name;
     private final basic_shapes_ui_main type;
@@ -28,7 +27,6 @@ public class shape_item_ui_main {
     private double worldX = 0, worldY = 0, worldZ = 0, rotationX = 0, rotationY = 0;
     private final Translate worldTx = new Translate(0, 0, 0);
     private final Rotate worldRy = new Rotate(0, Rotate.Y_AXIS), worldRx = new Rotate(0, Rotate.X_AXIS);
-
     private final Group rootGroup = new Group(), shapeGroup = new Group(), handlesGroup = new Group();
     private boolean selected = false, consumed = false;
     private String consumedBy = null, faceOwnerId = null, selectedExtrudeId = null;
@@ -41,11 +39,12 @@ public class shape_item_ui_main {
     private final ui.workspace.drafting.machining.shape_machining_holder_ui_main machining = new ui.workspace.drafting.machining.shape_machining_holder_ui_main();
     private final ui.workspace.drafting.booleans.shape_boolean_holder_ui_main booleans = new ui.workspace.drafting.booleans.shape_boolean_holder_ui_main();
     private final ui.workspace.drafting.shell.shape_shell_holder_ui_main shells = new ui.workspace.drafting.shell.shape_shell_holder_ui_main();
-
+    private final ui.workspace.drafting.loft.shape_loft_holder_ui_main lofts = new ui.workspace.drafting.loft.shape_loft_holder_ui_main();
+    private final ui.workspace.drafting.sweep.shape_sweep_holder_ui_main sweeps = new ui.workspace.drafting.sweep.shape_sweep_holder_ui_main();
     private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+
     public ui.workspace.drafting.features.feature_state_ui_main getState() { return state; }
     public void setState(ui.workspace.drafting.features.feature_state_ui_main s) { this.state = (s != null) ? s : ui.workspace.drafting.features.feature_state_ui_main.CLEAN; }
-
     public shape_item_ui_main(basic_shapes_ui_main type, Point3D p1, Point3D p2) { this(UUID.randomUUID().toString(), null, type, p1, p2, 0, 0, 0, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, 0); }
     public shape_item_ui_main(basic_shapes_ui_main t, Point3D p1, Point3D p2, double x, double y, double z, double rot) { this(UUID.randomUUID().toString(), null, t, p1, p2, x, y, z, 0, rot); }
@@ -56,13 +55,11 @@ public class shape_item_ui_main {
         rootGroup.getTransforms().addAll(worldTx, worldRy, worldRx); rootGroup.getChildren().addAll(shapeGroup, handlesGroup);
         setWorldTranslation(wx, wy, wz); setRotation(rx, ry);
     }
-
     public void applyWorldDelta(double dx, double dy, double dz) { worldX += dx; worldY += dy; worldZ += dz; worldTx.setX(worldX); worldTx.setY(worldY); worldTx.setZ(worldZ); }
     public void setWorldTranslation(double x, double y, double z) { worldX = x; worldY = y; worldZ = z; worldTx.setX(x); worldTx.setY(y); worldTx.setZ(z); }
     public void setRotation(double rx, double ry) { this.rotationX = shape_rotation_helper_ui_main.normalize360(rx); this.rotationY = shape_rotation_helper_ui_main.normalize360(ry); updateRotationPivot(); worldRx.setAngle(this.rotationX); worldRy.setAngle(this.rotationY); }
     public void setRotationAngle(double deg) { setRotation(this.rotationX, deg); } public void setRotationX(double deg) { setRotation(deg, this.rotationY); } public void setRotationY(double deg) { setRotation(this.rotationX, deg); }
     private void updateRotationPivot() { Point3D c = getCenter(); worldRy.setPivotX(c.getX()); worldRy.setPivotY(c.getY()); worldRy.setPivotZ(c.getZ()); worldRx.setPivotX(c.getX()); worldRx.setPivotY(c.getY()); worldRx.setPivotZ(c.getZ()); }
-
     public double getWorldX() { return worldX; } public double getWorldY() { return worldY; } public double getWorldZ() { return worldZ; }
     public double getRotationAngle() { return rotationY; } public double getRotationY() { return rotationY; } public double getRotationX() { return rotationX; }
     public Point3D getCenter() { return shape_rotation_helper_ui_main.computeCenter(type, p1, p2); }
@@ -71,13 +68,13 @@ public class shape_item_ui_main {
     public String getFaceOwnerId() { return faceOwnerId; } public face_kind_ui_main getFaceKind() { return faceKind; } public boolean isOnFace() { return faceOwnerId != null; }
     public boolean isConsumed() { return consumed; } public void setConsumed(boolean c) { this.consumed = c; rootGroup.setVisible(!c); }
     public String getConsumedBy() { return consumedBy; } public void setConsumedBy(String cb) { this.consumedBy = cb; }
-
     public List<hole_feature_ui_main> getHoles() { return holes; } public boolean hasHoles() { return !holes.isEmpty(); }
-    public void addHole(hole_feature_ui_main h) { if (h != null) { holes.add(h); rebuild(); } } public void removeHole(String hId) { holes.removeIf(h -> h.getId().equals(hId)); patterns.removeIf(p -> hId.equals(p.getSeedHoleId())); rebuild(); }
+    public void addHole(hole_feature_ui_main h) { if (h != null) { holes.add(h); rebuild(); } }
+    public void removeHole(String hId) { holes.removeIf(h -> h.getId().equals(hId)); patterns.removeIf(p -> hId.equals(p.getSeedHoleId())); rebuild(); }
     public void clearHoles() { holes.clear(); patterns.clear(); rebuild(); } public hole_feature_ui_main getHole(String id) { for (hole_feature_ui_main h : holes) if (h.getId().equals(id)) return h; return null; }
     public List<hole_pattern_ui_main> getPatterns() { return patterns; } public boolean hasPatterns() { return !patterns.isEmpty(); }
-    public void addPattern(hole_pattern_ui_main p) { if (p != null) { patterns.add(p); rebuild(); } } public void removePattern(String pId) { patterns.removeIf(p -> p.getId().equals(pId)); rebuild(); }
-    public void clearPatterns() { patterns.clear(); rebuild(); }
+    public void addPattern(hole_pattern_ui_main p) { if (p != null) { patterns.add(p); rebuild(); } }
+    public void removePattern(String pId) { patterns.removeIf(p -> p.getId().equals(pId)); rebuild(); } public void clearPatterns() { patterns.clear(); rebuild(); }
     public List<ui.workspace.drafting.extrude.extrude_feature_ui_main> getExtrusions() { return extrusions; } public boolean hasExtrusions() { return !extrusions.isEmpty(); }
     public void addExtrude(ui.workspace.drafting.extrude.extrude_feature_ui_main ext) { if (ext != null) { extrusions.add(ext); rebuild(); } }
     public void removeExtrude(String id) { extrusions.removeIf(e -> e.getId().equals(id)); if (id != null && id.equals(selectedExtrudeId)) selectedExtrudeId = null; rebuild(); }
@@ -91,30 +88,33 @@ public class shape_item_ui_main {
     public ui.workspace.drafting.machining.shape_machining_holder_ui_main getMachiningHolder() { return machining; }
     public List<ui.workspace.drafting.machining.chamfer_feature_ui_main> getChamfers() { return machining.getChamfers(); }
     public void addChamfer(ui.workspace.drafting.machining.chamfer_feature_ui_main c) { machining.addChamfer(c); rebuild(); }
-    public void removeChamfer(String id) { machining.removeChamfer(id); rebuild(); } public void clearChamfers() { machining.clearChamfers(); rebuild(); }
-    public ui.workspace.drafting.machining.chamfer_feature_ui_main getChamfer(String id) { return machining.getChamfer(id); }
+    public void removeChamfer(String id) { machining.removeChamfer(id); rebuild(); } public void clearChamfers() { machining.clearChamfers(); rebuild(); } public ui.workspace.drafting.machining.chamfer_feature_ui_main getChamfer(String id) { return machining.getChamfer(id); }
     public List<ui.workspace.drafting.machining.fillet_feature_ui_main> getFillets() { return machining.getFillets(); }
     public void addFillet(ui.workspace.drafting.machining.fillet_feature_ui_main f) { machining.addFillet(f); rebuild(); }
-    public void removeFillet(String id) { machining.removeFillet(id); rebuild(); } public void clearFillets() { machining.clearFillets(); rebuild(); }
-    public ui.workspace.drafting.machining.fillet_feature_ui_main getFillet(String id) { return machining.getFillet(id); }
+    public void removeFillet(String id) { machining.removeFillet(id); rebuild(); } public void clearFillets() { machining.clearFillets(); rebuild(); } public ui.workspace.drafting.machining.fillet_feature_ui_main getFillet(String id) { return machining.getFillet(id); }
     public List<ui.workspace.drafting.machining.draft_feature_ui_main> getDrafts() { return machining.getDrafts(); }
     public void addDraft(ui.workspace.drafting.machining.draft_feature_ui_main d) { machining.addDraft(d); rebuild(); }
-    public void removeDraft(String id) { machining.removeDraft(id); rebuild(); } public void clearDrafts() { machining.clearDrafts(); rebuild(); }
-    public ui.workspace.drafting.machining.draft_feature_ui_main getDraft(String id) { return machining.getDraft(id); }
+    public void removeDraft(String id) { machining.removeDraft(id); rebuild(); } public void clearDrafts() { machining.clearDrafts(); rebuild(); } public ui.workspace.drafting.machining.draft_feature_ui_main getDraft(String id) { return machining.getDraft(id); }
 
     public ui.workspace.drafting.booleans.shape_boolean_holder_ui_main getBooleanHolder() { return booleans; }
-    public List<ui.workspace.drafting.booleans.boolean_feature_ui_main> getBooleans() { return booleans.getBooleans(); }
-    public boolean hasBooleans() { return booleans.hasBooleans(); }
+    public List<ui.workspace.drafting.booleans.boolean_feature_ui_main> getBooleans() { return booleans.getBooleans(); } public boolean hasBooleans() { return booleans.hasBooleans(); }
     public void addBoolean(ui.workspace.drafting.booleans.boolean_feature_ui_main b) { booleans.addBoolean(b); rebuild(); }
-    public void removeBoolean(String bId) { booleans.removeBoolean(bId); rebuild(); } public void clearBooleans() { booleans.clearBooleans(); rebuild(); }
-    public ui.workspace.drafting.booleans.boolean_feature_ui_main getBoolean(String bId) { return booleans.getBoolean(bId); }
+    public void removeBoolean(String bId) { booleans.removeBoolean(bId); rebuild(); } public void clearBooleans() { booleans.clearBooleans(); rebuild(); } public ui.workspace.drafting.booleans.boolean_feature_ui_main getBoolean(String bId) { return booleans.getBoolean(bId); }
 
     public ui.workspace.drafting.shell.shape_shell_holder_ui_main getShellHolder() { return shells; }
-    public List<ui.workspace.drafting.shell.shell_feature_ui_main> getShells() { return shells.getShells(); }
-    public boolean hasShells() { return shells.hasShells(); }
+    public List<ui.workspace.drafting.shell.shell_feature_ui_main> getShells() { return shells.getShells(); } public boolean hasShells() { return shells.hasShells(); }
     public void addShell(ui.workspace.drafting.shell.shell_feature_ui_main s) { shells.addShell(s); rebuild(); }
-    public void removeShell(String sId) { shells.removeShell(sId); rebuild(); } public void clearShells() { shells.clearShells(); rebuild(); }
-    public ui.workspace.drafting.shell.shell_feature_ui_main getShell(String sId) { return shells.getShell(sId); }
+    public void removeShell(String sId) { shells.removeShell(sId); rebuild(); } public void clearShells() { shells.clearShells(); rebuild(); } public ui.workspace.drafting.shell.shell_feature_ui_main getShell(String sId) { return shells.getShell(sId); }
+
+    public ui.workspace.drafting.loft.shape_loft_holder_ui_main getLoftHolder() { return lofts; }
+    public List<ui.workspace.drafting.loft.loft_feature_ui_main> getLofts() { return lofts.getLofts(); } public boolean hasLofts() { return lofts.hasLofts(); }
+    public void addLoft(ui.workspace.drafting.loft.loft_feature_ui_main l) { lofts.addLoft(l); rebuild(); }
+    public void removeLoft(String lId) { lofts.removeLoft(lId); rebuild(); } public void clearLofts() { lofts.clearLofts(); rebuild(); } public ui.workspace.drafting.loft.loft_feature_ui_main getLoft(String lId) { return lofts.getLoft(lId); }
+
+    public ui.workspace.drafting.sweep.shape_sweep_holder_ui_main getSweepHolder() { return sweeps; }
+    public List<ui.workspace.drafting.sweep.sweep_feature_ui_main> getSweeps() { return sweeps.getSweeps(); } public boolean hasSweeps() { return sweeps.hasSweeps(); }
+    public void addSweep(ui.workspace.drafting.sweep.sweep_feature_ui_main s) { sweeps.addSweep(s); rebuild(); }
+    public void removeSweep(String sId) { sweeps.removeSweep(sId); rebuild(); } public void clearSweeps() { sweeps.clearSweeps(); rebuild(); } public ui.workspace.drafting.sweep.sweep_feature_ui_main getSweep(String sId) { return sweeps.getSweep(sId); }
 
     public List<hole_feature_ui_main> getAllEffectiveHoles() {
         List<hole_feature_ui_main> eff = new java.util.ArrayList<>();
@@ -125,7 +125,6 @@ public class shape_item_ui_main {
         }
         return eff;
     }
-
     public boolean isFaceOwnerPresent(java.util.Collection<shape_item_ui_main> shapes) {
         if (faceOwnerId == null) return true; if (shapes == null) return false;
         for (shape_item_ui_main s : shapes) if (s != null && faceOwnerId.equals(s.getId())) return true;
@@ -142,6 +141,10 @@ public class shape_item_ui_main {
         List<hole_feature_ui_main> eff = getAllEffectiveHoles();
         if (shells.hasValidShell()) {
             shapeGroup.getChildren().addAll(shells.buildVisuals(this, selected));
+        } else if (lofts.hasValidLoft()) {
+            shapeGroup.getChildren().addAll(lofts.buildVisuals(this, selected));
+        } else if (sweeps.hasValidSweep()) {
+            shapeGroup.getChildren().addAll(sweeps.buildVisuals(this, selected));
         } else {
             Node geo = switch (type) {
                 case CIRCLE    -> shape_geometry_ui_main.createCircle(p1, p2, uAxis, vAxis, normal, false, selected);
@@ -175,7 +178,7 @@ public class shape_item_ui_main {
     }
     public List<Point3D> getControlHandles() { return shape_handles_ui_main.getControlHandles(type, p1, p2); }
     public void moveHandle(int idx, Point3D p) { Point3D[] u = shape_handles_ui_main.moveHandle(type, p1, p2, idx, p); this.p1 = u[0]; this.p2 = u[1]; updateRotationPivot(); revalidateFeatures(); rebuild(); }
-    public void revalidateFeatures() { for (var h : holes) h.revalidate(this); for (var p : patterns) p.revalidate(this); for (var e : extrusions) e.revalidate(this); for (var s : sketches) s.revalidate(this); machining.revalidate(this); booleans.revalidate(this, java.util.Collections.emptyList()); shells.revalidate(this); }
+    public void revalidateFeatures() { for (var h : holes) h.revalidate(this); for (var p : patterns) p.revalidate(this); for (var e : extrusions) e.revalidate(this); for (var s : sketches) s.revalidate(this); machining.revalidate(this); booleans.revalidate(this, java.util.Collections.emptyList()); shells.revalidate(this); lofts.revalidate(this); sweeps.revalidate(this); }
     public ui.workspace.drafting.topology.topology_body_ui_main getTopology() { return ui.workspace.drafting.topology.topology_body_ui_main.buildTopology(this); }
     public boolean containsNode(Node node) { for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup) return true; return false; }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }

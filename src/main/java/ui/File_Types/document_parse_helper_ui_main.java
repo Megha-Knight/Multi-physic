@@ -122,18 +122,38 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 4) {
-                String id = p[0].trim();
-                double t = Double.parseDouble(p[1].trim());
+                String id = p[0].trim(); double t = Double.parseDouble(p[1].trim());
                 ui.workspace.drafting.shell.shell_direction_ui_main dir = ui.workspace.drafting.shell.shell_direction_ui_main.valueOf(p[2].trim());
                 List<face_kind_ui_main> faces = new ArrayList<>();
                 if (!"NONE".equalsIgnoreCase(p[3].trim()) && !p[3].trim().isEmpty()) {
-                    for (String fs : p[3].trim().split("[+;]")) {
-                        try { faces.add(face_kind_ui_main.valueOf(fs.trim())); } catch (Exception ignored) {}
-                    }
+                    for (String fs : p[3].trim().split("[+;]")) try { faces.add(face_kind_ui_main.valueOf(fs.trim())); } catch (Exception ignored) {}
                 }
-                String name = null;
-                if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                String name = null; if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
                 out.add(new ui.workspace.drafting.shell.shell_feature_ui_main(id, parentId, name, t, dir, faces));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void parseLoftLine(String str, String parentId, List<ui.workspace.drafting.loft.loft_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 2) {
+                String id = p[0].trim(); boolean solid = Boolean.parseBoolean(p[1].trim());
+                String name = null; if (p.length >= 3) try { name = java.net.URLDecoder.decode(p[2].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                out.add(new ui.workspace.drafting.loft.loft_feature_ui_main(id, parentId, name, new ArrayList<>(), solid));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void parseSweepLine(String str, String parentId, List<ui.workspace.drafting.sweep.sweep_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 3) {
+                String id = p[0].trim();
+                ui.workspace.drafting.sweep.sweep_orientation_ui_main orient = ui.workspace.drafting.sweep.sweep_orientation_ui_main.valueOf(p[1].trim());
+                boolean solid = Boolean.parseBoolean(p[2].trim());
+                String name = null; if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
+                out.add(new ui.workspace.drafting.sweep.sweep_feature_ui_main(id, parentId, name, null, null, orient, solid));
             }
         } catch (Exception ignored) {}
     }
@@ -149,7 +169,9 @@ public final class document_parse_helper_ui_main {
                                    List<ui.workspace.drafting.machining.fillet_feature_ui_main> fillets,
                                    List<ui.workspace.drafting.machining.draft_feature_ui_main> drafts,
                                    List<ui.workspace.drafting.booleans.boolean_feature_ui_main> booleans,
-                                   List<ui.workspace.drafting.shell.shell_feature_ui_main> shells) {
+                                   List<ui.workspace.drafting.shell.shell_feature_ui_main> shells,
+                                   List<ui.workspace.drafting.loft.loft_feature_ui_main> lofts,
+                                   List<ui.workspace.drafting.sweep.sweep_feature_ui_main> sweeps) {
         if (type == null || p1 == null || p2 == null) return;
         var item = new ui.workspace.drafting.shape_item_ui_main(id, name, type, p1, p2, tx, ty, tz, rotX, rotY);
         if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
@@ -171,6 +193,8 @@ public final class document_parse_helper_ui_main {
         if (drafts != null) for (var d : drafts) item.addDraft(d);
         if (booleans != null) for (var b : booleans) item.addBoolean(b);
         if (shells != null) for (var sh : shells) item.addShell(sh);
+        if (lofts != null) for (var lf : lofts) item.addLoft(lf);
+        if (sweeps != null) for (var sw : sweeps) item.addSweep(sw);
         list.add(item);
     }
 }

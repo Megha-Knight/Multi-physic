@@ -23,7 +23,11 @@ public enum feature_type_ui_main {
     BOOLEAN_SUBTRACT("Boolean Subtract"),
     BOOLEAN_INTERSECT("Boolean Intersect"),
     SHELL("Shell / Thickness"),
-    SHELL_FEATURE("Shell");
+    SHELL_FEATURE("Shell"),
+    LOFT("Loft"),
+    LOFT_FEATURE("Loft"),
+    SWEEP("Sweep"),
+    SWEEP_FEATURE("Sweep");
 
     private final String label;
 

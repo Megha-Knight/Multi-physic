@@ -96,6 +96,8 @@ public class featuremanager_ui_main extends BorderPane {
                 for (var d : s.getDrafts()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDraft(s, d)));
                 for (var b : s.getBooleans()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forBoolean(s, b)));
                 for (var sh : s.getShells()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forShell(s, sh)));
+                for (var lf : s.getLofts()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forLoft(s, lf)));
+                for (var sw : s.getSweeps()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forSweep(s, sw)));
             }
             legacyListView.getItems().setAll(editor.getShapes());
             syncFromCanvas();
@@ -135,8 +137,8 @@ public class featuremanager_ui_main extends BorderPane {
     public static String formatItemLabel(shape_item_ui_main item) {
         if (item == null) return "";
         String lbl = item.getName();
-        int h = item.getHoles().size(), ext = item.getExtrusions().size(), pat = item.getPatterns().size(), ch = item.getChamfers().size(), fil = item.getFillets().size(), dr = item.getDrafts().size(), bl = item.getBooleans().size(), sh = item.getShells().size();
-        if (h > 0 || ext > 0 || pat > 0 || ch > 0 || fil > 0 || dr > 0 || bl > 0 || sh > 0) {
+        int h = item.getHoles().size(), ext = item.getExtrusions().size(), pat = item.getPatterns().size(), ch = item.getChamfers().size(), fil = item.getFillets().size(), dr = item.getDrafts().size(), bl = item.getBooleans().size(), sh = item.getShells().size(), lf = item.getLofts().size(), sw = item.getSweeps().size();
+        if (h > 0 || ext > 0 || pat > 0 || ch > 0 || fil > 0 || dr > 0 || bl > 0 || sh > 0 || lf > 0 || sw > 0) {
             java.util.List<String> p = new java.util.ArrayList<>();
             if (h > 0) p.add(h + (h == 1 ? " Hole" : " Holes"));
             if (pat > 0) p.add(pat + (pat == 1 ? " Pattern" : " Patterns"));
@@ -146,6 +148,8 @@ public class featuremanager_ui_main extends BorderPane {
             if (dr > 0) p.add(dr + (dr == 1 ? " Draft" : " Drafts"));
             if (bl > 0) p.add(bl + (bl == 1 ? " Boolean" : " Booleans"));
             if (sh > 0) p.add(sh + (sh == 1 ? " Shell" : " Shells"));
+            if (lf > 0) p.add(lf + (lf == 1 ? " Loft" : " Lofts"));
+            if (sw > 0) p.add(sw + (sw == 1 ? " Sweep" : " Sweeps"));
             lbl += " [" + String.join(", ", p) + "]";
         }
         return lbl;

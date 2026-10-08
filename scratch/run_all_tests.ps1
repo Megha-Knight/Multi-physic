@@ -7,11 +7,12 @@ $tests = @(
     @{ Name = "Stage 6"; Script = "scratch/run_test_stage6.ps1" },
     @{ Name = "Stage 7"; Script = "scratch/run_test_stage7.ps1" },
     @{ Name = "Stage 8"; Script = "scratch/run_test_stage8.ps1" },
-    @{ Name = "Stage 9"; Script = "scratch/run_test_stage9.ps1" }
+    @{ Name = "Stage 9"; Script = "scratch/run_test_stage9.ps1" },
+    @{ Name = "Stage 10"; Script = "scratch/run_test_stage10.ps1" }
 )
 
 Write-Host "=========================================="
-Write-Host "Running Complete Test Suite (Stages 1 - 9)"
+Write-Host "Running Complete Test Suite (Stages 1 - 10)"
 Write-Host "=========================================="
 
 foreach ($t in $tests) {
@@ -38,5 +39,5 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n=========================================="
-Write-Host "ALL 785 TESTS (STAGES 1-9) & AUDITS PASSED 100%!"
+Write-Host "ALL 908 TESTS (STAGES 1-10) & AUDITS PASSED 100%!"
 Write-Host "=========================================="
