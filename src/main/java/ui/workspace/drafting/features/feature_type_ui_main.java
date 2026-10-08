@@ -27,7 +27,11 @@ public enum feature_type_ui_main {
     LOFT("Loft"),
     LOFT_FEATURE("Loft"),
     SWEEP("Sweep"),
-    SWEEP_FEATURE("Sweep");
+    SWEEP_FEATURE("Sweep"),
+    REVOLVE("Revolve"),
+    REVOLVE_FEATURE("Revolve"),
+    HELIX("Helix"),
+    HELIX_FEATURE("Helix");
 
     private final String label;
 

@@ -23,13 +23,11 @@ public final class document_parse_helper_ui_main {
             if (p.length >= 7) {
                 String id = p[0].trim(); face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
                 double u = Double.parseDouble(p[2].trim()), v = Double.parseDouble(p[3].trim()), dia = Double.parseDouble(p[4].trim()), depth = Double.parseDouble(p[5].trim());
-                boolean through = Boolean.parseBoolean(p[6].trim());
-                hole_feature_ui_main.HoleType type = hole_feature_ui_main.HoleType.SIMPLE;
+                boolean through = Boolean.parseBoolean(p[6].trim()); hole_feature_ui_main.HoleType type = hole_feature_ui_main.HoleType.SIMPLE;
                 double csDia = 0, csAngle = 90.0, cbDia = 0, cbDepth = 0;
                 if (p.length >= 12) {
                     try { type = hole_feature_ui_main.HoleType.valueOf(p[7].trim()); } catch (Exception ignored) {}
-                    csDia = Double.parseDouble(p[8].trim()); csAngle = Double.parseDouble(p[9].trim());
-                    cbDia = Double.parseDouble(p[10].trim()); cbDepth = Double.parseDouble(p[11].trim());
+                    csDia = Double.parseDouble(p[8].trim()); csAngle = Double.parseDouble(p[9].trim()); cbDia = Double.parseDouble(p[10].trim()); cbDepth = Double.parseDouble(p[11].trim());
                 }
                 hole_feature_ui_main.CutoutShape cShape = hole_feature_ui_main.CutoutShape.CIRCLE; double w2 = 0.0; String hName = null;
                 if (p.length >= 14) { try { cShape = hole_feature_ui_main.CutoutShape.valueOf(p[12].trim()); } catch (Exception ignored) {} try { w2 = Double.parseDouble(p[13].trim()); } catch (Exception ignored) {} }
@@ -44,8 +42,7 @@ public final class document_parse_helper_ui_main {
             String[] p = str.split(",");
             if (p.length >= 12) {
                 String id = p[0].trim(), ownerId = p[1].trim().isEmpty() ? parentId : p[1].trim(), seedId = p[2].trim();
-                hole_pattern_ui_main.PatternType pType = hole_pattern_ui_main.PatternType.valueOf(p[3].trim());
-                int count = Integer.parseInt(p[4].trim());
+                hole_pattern_ui_main.PatternType pType = hole_pattern_ui_main.PatternType.valueOf(p[3].trim()); int count = Integer.parseInt(p[4].trim());
                 hole_pattern_ui_main.LinearDirection dir = ("ALONG_V".equalsIgnoreCase(p[5].trim()) || "V_DIR".equalsIgnoreCase(p[5].trim())) ? hole_pattern_ui_main.LinearDirection.V_DIR : hole_pattern_ui_main.LinearDirection.U_DIR;
                 double spacing = Double.parseDouble(p[6].trim()), cU = Double.parseDouble(p[7].trim()), cV = Double.parseDouble(p[8].trim()), span = Double.parseDouble(p[9].trim());
                 boolean cw = Boolean.parseBoolean(p[10].trim()), full = Boolean.parseBoolean(p[11].trim());
@@ -58,11 +55,9 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 8) {
-                String id = p[0].trim(); face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
-                hole_feature_ui_main.CutoutShape shape = hole_feature_ui_main.CutoutShape.valueOf(p[2].trim());
+                String id = p[0].trim(); face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim()); hole_feature_ui_main.CutoutShape shape = hole_feature_ui_main.CutoutShape.valueOf(p[2].trim());
                 double u = Double.parseDouble(p[3].trim()), v = Double.parseDouble(p[4].trim()), dia = Double.parseDouble(p[5].trim()), w2 = Double.parseDouble(p[6].trim()), h = Double.parseDouble(p[7].trim());
-                String name = null;
-                if (p.length >= 9) try { name = java.net.URLDecoder.decode(p[8].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { name = p[8].trim(); }
+                String name = (p.length >= 9) ? decode(p[8].trim()) : null;
                 var ext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(id, parentId, name, kind, shape, u, v, dia, w2, h);
                 if (p.length >= 10 && !p[9].trim().isEmpty() && !p[9].trim().equalsIgnoreCase("NONE")) ext.setSketchId(p[9].trim());
                 out.add(ext);
@@ -73,22 +68,14 @@ public final class document_parse_helper_ui_main {
     public static void parseChamferLine(String str, String parentId, List<ui.workspace.drafting.machining.chamfer_feature_ui_main> out) {
         try {
             String[] p = str.split(",");
-            if (p.length >= 3) {
-                String id = p[0].trim(), edgeId = p[1].trim(), name = null; double dist = Double.parseDouble(p[2].trim());
-                if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                out.add(new ui.workspace.drafting.machining.chamfer_feature_ui_main(id, parentId, name, edgeId, dist));
-            }
+            if (p.length >= 3) out.add(new ui.workspace.drafting.machining.chamfer_feature_ui_main(p[0].trim(), parentId, (p.length >= 4 ? decode(p[3].trim()) : null), p[1].trim(), Double.parseDouble(p[2].trim())));
         } catch (Exception ignored) {}
     }
 
     public static void parseFilletLine(String str, String parentId, List<ui.workspace.drafting.machining.fillet_feature_ui_main> out) {
         try {
             String[] p = str.split(",");
-            if (p.length >= 3) {
-                String id = p[0].trim(), edgeId = p[1].trim(), name = null; double rad = Double.parseDouble(p[2].trim());
-                if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                out.add(new ui.workspace.drafting.machining.fillet_feature_ui_main(id, parentId, name, edgeId, rad));
-            }
+            if (p.length >= 3) out.add(new ui.workspace.drafting.machining.fillet_feature_ui_main(p[0].trim(), parentId, (p.length >= 4 ? decode(p[3].trim()) : null), p[1].trim(), Double.parseDouble(p[2].trim())));
         } catch (Exception ignored) {}
     }
 
@@ -96,11 +83,8 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 3) {
-                String id = p[0].trim(); face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim());
-                double angle = Double.parseDouble(p[2].trim()); face_kind_ui_main neutral = null; String name = null;
-                if (p.length >= 4 && !p[3].trim().equalsIgnoreCase("NONE")) try { neutral = face_kind_ui_main.valueOf(p[3].trim()); } catch (Exception ignored) {}
-                if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                out.add(new ui.workspace.drafting.machining.draft_feature_ui_main(id, parentId, name, kind, angle, neutral));
+                face_kind_ui_main kind = face_kind_ui_main.valueOf(p[1].trim()), neutral = (p.length >= 4 && !p[3].trim().equalsIgnoreCase("NONE")) ? face_kind_ui_main.valueOf(p[3].trim()) : null;
+                out.add(new ui.workspace.drafting.machining.draft_feature_ui_main(p[0].trim(), parentId, (p.length >= 5 ? decode(p[4].trim()) : null), kind, Double.parseDouble(p[2].trim()), neutral));
             }
         } catch (Exception ignored) {}
     }
@@ -108,13 +92,7 @@ public final class document_parse_helper_ui_main {
     public static void parseBooleanLine(String str, String parentId, List<ui.workspace.drafting.booleans.boolean_feature_ui_main> out) {
         try {
             String[] p = str.split(",");
-            if (p.length >= 4) {
-                String id = p[0].trim();
-                ui.workspace.drafting.booleans.boolean_op_type_ui_main op = ui.workspace.drafting.booleans.boolean_op_type_ui_main.valueOf(p[1].trim());
-                String targetId = p[2].trim().isEmpty() ? parentId : p[2].trim(), toolId = p[3].trim(), name = null;
-                if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                out.add(new ui.workspace.drafting.booleans.boolean_feature_ui_main(id, targetId, toolId, op, name));
-            }
+            if (p.length >= 4) out.add(new ui.workspace.drafting.booleans.boolean_feature_ui_main(p[0].trim(), p[2].trim().isEmpty() ? parentId : p[2].trim(), p[3].trim(), ui.workspace.drafting.booleans.boolean_op_type_ui_main.valueOf(p[1].trim()), p.length >= 5 ? decode(p[4].trim()) : null));
         } catch (Exception ignored) {}
     }
 
@@ -122,14 +100,9 @@ public final class document_parse_helper_ui_main {
         try {
             String[] p = str.split(",");
             if (p.length >= 4) {
-                String id = p[0].trim(); double t = Double.parseDouble(p[1].trim());
-                ui.workspace.drafting.shell.shell_direction_ui_main dir = ui.workspace.drafting.shell.shell_direction_ui_main.valueOf(p[2].trim());
                 List<face_kind_ui_main> faces = new ArrayList<>();
-                if (!"NONE".equalsIgnoreCase(p[3].trim()) && !p[3].trim().isEmpty()) {
-                    for (String fs : p[3].trim().split("[+;]")) try { faces.add(face_kind_ui_main.valueOf(fs.trim())); } catch (Exception ignored) {}
-                }
-                String name = null; if (p.length >= 5) try { name = java.net.URLDecoder.decode(p[4].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                out.add(new ui.workspace.drafting.shell.shell_feature_ui_main(id, parentId, name, t, dir, faces));
+                if (!"NONE".equalsIgnoreCase(p[3].trim()) && !p[3].trim().isEmpty()) for (String fs : p[3].trim().split("[+;]")) try { faces.add(face_kind_ui_main.valueOf(fs.trim())); } catch (Exception ignored) {}
+                out.add(new ui.workspace.drafting.shell.shell_feature_ui_main(p[0].trim(), parentId, p.length >= 5 ? decode(p[4].trim()) : null, Double.parseDouble(p[1].trim()), ui.workspace.drafting.shell.shell_direction_ui_main.valueOf(p[2].trim()), faces));
             }
         } catch (Exception ignored) {}
     }
@@ -137,46 +110,42 @@ public final class document_parse_helper_ui_main {
     public static void parseLoftLine(String str, String parentId, List<ui.workspace.drafting.loft.loft_feature_ui_main> out) {
         try {
             String[] p = str.split(",");
-            if (p.length >= 2) {
-                String id = p[0].trim(); boolean solid = Boolean.parseBoolean(p[1].trim());
-                String name = null; if (p.length >= 3) try { name = java.net.URLDecoder.decode(p[2].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                out.add(new ui.workspace.drafting.loft.loft_feature_ui_main(id, parentId, name, new ArrayList<>(), solid));
-            }
+            if (p.length >= 2) out.add(new ui.workspace.drafting.loft.loft_feature_ui_main(p[0].trim(), parentId, p.length >= 3 ? decode(p[2].trim()) : null, new ArrayList<>(), Boolean.parseBoolean(p[1].trim())));
         } catch (Exception ignored) {}
     }
 
     public static void parseSweepLine(String str, String parentId, List<ui.workspace.drafting.sweep.sweep_feature_ui_main> out) {
         try {
             String[] p = str.split(",");
-            if (p.length >= 3) {
-                String id = p[0].trim();
-                ui.workspace.drafting.sweep.sweep_orientation_ui_main orient = ui.workspace.drafting.sweep.sweep_orientation_ui_main.valueOf(p[1].trim());
-                boolean solid = Boolean.parseBoolean(p[2].trim());
-                String name = null; if (p.length >= 4) try { name = java.net.URLDecoder.decode(p[3].trim(), java.nio.charset.StandardCharsets.UTF_8); } catch (Exception ignored) {}
-                out.add(new ui.workspace.drafting.sweep.sweep_feature_ui_main(id, parentId, name, null, null, orient, solid));
+            if (p.length >= 3) out.add(new ui.workspace.drafting.sweep.sweep_feature_ui_main(p[0].trim(), parentId, p.length >= 4 ? decode(p[3].trim()) : null, null, null, ui.workspace.drafting.sweep.sweep_orientation_ui_main.valueOf(p[1].trim()), Boolean.parseBoolean(p[2].trim())));
+        } catch (Exception ignored) {}
+    }
+
+    public static void parseRevolveLine(String str, String parentId, List<ui.workspace.drafting.revolve.revolve_feature_ui_main> out) {
+        try {
+            String[] p = str.split(",");
+            if (p.length >= 11) {
+                var axis = new ui.workspace.drafting.revolve.revolve_axis_ui_main(ui.workspace.drafting.revolve.revolve_axis_type_ui_main.valueOf(p[2].trim()), new Point3D(Double.parseDouble(p[3].trim()), Double.parseDouble(p[4].trim()), Double.parseDouble(p[5].trim())), new Point3D(Double.parseDouble(p[6].trim()), Double.parseDouble(p[7].trim()), Double.parseDouble(p[8].trim())));
+                out.add(new ui.workspace.drafting.revolve.revolve_feature_ui_main(p[0].trim(), parentId, p.length >= 12 ? decode(p[11].trim()) : null, null, axis, Double.parseDouble(p[1].trim()), ui.workspace.drafting.revolve.revolve_direction_ui_main.valueOf(p[9].trim()), Boolean.parseBoolean(p[10].trim())));
             }
         } catch (Exception ignored) {}
     }
 
+    private static String decode(String s) { try { return java.net.URLDecoder.decode(s, java.nio.charset.StandardCharsets.UTF_8); } catch (Exception e) { return s; } }
+
     public static void commitShape(List<ui.workspace.drafting.shape_item_ui_main> list, ui.workspace.shapes.basic_shapes_ui_main type, String id, String name,
                                    Point3D p1, Point3D p2, double tx, double ty, double tz, double rotX, double rotY,
                                    Point3D uAxis, Point3D vAxis, Point3D norm, String faceOwner, face_kind_ui_main faceKind,
-                                   boolean consumed, String consumedBy,
-                                   List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns,
-                                   List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions,
-                                   List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches,
-                                   List<ui.workspace.drafting.machining.chamfer_feature_ui_main> chamfers,
-                                   List<ui.workspace.drafting.machining.fillet_feature_ui_main> fillets,
-                                   List<ui.workspace.drafting.machining.draft_feature_ui_main> drafts,
-                                   List<ui.workspace.drafting.booleans.boolean_feature_ui_main> booleans,
-                                   List<ui.workspace.drafting.shell.shell_feature_ui_main> shells,
-                                   List<ui.workspace.drafting.loft.loft_feature_ui_main> lofts,
-                                   List<ui.workspace.drafting.sweep.sweep_feature_ui_main> sweeps) {
+                                   boolean consumed, String consumedBy, List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns,
+                                   List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions, List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches,
+                                   List<ui.workspace.drafting.machining.chamfer_feature_ui_main> chamfers, List<ui.workspace.drafting.machining.fillet_feature_ui_main> fillets,
+                                   List<ui.workspace.drafting.machining.draft_feature_ui_main> drafts, List<ui.workspace.drafting.booleans.boolean_feature_ui_main> booleans,
+                                   List<ui.workspace.drafting.shell.shell_feature_ui_main> shells, List<ui.workspace.drafting.loft.loft_feature_ui_main> lofts,
+                                   List<ui.workspace.drafting.sweep.sweep_feature_ui_main> sweeps, List<ui.workspace.drafting.revolve.revolve_feature_ui_main> revolves) {
         if (type == null || p1 == null || p2 == null) return;
         var item = new ui.workspace.drafting.shape_item_ui_main(id, name, type, p1, p2, tx, ty, tz, rotX, rotY);
         if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
-        item.setConsumed(consumed);
-        if (consumedBy != null) item.setConsumedBy(consumedBy);
+        item.setConsumed(consumed); if (consumedBy != null) item.setConsumedBy(consumedBy);
         for (hole_feature_ui_main h : holes) item.addHole(h);
         for (hole_pattern_ui_main p : patterns) {
             hole_feature_ui_main seed = null;
@@ -195,6 +164,7 @@ public final class document_parse_helper_ui_main {
         if (shells != null) for (var sh : shells) item.addShell(sh);
         if (lofts != null) for (var lf : lofts) item.addLoft(lf);
         if (sweeps != null) for (var sw : sweeps) item.addSweep(sw);
+        if (revolves != null) for (var rv : revolves) item.addRevolve(rv);
         list.add(item);
     }
 }

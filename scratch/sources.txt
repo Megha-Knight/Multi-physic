@@ -83,6 +83,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\gizmo\shape_rotation_helper_
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\gizmo\translation_gizmo_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\gizmo\viewport_coordinate_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\gizmo\world_raycaster_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\helical\helical_path_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\holes\circular_pattern_dialog_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\holes\hole_dialog_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\holes\hole_editor_dialog_ui_main.java
@@ -108,6 +109,16 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\shape_machining_ho
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\profiles\profile_loop_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\profiles\profile_reference_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\profiles\profile_validator_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_axis_type_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_axis_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_direction_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_editor_dialog_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_feature_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_mesh_builder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_mesh_quad_helper_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_solid_evaluator_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\revolve_validator_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\revolve\shape_revolve_holder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shape_shell_holder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_direction_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shell\shell_editor_dialog_ui_main.java
@@ -166,6 +177,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\hole_surface_appear
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\hole_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\loft_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\machining_feature_topology_builder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\revolve_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\shape_face_appearance_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\shell_topology_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\sweep_topology_builder_ui_main.java

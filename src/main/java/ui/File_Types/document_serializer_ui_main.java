@@ -26,7 +26,7 @@ public final class document_serializer_ui_main {
 
     public static boolean saveToNd(File file, List<shape_item_ui_main> shapes) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.7\n");
+            pw.println("# Multiphysics Model (.nd)\n# Format Version: 1.8\n");
             if (shapes != null) {
                 for (shape_item_ui_main s : shapes) {
                     pw.println("SHAPE: " + s.getType().name());
@@ -60,6 +60,11 @@ public final class document_serializer_ui_main {
                     }
                     for (var lf : s.getLofts()) pw.printf(java.util.Locale.US, "loft: %s, %b, %s%n", lf.getId(), lf.isSolid(), encode(lf.getName()));
                     for (var sw : s.getSweeps()) pw.printf(java.util.Locale.US, "sweep: %s, %s, %b, %s%n", sw.getId(), sw.getOrientation().name(), sw.isSolid(), encode(sw.getName()));
+                    for (var rv : s.getRevolves()) {
+                        var ax = rv.getAxis(); Point3D o = ax != null ? ax.getOrigin() : Point3D.ZERO, d = ax != null ? ax.getDirection() : new Point3D(0, 1, 0);
+                        String axT = ax != null ? ax.getType().name() : "GLOBAL_Y";
+                        pw.printf(java.util.Locale.US, "revolve: %s, %.4f, %s, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %s, %b, %s%n", rv.getId(), rv.getAngle(), axT, o.getX(), o.getY(), o.getZ(), d.getX(), d.getY(), d.getZ(), rv.getDirection().name(), rv.isSolid(), encode(rv.getName()));
+                    }
                     for (var sk : s.getSketches()) ui.workspace.drafting.sketch.sketch_serializer_ui_main.writeSketch(pw, sk);
                     for (var e : ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.getOverridesForShape(s.getId()).entrySet()) pw.println("face_app: " + e.getKey() + "," + e.getValue().formatNd());
                     pw.println();
@@ -93,6 +98,7 @@ public final class document_serializer_ui_main {
             List<ui.workspace.drafting.shell.shell_feature_ui_main> pendingShells = new ArrayList<>();
             List<ui.workspace.drafting.loft.loft_feature_ui_main> pendingLofts = new ArrayList<>();
             List<ui.workspace.drafting.sweep.sweep_feature_ui_main> pendingSweeps = new ArrayList<>();
+            List<ui.workspace.drafting.revolve.revolve_feature_ui_main> pendingRevolves = new ArrayList<>();
             ui.workspace.drafting.sketch.sketch_feature_ui_main currentSketch = null;
 
             while ((line = br.readLine()) != null) {
@@ -102,11 +108,11 @@ public final class document_serializer_ui_main {
 
                 if (line.startsWith("SHAPE:")) {
                     if (currentSketch != null) { pendingSketches.add(currentSketch); currentSketch = null; }
-                    document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps);
+                    document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps, pendingRevolves);
                     try { currentType = basic_shapes_ui_main.valueOf(line.substring(6).trim()); } catch (Exception ex) { currentType = null; }
                     id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0; consumed = false; consumedBy = null;
                     uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null;
-                    pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear(); pendingSketches.clear(); pendingChamfers.clear(); pendingFillets.clear(); pendingDrafts.clear(); pendingBooleans.clear(); pendingShells.clear(); pendingLofts.clear(); pendingSweeps.clear();
+                    pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear(); pendingSketches.clear(); pendingChamfers.clear(); pendingFillets.clear(); pendingDrafts.clear(); pendingBooleans.clear(); pendingShells.clear(); pendingLofts.clear(); pendingSweeps.clear(); pendingRevolves.clear();
                 } else if (line.startsWith("id:")) id = line.substring(3).trim();
                 else if (line.startsWith("name:")) name = line.substring(5).trim();
                 else if (line.startsWith("p1:")) p1 = document_parse_helper_ui_main.parsePoint(line.substring(3).trim());
@@ -130,6 +136,7 @@ public final class document_serializer_ui_main {
                 else if (line.startsWith("shell:")) document_parse_helper_ui_main.parseShellLine(line.substring(6).trim(), id, pendingShells);
                 else if (line.startsWith("loft:")) document_parse_helper_ui_main.parseLoftLine(line.substring(5).trim(), id, pendingLofts);
                 else if (line.startsWith("sweep:")) document_parse_helper_ui_main.parseSweepLine(line.substring(6).trim(), id, pendingSweeps);
+                else if (line.startsWith("revolve:")) document_parse_helper_ui_main.parseRevolveLine(line.substring(8).trim(), id, pendingRevolves);
                 else if (line.startsWith("sketch:")) {
                     if (currentSketch != null) pendingSketches.add(currentSketch);
                     currentSketch = ui.workspace.drafting.sketch.sketch_serializer_ui_main.parseSketchHeader(line);
@@ -144,7 +151,7 @@ public final class document_serializer_ui_main {
                 }
             }
             if (currentSketch != null) pendingSketches.add(currentSketch);
-            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps);
+            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps, pendingRevolves);
         } catch (Exception ignored) {}
         return list;
     }
@@ -181,6 +188,7 @@ public final class document_serializer_ui_main {
             for (var sh : s.getShells()) item.addShell(sh.copy());
             for (var lf : s.getLofts()) item.addLoft(lf.copy());
             for (var sw : s.getSweeps()) item.addSweep(sw.copy());
+            for (var rv : s.getRevolves()) item.addRevolve(rv.copy());
             for (var sk : s.getSketches()) item.addSketch(sk.copy());
             ui.workspace.drafting.topology.shape_face_appearance_helper_ui_main.copyOverrides(s.getId(), item.getId());
             copies.add(item);

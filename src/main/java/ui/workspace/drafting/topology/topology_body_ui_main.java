@@ -83,6 +83,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
         shell_topology_builder_ui_main.populateShellTopology(body, shape);
         loft_topology_builder_ui_main.populateLoftTopology(body, shape);
         sweep_topology_builder_ui_main.populateSweepTopology(body, shape);
+        revolve_topology_builder_ui_main.populateRevolveTopology(body, shape);
         return body;
     }
 

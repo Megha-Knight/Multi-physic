@@ -8,7 +8,6 @@ import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
 
 public class feature_tree_node_ui_main {
-
     private final shape_item_ui_main shape;
     private final hole_feature_ui_main hole;
     private final hole_pattern_ui_main pattern;
@@ -23,63 +22,44 @@ public class feature_tree_node_ui_main {
     private final ui.workspace.drafting.shell.shell_feature_ui_main shell;
     private final ui.workspace.drafting.loft.loft_feature_ui_main loft;
     private final ui.workspace.drafting.sweep.sweep_feature_ui_main sweep;
+    private final ui.workspace.drafting.revolve.revolve_feature_ui_main revolve;
 
-    private feature_tree_node_ui_main(shape_item_ui_main shape, hole_feature_ui_main hole, hole_pattern_ui_main pat, extrude_feature_ui_main ext,
-                                      shape_item_ui_main parentShape, ui.workspace.drafting.sketch.sketch_feature_ui_main sketch,
-                                      ui.workspace.drafting.topology.topology_derived_face_ui_main derivedFace,
-                                      ui.workspace.drafting.machining.chamfer_feature_ui_main chamfer,
-                                      ui.workspace.drafting.machining.fillet_feature_ui_main fillet,
-                                      ui.workspace.drafting.machining.draft_feature_ui_main draft,
-                                      ui.workspace.drafting.booleans.boolean_feature_ui_main booleanFeature,
-                                      ui.workspace.drafting.shell.shell_feature_ui_main shell,
-                                      ui.workspace.drafting.loft.loft_feature_ui_main loft,
-                                      ui.workspace.drafting.sweep.sweep_feature_ui_main sweep) {
+    private feature_tree_node_ui_main(shape_item_ui_main shape, hole_feature_ui_main hole, hole_pattern_ui_main pat, extrude_feature_ui_main ext, shape_item_ui_main parentShape, ui.workspace.drafting.sketch.sketch_feature_ui_main sketch, ui.workspace.drafting.topology.topology_derived_face_ui_main derivedFace, ui.workspace.drafting.machining.chamfer_feature_ui_main chamfer, ui.workspace.drafting.machining.fillet_feature_ui_main fillet, ui.workspace.drafting.machining.draft_feature_ui_main draft, ui.workspace.drafting.booleans.boolean_feature_ui_main booleanFeature, ui.workspace.drafting.shell.shell_feature_ui_main shell, ui.workspace.drafting.loft.loft_feature_ui_main loft, ui.workspace.drafting.sweep.sweep_feature_ui_main sweep, ui.workspace.drafting.revolve.revolve_feature_ui_main revolve) {
         this.shape = shape; this.hole = hole; this.pattern = pat; this.extrude = ext; this.parentShape = parentShape;
         this.sketch = sketch; this.derivedFace = derivedFace; this.chamfer = chamfer; this.fillet = fillet; this.draft = draft;
-        this.booleanFeature = booleanFeature; this.shell = shell; this.loft = loft; this.sweep = sweep;
+        this.booleanFeature = booleanFeature; this.shell = shell; this.loft = loft; this.sweep = sweep; this.revolve = revolve;
     }
 
-    public static feature_tree_node_ui_main forShape(shape_item_ui_main shape) { return new feature_tree_node_ui_main(shape, null, null, null, null, null, null, null, null, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forHole(shape_item_ui_main parentShape, hole_feature_ui_main hole) { return new feature_tree_node_ui_main(null, hole, null, null, parentShape, null, null, null, null, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forPattern(shape_item_ui_main parentShape, hole_pattern_ui_main pat) { return new feature_tree_node_ui_main(null, null, pat, null, parentShape, null, null, null, null, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forExtrude(shape_item_ui_main parentShape, extrude_feature_ui_main ext) { return new feature_tree_node_ui_main(null, null, null, ext, parentShape, null, null, null, null, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forSketch(shape_item_ui_main parentShape, ui.workspace.drafting.sketch.sketch_feature_ui_main sketch) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, sketch, null, null, null, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forDerivedFace(shape_item_ui_main parentShape, hole_feature_ui_main hole, ui.workspace.drafting.topology.topology_derived_face_ui_main df) { return new feature_tree_node_ui_main(null, hole, null, null, parentShape, null, df, null, null, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forChamfer(shape_item_ui_main parentShape, ui.workspace.drafting.machining.chamfer_feature_ui_main ch) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, null, null, ch, null, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forFillet(shape_item_ui_main parentShape, ui.workspace.drafting.machining.fillet_feature_ui_main fl) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, null, null, null, fl, null, null, null, null, null); }
-    public static feature_tree_node_ui_main forDraft(shape_item_ui_main parentShape, ui.workspace.drafting.machining.draft_feature_ui_main dr) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, null, null, null, null, dr, null, null, null, null); }
-    public static feature_tree_node_ui_main forBoolean(shape_item_ui_main parentShape, ui.workspace.drafting.booleans.boolean_feature_ui_main bf) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, null, null, null, null, null, bf, null, null, null); }
-    public static feature_tree_node_ui_main forShell(shape_item_ui_main parentShape, ui.workspace.drafting.shell.shell_feature_ui_main sh) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, null, null, null, null, null, null, sh, null, null); }
-    public static feature_tree_node_ui_main forLoft(shape_item_ui_main parentShape, ui.workspace.drafting.loft.loft_feature_ui_main lf) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, null, null, null, null, null, null, null, lf, null); }
-    public static feature_tree_node_ui_main forSweep(shape_item_ui_main parentShape, ui.workspace.drafting.sweep.sweep_feature_ui_main sw) { return new feature_tree_node_ui_main(null, null, null, null, parentShape, null, null, null, null, null, null, null, null, sw); }
+    public static feature_tree_node_ui_main forShape(shape_item_ui_main s) { return new feature_tree_node_ui_main(s, null, null, null, null, null, null, null, null, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forHole(shape_item_ui_main ps, hole_feature_ui_main h) { return new feature_tree_node_ui_main(null, h, null, null, ps, null, null, null, null, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forPattern(shape_item_ui_main ps, hole_pattern_ui_main p) { return new feature_tree_node_ui_main(null, null, p, null, ps, null, null, null, null, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forExtrude(shape_item_ui_main ps, extrude_feature_ui_main e) { return new feature_tree_node_ui_main(null, null, null, e, ps, null, null, null, null, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forSketch(shape_item_ui_main ps, ui.workspace.drafting.sketch.sketch_feature_ui_main sk) { return new feature_tree_node_ui_main(null, null, null, null, ps, sk, null, null, null, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forDerivedFace(shape_item_ui_main ps, hole_feature_ui_main h, ui.workspace.drafting.topology.topology_derived_face_ui_main df) { return new feature_tree_node_ui_main(null, h, null, null, ps, null, df, null, null, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forChamfer(shape_item_ui_main ps, ui.workspace.drafting.machining.chamfer_feature_ui_main ch) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, ch, null, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forFillet(shape_item_ui_main ps, ui.workspace.drafting.machining.fillet_feature_ui_main fl) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, null, fl, null, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forDraft(shape_item_ui_main ps, ui.workspace.drafting.machining.draft_feature_ui_main dr) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, null, null, dr, null, null, null, null, null); }
+    public static feature_tree_node_ui_main forBoolean(shape_item_ui_main ps, ui.workspace.drafting.booleans.boolean_feature_ui_main bf) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, null, null, null, bf, null, null, null, null); }
+    public static feature_tree_node_ui_main forShell(shape_item_ui_main ps, ui.workspace.drafting.shell.shell_feature_ui_main sh) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, null, null, null, null, sh, null, null, null); }
+    public static feature_tree_node_ui_main forLoft(shape_item_ui_main ps, ui.workspace.drafting.loft.loft_feature_ui_main lf) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, null, null, null, null, null, lf, null, null); }
+    public static feature_tree_node_ui_main forSweep(shape_item_ui_main ps, ui.workspace.drafting.sweep.sweep_feature_ui_main sw) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, null, null, null, null, null, null, sw, null); }
+    public static feature_tree_node_ui_main forRevolve(shape_item_ui_main ps, ui.workspace.drafting.revolve.revolve_feature_ui_main rv) { return new feature_tree_node_ui_main(null, null, null, null, ps, null, null, null, null, null, null, null, null, null, rv); }
 
-    public boolean isShape() { return shape != null; }
-    public boolean isHole() { return hole != null && derivedFace == null; }
-    public boolean isPattern() { return pattern != null; }
-    public boolean isExtrude() { return extrude != null; }
-    public boolean isSketch() { return sketch != null; }
-    public boolean isDerivedFace() { return derivedFace != null; }
-    public boolean isChamfer() { return chamfer != null; }
-    public boolean isFillet() { return fillet != null; }
-    public boolean isDraft() { return draft != null; }
-    public boolean isBoolean() { return booleanFeature != null; }
-    public boolean isShell() { return shell != null; }
-    public boolean isLoft() { return loft != null; }
-    public boolean isSweep() { return sweep != null; }
+    public boolean isShape() { return shape != null; } public boolean isHole() { return hole != null && derivedFace == null; }
+    public boolean isPattern() { return pattern != null; } public boolean isExtrude() { return extrude != null; }
+    public boolean isSketch() { return sketch != null; } public boolean isDerivedFace() { return derivedFace != null; }
+    public boolean isChamfer() { return chamfer != null; } public boolean isFillet() { return fillet != null; }
+    public boolean isDraft() { return draft != null; } public boolean isBoolean() { return booleanFeature != null; }
+    public boolean isShell() { return shell != null; } public boolean isLoft() { return loft != null; }
+    public boolean isSweep() { return sweep != null; } public boolean isRevolve() { return revolve != null; }
 
-    public shape_item_ui_main getShape() { return shape; }
-    public hole_feature_ui_main getHole() { return hole; }
-    public hole_pattern_ui_main getPattern() { return pattern; }
-    public extrude_feature_ui_main getExtrude() { return extrude; }
-    public ui.workspace.drafting.sketch.sketch_feature_ui_main getSketch() { return sketch; }
-    public ui.workspace.drafting.topology.topology_derived_face_ui_main getDerivedFace() { return derivedFace; }
-    public ui.workspace.drafting.machining.chamfer_feature_ui_main getChamfer() { return chamfer; }
-    public ui.workspace.drafting.machining.fillet_feature_ui_main getFillet() { return fillet; }
-    public ui.workspace.drafting.machining.draft_feature_ui_main getDraft() { return draft; }
-    public ui.workspace.drafting.booleans.boolean_feature_ui_main getBooleanFeature() { return booleanFeature; }
-    public ui.workspace.drafting.shell.shell_feature_ui_main getShell() { return shell; }
-    public ui.workspace.drafting.loft.loft_feature_ui_main getLoft() { return loft; }
-    public ui.workspace.drafting.sweep.sweep_feature_ui_main getSweep() { return sweep; }
+    public shape_item_ui_main getShape() { return shape; } public hole_feature_ui_main getHole() { return hole; }
+    public hole_pattern_ui_main getPattern() { return pattern; } public extrude_feature_ui_main getExtrude() { return extrude; }
+    public ui.workspace.drafting.sketch.sketch_feature_ui_main getSketch() { return sketch; } public ui.workspace.drafting.topology.topology_derived_face_ui_main getDerivedFace() { return derivedFace; }
+    public ui.workspace.drafting.machining.chamfer_feature_ui_main getChamfer() { return chamfer; } public ui.workspace.drafting.machining.fillet_feature_ui_main getFillet() { return fillet; }
+    public ui.workspace.drafting.machining.draft_feature_ui_main getDraft() { return draft; } public ui.workspace.drafting.booleans.boolean_feature_ui_main getBooleanFeature() { return booleanFeature; }
+    public ui.workspace.drafting.shell.shell_feature_ui_main getShell() { return shell; } public ui.workspace.drafting.loft.loft_feature_ui_main getLoft() { return loft; }
+    public ui.workspace.drafting.sweep.sweep_feature_ui_main getSweep() { return sweep; } public ui.workspace.drafting.revolve.revolve_feature_ui_main getRevolve() { return revolve; }
     public shape_item_ui_main getParentShape() { return parentShape; }
 
     public String getPatternId() { return pattern != null ? pattern.getId() : null; }
@@ -88,39 +68,29 @@ public class feature_tree_node_ui_main {
     public int getInstanceCount() { return pattern != null ? pattern.getInstanceCount() : 0; }
 
     public ui.workspace.drafting.features.feature_state_ui_main getFeatureState() {
-        if (hole != null) return hole.getState();
-        if (pattern != null) return pattern.getState();
-        if (extrude != null) return extrude.getState();
-        if (sketch != null) return sketch.getState();
-        if (chamfer != null) return chamfer.getState();
-        if (fillet != null) return fillet.getState();
-        if (draft != null) return draft.getState();
-        if (booleanFeature != null) return booleanFeature.getState();
-        if (shell != null) return shell.getState();
-        if (loft != null) return loft.getState();
-        if (sweep != null) return sweep.getState();
+        if (hole != null) return hole.getState(); if (pattern != null) return pattern.getState();
+        if (extrude != null) return extrude.getState(); if (sketch != null) return sketch.getState();
+        if (chamfer != null) return chamfer.getState(); if (fillet != null) return fillet.getState();
+        if (draft != null) return draft.getState(); if (booleanFeature != null) return booleanFeature.getState();
+        if (shell != null) return shell.getState(); if (loft != null) return loft.getState();
+        if (sweep != null) return sweep.getState(); if (revolve != null) return revolve.getState();
         if (shape != null) return shape.getState();
         return ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
     }
 
     public boolean isVisible() {
-        if (hole != null) return hole.isVisible();
-        if (pattern != null) return pattern.isVisible();
-        if (extrude != null) return extrude.isVisible();
-        if (sketch != null) return sketch.isVisible();
-        if (chamfer != null) return chamfer.isVisible();
-        if (fillet != null) return fillet.isVisible();
-        if (draft != null) return draft.isVisible();
-        if (booleanFeature != null) return booleanFeature.isVisible();
-        if (shell != null) return shell.isVisible();
-        if (loft != null) return loft.isVisible();
-        if (sweep != null) return sweep.isVisible();
+        if (hole != null) return hole.isVisible(); if (pattern != null) return pattern.isVisible();
+        if (extrude != null) return extrude.isVisible(); if (sketch != null) return sketch.isVisible();
+        if (chamfer != null) return chamfer.isVisible(); if (fillet != null) return fillet.isVisible();
+        if (draft != null) return draft.isVisible(); if (booleanFeature != null) return booleanFeature.isVisible();
+        if (shell != null) return shell.isVisible(); if (loft != null) return loft.isVisible();
+        if (sweep != null) return sweep.isVisible(); if (revolve != null) return revolve.isVisible();
         return true;
     }
 
     public String getDependencyId() {
         if (pattern != null) return pattern.getSeedHoleId();
-        if (hole != null || extrude != null || sketch != null || chamfer != null || fillet != null || draft != null || booleanFeature != null || shell != null || loft != null || sweep != null) {
+        if (hole != null || extrude != null || sketch != null || chamfer != null || fillet != null || draft != null || booleanFeature != null || shell != null || loft != null || sweep != null || revolve != null) {
             return parentShape != null ? parentShape.getId() : null;
         }
         if (shape != null && shape.isOnFace()) return shape.getFaceOwnerId();
@@ -142,6 +112,7 @@ public class feature_tree_node_ui_main {
         else if (isShell()) base = String.format(java.util.Locale.US, "%s [t:%.1f, %s]", shell.getName(), shell.getThickness(), shell.getDirection().getLabel());
         else if (isLoft()) base = String.format(java.util.Locale.US, "%s [%d Secs, %s]", loft.getName(), loft.getSectionCount(), loft.isSolid() ? "Solid" : "Surface");
         else if (isSweep()) base = String.format(java.util.Locale.US, "%s [L:%.1f, %s]", sweep.getName(), sweep.getPath() != null ? sweep.getPath().getLength() : 0.0, sweep.getOrientation().getLabel());
+        else if (isRevolve()) base = String.format(java.util.Locale.US, "%s [%.1f°, %s, %s]", revolve.getName(), revolve.getAngle(), revolve.getAxis() != null ? revolve.getAxis().getType().getLabel() : "Axis", revolve.isSolid() ? "Solid" : "Surface");
         if (getFeatureState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) base += " [INVALID]";
         else if (!isVisible() || getFeatureState() == ui.workspace.drafting.features.feature_state_ui_main.SUPPRESSED) base += " [Suppressed]";
         return base;
@@ -150,7 +121,7 @@ public class feature_tree_node_ui_main {
     public Image getIcon() {
         if (isShape()) return loadIcon(getShapePath(shape.getType()));
         if (isHole() || isDerivedFace()) return loadIcon(getHolePath(hole));
-        if (isPattern() || isSketch() || isChamfer() || isFillet() || isDraft() || isBoolean() || isShell() || isLoft() || isSweep()) return loadIcon("/icons/basic_shapes.png");
+        if (isPattern() || isSketch() || isChamfer() || isFillet() || isDraft() || isBoolean() || isShell() || isLoft() || isSweep() || isRevolve()) return loadIcon("/icons/basic_shapes.png");
         if (isExtrude()) return loadIcon(getExtrudePath(extrude));
         return null;
     }
