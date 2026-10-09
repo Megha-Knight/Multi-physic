@@ -13,6 +13,7 @@ import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
 import ui.workspace.drafting.gizmo.viewport_coordinate_helper_ui_main;
 import ui.workspace.drafting.faces.face_picker_ui_main;
 import ui.workspace.drafting.faces.face_reference_ui_main;
+import ui.workspace.drafting.features.feature_regeneration_engine_ui_main;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
@@ -50,28 +51,17 @@ public class shape_event_handler_ui_main {
     private double getVy(MouseEvent e) { return viewport_coordinate_helper_ui_main.getViewportY(e, viewport); }
 
     private Point3D raycastPlane(MouseEvent e, double yPlane) {
-        if (camera != null && container != null) {
-            Point3D hit = world_raycaster_ui_main.hitPlaneY(world_raycaster_ui_main.buildRay(e, viewport, camera, container), yPlane);
-            if (hit != null) return hit;
-        }
+        if (camera != null && container != null) { Point3D hit = world_raycaster_ui_main.hitPlaneY(world_raycaster_ui_main.buildRay(e, viewport, camera, container), yPlane); if (hit != null) return hit; }
         return groundRaycaster.apply(e);
     }
-
-    private void startMode(EditMode m, int hIdx, MouseEvent e) {
-        mode = m; activeHandleIdx = hIdx; startDragVx = getVx(e); startDragVy = getVy(e);
-        hasMoved = false; wasShift = e.isShiftDown(); cameraController.setEnabled(false); e.consume();
-    }
-
+    private void startMode(EditMode m, int hIdx, MouseEvent e) { mode = m; activeHandleIdx = hIdx; startDragVx = getVx(e); startDragVy = getVy(e); hasMoved = false; wasShift = e.isShiftDown(); cameraController.setEnabled(false); e.consume(); }
     private void handleMoved(MouseEvent e) {
         if ((isDrawingActive != null && isDrawingActive.getAsBoolean()) || mode != EditMode.IDLE) return;
         Node hitNode = pickNode(e); Axis axis = axisDrag.axisForNode(hitNode);
-        if (axis == null) axis = axisDrag.findAxisNearRay(e);
-        axisDrag.onHover(axis);
+        if (axis == null) axis = axisDrag.findAxisNearRay(e); axisDrag.onHover(axis);
         if (axis != null) { setCursor(axis == Axis.X ? Cursor.H_RESIZE : axis == Axis.Y ? Cursor.CROSSHAIR : Cursor.V_RESIZE); return; }
-        shape_item_ui_main sel = editor.getSelectedShape();
-        if (sel != null && sel.findHandleByNode(hitNode) >= 0) { setCursor(Cursor.CROSSHAIR); return; }
-        Point3D gHit = groundRaycaster.apply(e);
-        setCursor((editor.findShapeByNode(hitNode) != null || (gHit != null && editor.findShapeNear(gHit, 6.0) != null)) ? Cursor.MOVE : Cursor.DEFAULT);
+        shape_item_ui_main sel = editor.getSelectedShape(); if (sel != null && sel.findHandleByNode(hitNode) >= 0) { setCursor(Cursor.CROSSHAIR); return; }
+        Point3D gHit = groundRaycaster.apply(e); setCursor((editor.findShapeByNode(hitNode) != null || (gHit != null && editor.findShapeNear(gHit, 6.0) != null)) ? Cursor.MOVE : Cursor.DEFAULT);
     }
 
     private void handlePressed(MouseEvent e) {
@@ -174,7 +164,11 @@ public class shape_event_handler_ui_main {
     private void handleReleased(MouseEvent e) {
         boolean wasBusy = (mode != EditMode.IDLE);
         if (mode == EditMode.AXIS_DRAG) axisDrag.onReleased();
-        if (wasBusy) { cameraController.setEnabled(true); if (hasMoved) editor.notifyShapesChanged(); }
+        if (wasBusy && hasMoved) {
+            shape_item_ui_main sel = editor.getSelectedShape();
+            // Cascade on release only — not during MOUSE_DRAGGED (mid-gesture rebuild destroys the active Node)
+            cascadeAndRegen(sel); cameraController.setEnabled(true); editor.notifyShapesChanged();
+        } else if (wasBusy) { cameraController.setEnabled(true); }
         mode = EditMode.IDLE; activeHandleIdx = -1; startHit = null; hasMoved = false; hudLabel.setVisible(false); if (wasBusy) e.consume();
     }
 
@@ -191,7 +185,12 @@ public class shape_event_handler_ui_main {
             case PAGE_UP -> { sel.applyWorldDelta(0, -s, 0); yield true; } case PAGE_DOWN -> { sel.applyWorldDelta(0, s, 0); yield true; }
             default -> false;
         };
-        if (moved) { axisDrag.updateGizmoPosition(); editor.updateActiveFace(); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true); editor.notifyShapesChanged(); e.consume(); }
+        if (moved) { axisDrag.updateGizmoPosition(); editor.updateActiveFace(); hudLabel.setText(sel.formatDimensions()); hudLabel.setVisible(true);
+            cascadeAndRegen(sel); editor.notifyShapesChanged(); e.consume(); }
+    }
+    private void cascadeAndRegen(shape_item_ui_main sel) {
+        if (sel != null) feature_regeneration_engine_ui_main.markDirtyAndCascade(sel.getId(), editor.getShapes());
+        feature_regeneration_engine_ui_main.regenerateAll(editor.getShapes());
     }
     private static Node pickNode(MouseEvent e) { return (e.getPickResult() != null) ? e.getPickResult().getIntersectedNode() : null; }
 }

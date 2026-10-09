@@ -21,6 +21,30 @@ public final class feature_regeneration_engine_ui_main {
         return regenerate(shapes, new feature_dependency_graph_ui_main());
     }
 
+    /**
+     * Marks the given feature and all transitive dependents as DIRTY on the
+     * actual persistent model objects, so a subsequent regenerateAll() will
+     * find and rebuild them. The graph is a one-shot computation tool here:
+     * build → propagate → write back to persistent objects → discard graph.
+     * Only the state written onto shape_item_ui_main/hole_feature_ui_main/etc.
+     * survives across the graph.clear() inside the next regenerateAll() call.
+     */
+    public static void markDirtyAndCascade(String rootFeatureId, Collection<shape_item_ui_main> shapes) {
+        if (rootFeatureId == null || shapes == null || shapes.isEmpty()) return;
+        feature_dependency_graph_ui_main graph = new feature_dependency_graph_ui_main();
+        graph.buildFromShapes(shapes);   // seeds states from live objects
+        graph.markDirty(rootFeatureId);  // propagates DIRTY to all transitive dependents in graph
+        Map<String, shape_item_ui_main> shapeMap = new HashMap<>();
+        for (shape_item_ui_main s : shapes) shapeMap.put(s.getId(), s);
+        for (feature_node_ui_main fn : graph.getAllFeatures()) {
+            if (fn.getState() == feature_state_ui_main.DIRTY) {
+                syncEntityState(fn, shapeMap); // writes DIRTY onto the real persistent object
+            }
+        }
+        // graph is discarded here; DIRTY state now lives on the persistent objects
+        // and will be re-read by buildFromShapes() inside the next regenerateAll() call
+    }
+
     public static RegenerationReport regenerate(feature_dependency_graph_ui_main graph, Collection<shape_item_ui_main> shapes) {
         return regenerate(shapes, graph);
     }

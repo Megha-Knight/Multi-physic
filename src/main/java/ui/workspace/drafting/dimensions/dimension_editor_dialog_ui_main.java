@@ -12,6 +12,7 @@ import ui.framework_ui_main;
 import ui.workspace.shapes.basic_shapes_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.drafting.shape_editor_ui_main;
+import ui.workspace.drafting.features.feature_regeneration_engine_ui_main;
 
 import java.util.*;
 
@@ -167,6 +168,8 @@ public class dimension_editor_dialog_ui_main extends Stage {
         if (editor != null) editor.recordSnapshot();
         shape_dimension_helper_ui_main.applyDimensions(item, parsed);
         if (editor != null) {
+            feature_regeneration_engine_ui_main.markDirtyAndCascade(item.getId(), editor.getShapes());
+            feature_regeneration_engine_ui_main.regenerateAll(editor.getShapes());
             editor.setActiveFace(null);
             editor.getAxisDrag().updateGizmoPosition();
             editor.selectShape(item);
