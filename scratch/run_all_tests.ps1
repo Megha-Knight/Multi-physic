@@ -42,5 +42,5 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n=========================================="
-Write-Host "ALL 1087 TESTS (STAGES 1-12) & AUDITS PASSED 100%!"
+Write-Host "ALL 1127 TESTS (STAGES 1-12 + MACHINING & SKETCH) & AUDITS PASSED 100%!"
 Write-Host "=========================================="
