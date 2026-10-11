@@ -71,4 +71,19 @@ public final class ui_feature_action_helper_ui_main {
             app.getFooterBar().setStatusText(s == null ? "Select a shape first." : "Selected shape has no seed hole for pattern.");
         }
     }
+
+    public static void handleFillet(UI_Main app) { openMachining(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.FILLET); }
+    public static void handleChamfer(UI_Main app) { openMachining(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.CHAMFER); }
+    public static void handleDraft(UI_Main app) { openMachining(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.DRAFT); }
+
+    private static void openMachining(UI_Main app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind kind) {
+        var ed = app.getWorkspace3D().getShapeEditor();
+        var s = ed.getSelectedShape();
+        if (s == null || !s.getType().is3D()) {
+            app.getFooterBar().setStatusText("Select a 3D solid (cube/cuboid/cylinder/cone) first, then use Fillet, Chamfer, or Draft.");
+            return;
+        }
+        var w = app.getScene() != null ? app.getScene().getWindow() : null;
+        ui.workspace.drafting.machining.machining_dialog_ui_main.openCreate(kind, s, ed, w);
+    }
 }

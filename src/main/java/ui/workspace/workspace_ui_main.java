@@ -117,7 +117,7 @@ public class workspace_ui_main extends StackPane {
             hudDimLabel, () -> drafter.getActiveShape().isDrawing() || sketchMode.isActive(), camera
         );
         drafter.setEditor(shapeEditor);
-        sketchController = new sketch_controller_ui_main(sketchMode, () -> sketchMode.exit(true, shapeEditor));
+        sketchController = new sketch_controller_ui_main(sketchMode, () -> sketchMode.exit(true, shapeEditor), () -> sketchMode.exit(false, shapeEditor));
         root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup(), sketchController.getView(), sketchController.getPreview());
         getChildren().add(sketchController.getHud());
         StackPane.setAlignment(sketchController.getHud(), Pos.TOP_LEFT);

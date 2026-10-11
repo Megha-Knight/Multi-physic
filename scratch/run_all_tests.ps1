@@ -9,7 +9,9 @@ $tests = @(
     @{ Name = "Stage 8"; Script = "scratch/run_test_stage8.ps1" },
     @{ Name = "Stage 9"; Script = "scratch/run_test_stage9.ps1" },
     @{ Name = "Stage 10"; Script = "scratch/run_test_stage10.ps1" },
-    @{ Name = "Stage 11"; Script = "scratch/run_test_stage11.ps1" }
+    @{ Name = "Stage 11"; Script = "scratch/run_test_stage11.ps1" },
+    @{ Name = "Stage 12"; Script = "scratch/run_test_stage12.ps1" },
+    @{ Name = "Machining & Sketch"; Script = "scratch/run_test_machining_sketch.ps1" }
 )
 
 Write-Host "=========================================="
@@ -40,5 +42,5 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n=========================================="
-Write-Host "ALL 1048 TESTS (STAGES 1-11) & AUDITS PASSED 100%!"
+Write-Host "ALL 1087 TESTS (STAGES 1-12) & AUDITS PASSED 100%!"
 Write-Host "=========================================="

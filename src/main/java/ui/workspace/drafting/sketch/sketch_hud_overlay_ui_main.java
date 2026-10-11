@@ -17,12 +17,14 @@ public class sketch_hud_overlay_ui_main extends VBox {
     private final Label planeLabel = new Label("Plane: None");
     private final Label statusLabel = new Label("Status: IDLE");
     private final Label countsLabel = new Label("Geometry: 0 | Constraints: 0");
-    private final Button closeButton = new Button("Finish Sketch");
+    private final Label hintLabel = new Label("Pick tool in ribbon. Click twice to draw. Finish when done.");
+    private final Button finishButton = new Button("Finish Sketch");
+    private final Button cancelButton = new Button("Cancel");
 
-    public sketch_hud_overlay_ui_main(Runnable onCloseAction) {
+    public sketch_hud_overlay_ui_main(Runnable onFinishAction, Runnable onCancelAction) {
         setSpacing(3);
         setPadding(new Insets(8, 12, 8, 12));
-        setStyle("-fx-background-color: rgba(15, 23, 42, 0.82); -fx-background-radius: 6; " +
+        setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); -fx-background-radius: 6; " +
                  "-fx-border-color: rgba(56, 189, 248, 0.5); -fx-border-radius: 6; -fx-border-width: 1;");
         setMouseTransparent(false);
 
@@ -30,22 +32,31 @@ public class sketch_hud_overlay_ui_main extends VBox {
         planeLabel.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 10px;");
         statusLabel.setStyle("-fx-text-fill: #FCD34D; -fx-font-size: 10px; -fx-font-weight: bold;");
         countsLabel.setStyle("-fx-text-fill: #E2E8F0; -fx-font-size: 10px;");
+        hintLabel.setStyle("-fx-text-fill: #CBD5E1; -fx-font-size: 9.5px; -fx-font-style: italic;");
 
-        closeButton.setStyle("-fx-background-color: #0284C7; -fx-text-fill: white; -fx-font-size: 10px; " +
-                            "-fx-font-weight: bold; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
-        closeButton.setOnAction(e -> {
-            if (onCloseAction != null) onCloseAction.run();
-        });
+        finishButton.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 10px; " +
+                              "-fx-font-weight: bold; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
+        finishButton.setTooltip(new javafx.scene.control.Tooltip("Validate and save sketch profile for downstream features (e.g. Extrude)"));
+        finishButton.setOnAction(e -> { if (onFinishAction != null) onFinishAction.run(); });
+
+        cancelButton.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-size: 10px; " +
+                              "-fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
+        cancelButton.setTooltip(new javafx.scene.control.Tooltip("Cancel sketch mode without saving"));
+        cancelButton.setOnAction(e -> { if (onCancelAction != null) onCancelAction.run(); });
 
         HBox bottomRow = new HBox(countsLabel);
         bottomRow.setAlignment(Pos.CENTER_LEFT);
 
-        HBox actionRow = new HBox(closeButton);
+        HBox actionRow = new HBox(6, cancelButton, finishButton);
         actionRow.setAlignment(Pos.CENTER_RIGHT);
         actionRow.setPadding(new Insets(4, 0, 0, 0));
 
-        getChildren().addAll(titleLabel, planeLabel, statusLabel, bottomRow, actionRow);
+        getChildren().addAll(titleLabel, planeLabel, statusLabel, hintLabel, bottomRow, actionRow);
         setVisible(false);
+    }
+
+    public sketch_hud_overlay_ui_main(Runnable onCloseAction) {
+        this(onCloseAction, onCloseAction);
     }
 
     public void update(sketch_feature_ui_main sketch) {

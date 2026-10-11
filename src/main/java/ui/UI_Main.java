@@ -99,16 +99,16 @@ public class UI_Main extends BorderPane {
         ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile); ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
 
         ribbonBar.setOnSketchRequested(() -> ui_sketch_action_helper_ui_main.handleCreateOrEnterSketch(this, workspace3D.getSketchMode()));
-        ribbonBar.getSketchPanel().bind(workspace3D.getSketchController(), () -> workspace3D.getSketchMode().exit(true, workspace3D.getShapeEditor()));
-        workspace3D.getSketchMode().setOnModeChanged(() -> ribbonBar.getSketchPanel().setSketchModeActive(workspace3D.getSketchMode().isActive()));
+        ribbonBar.getSketchPanel().bind(workspace3D.getSketchController(),
+            () -> workspace3D.getSketchMode().exit(true, workspace3D.getShapeEditor()),
+            () -> workspace3D.getSketchMode().exit(false, workspace3D.getShapeEditor()));
+        workspace3D.getSketchMode().addOnModeChanged(() -> ribbonBar.getSketchPanel().setSketchModeActive(workspace3D.getSketchMode().isActive()));
         workspace3D.getSketchMode().setStatusCallback(footerBar::setStatusText);
 
-        ribbonBar.setOnExtrudeRequested(() -> ui_feature_action_helper_ui_main.handleExtrude(this));
-        ribbonBar.getExtrudePanel().setOnApply(cfg -> ui_feature_action_helper_ui_main.applyExtrudeConfig(this, cfg));
-        ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this));
-        ribbonBar.setOnCutoutRequested(s -> ui_feature_action_helper_ui_main.handleCutout(this, s));
-        ribbonBar.setOnLinearPatternRequested(() -> ui_feature_action_helper_ui_main.handleLinearPattern(this));
-        ribbonBar.setOnCircularPatternRequested(() -> ui_feature_action_helper_ui_main.handleCircularPattern(this));
+        ribbonBar.setOnExtrudeRequested(() -> ui_feature_action_helper_ui_main.handleExtrude(this)); ribbonBar.getExtrudePanel().setOnApply(cfg -> ui_feature_action_helper_ui_main.applyExtrudeConfig(this, cfg));
+        ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this)); ribbonBar.setOnCutoutRequested(s -> ui_feature_action_helper_ui_main.handleCutout(this, s));
+        ribbonBar.setOnLinearPatternRequested(() -> ui_feature_action_helper_ui_main.handleLinearPattern(this)); ribbonBar.setOnCircularPatternRequested(() -> ui_feature_action_helper_ui_main.handleCircularPattern(this));
+        ribbonBar.setOnFilletRequested(() -> ui_feature_action_helper_ui_main.handleFillet(this)); ribbonBar.setOnChamferRequested(() -> ui_feature_action_helper_ui_main.handleChamfer(this)); ribbonBar.setOnDraftRequested(() -> ui_feature_action_helper_ui_main.handleDraft(this));
 
         ribbonBar.setOnShapeSelected(shape -> {
             workspace3D.getDrafter().setShape(shape);

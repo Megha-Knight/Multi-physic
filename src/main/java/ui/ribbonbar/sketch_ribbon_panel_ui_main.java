@@ -24,10 +24,12 @@ public class sketch_ribbon_panel_ui_main extends HBox implements dynamic_panel_e
     private final ToggleButton btnCircle = createToolBtn("Circle", sketch_tool_type_ui_main.CIRCLE);
     private final ToggleButton btnRect   = createToolBtn("Rect", sketch_tool_type_ui_main.RECTANGLE);
     private final ToggleButton btnArc    = createToolBtn("Arc", sketch_tool_type_ui_main.ARC);
-    private final Button btnClose        = new Button("Close Sketch");
+    private final Button btnFinish       = new Button("Finish Sketch");
+    private final Button btnCancel       = new Button("Cancel");
 
     private sketch_controller_ui_main controller = null;
-    private Runnable onCloseRequested = null;
+    private Runnable onFinishRequested = null;
+    private Runnable onCancelRequested = null;
 
     public sketch_ribbon_panel_ui_main() {
         setAlignment(Pos.CENTER_LEFT);
@@ -35,13 +37,23 @@ public class sketch_ribbon_panel_ui_main extends HBox implements dynamic_panel_e
         setPadding(new Insets(1, 4, 1, 4));
 
         btnSelect.setSelected(true);
-        btnClose.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 11px; " +
-                          "-fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 4; -fx-cursor: hand;");
-        btnClose.setOnAction(e -> {
-            if (onCloseRequested != null) onCloseRequested.run();
-        });
+        btnSelect.setTooltip(new javafx.scene.control.Tooltip("Select / pick sketch geometry (Del/Backspace to delete)"));
+        btnLine.setTooltip(new javafx.scene.control.Tooltip("Line: Click start point, then click end point"));
+        btnCircle.setTooltip(new javafx.scene.control.Tooltip("Circle: Click center point, then click radius"));
+        btnRect.setTooltip(new javafx.scene.control.Tooltip("Rectangle: Click first corner, then opposite corner"));
+        btnArc.setTooltip(new javafx.scene.control.Tooltip("Arc: Click center, start angle, and end angle"));
 
-        HBox toolsRow = new HBox(3, btnSelect, btnLine, btnCircle, btnRect, btnArc, btnClose);
+        btnFinish.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 11px; " +
+                           "-fx-font-weight: bold; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
+        btnFinish.setTooltip(new javafx.scene.control.Tooltip("Validate and save the sketch for downstream features"));
+        btnFinish.setOnAction(e -> { if (onFinishRequested != null) onFinishRequested.run(); });
+
+        btnCancel.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-size: 11px; " +
+                           "-fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
+        btnCancel.setTooltip(new javafx.scene.control.Tooltip("Cancel sketch mode without saving"));
+        btnCancel.setOnAction(e -> { if (onCancelRequested != null) onCancelRequested.run(); });
+
+        HBox toolsRow = new HBox(3, btnSelect, btnLine, btnCircle, btnRect, btnArc, btnCancel, btnFinish);
         toolsRow.setAlignment(Pos.CENTER_LEFT);
 
         Label lbl = new Label("Sketch Tools");
@@ -55,9 +67,14 @@ public class sketch_ribbon_panel_ui_main extends HBox implements dynamic_panel_e
         setManaged(false);
     }
 
-    public void bind(sketch_controller_ui_main ctrl, Runnable onClose) {
+    public void bind(sketch_controller_ui_main ctrl, Runnable onFinish, Runnable onCancel) {
         this.controller = ctrl;
-        this.onCloseRequested = onClose;
+        this.onFinishRequested = onFinish;
+        this.onCancelRequested = onCancel;
+    }
+
+    public void bind(sketch_controller_ui_main ctrl, Runnable onClose) {
+        bind(ctrl, onClose, onClose);
     }
 
     public void show() { setVisible(true); setManaged(true); }

@@ -42,6 +42,9 @@ public class ribbon_ui_main extends HBox {
     private Runnable onHoleRequested;
     private Runnable onLinearPatternRequested;
     private Runnable onCircularPatternRequested;
+    private Runnable onFilletRequested;
+    private Runnable onChamferRequested;
+    private Runnable onDraftRequested;
 
     private final MenuItem menuSave     = new MenuItem("Save");
     private final MenuItem menuSaveAs   = new MenuItem("Save As...");
@@ -85,28 +88,33 @@ public class ribbon_ui_main extends HBox {
         shapesPanel = new basicshapespanel_ui_main();
         basicShapesButton = new splitbutton_ui_main("Basic Shapes", loadIcon("/icons/basic_shapes.png"), 84.0, true,
             () -> panelCoordinator.toggle(shapesPanel));
-        basicShapesButton.setDropAction(() -> panelCoordinator.toggle(shapesPanel));
-        shapesPanel.setAnchorNode(basicShapesButton);
+        basicShapesButton.setDropAction(() -> panelCoordinator.toggle(shapesPanel)); shapesPanel.setAnchorNode(basicShapesButton);
+        javafx.scene.control.Tooltip.install(basicShapesButton, new javafx.scene.control.Tooltip("Choose a 2D profile or 3D primitive"));
         shapesPanel.setOnShapeSelected(shape -> {
             this.currentShape = shape;
             if (onShapeSelected != null) onShapeSelected.accept(shape);
         });
 
         sketchButton = new splitbutton_ui_main("Sketch", loadIcon("/icons/rectangle.png"), 84.0, true,
-            () -> panelCoordinator.toggle(sketchPanel));
+            () -> { if (onSketchRequested != null) onSketchRequested.run(); panelCoordinator.openExclusive(sketchPanel); });
         sketchButton.setDropAction(() -> panelCoordinator.toggle(sketchPanel));
-        sketchButton.addMenuItem("Start Sketch", () -> { if (onSketchRequested != null) onSketchRequested.run(); });
+        sketchButton.addMenuItem("Start Sketch", () -> { if (onSketchRequested != null) onSketchRequested.run(); panelCoordinator.openExclusive(sketchPanel); });
+        javafx.scene.control.Tooltip.install(sketchButton, new javafx.scene.control.Tooltip("Choose a plane or planar face, then draw a 2D profile"));
         extrudeButton = new splitbutton_ui_main("Extrude", ribbonicons_ui_main.createExtrudeIcon(iconSz, iconColor), 84.0, true,
             () -> panelCoordinator.toggle(extrudePanel));
         extrudeButton.setDropAction(() -> panelCoordinator.toggle(extrudePanel));
         extrudeButton.addMenuItem("Extrude Feature...", () -> { if (onExtrudeRequested != null) onExtrudeRequested.run(); });
+        javafx.scene.control.Tooltip.install(extrudeButton, new javafx.scene.control.Tooltip("Extrude a 2D profile or face into a 3D solid body"));
 
         machiningPanel = new machining_panel_ui_main();
         machiningButton = new splitbutton_ui_main("Machining", ribbonicons_ui_main.createMachiningIcon(iconSz, iconColor), 84.0, true,
             () -> panelCoordinator.toggle(machiningPanel));
-        machiningButton.setDropAction(() -> panelCoordinator.toggle(machiningPanel));
-        machiningPanel.setAnchorNode(machiningButton);
-        machiningButton.addMenuItem("Circle", () -> { if (onHoleRequested != null) onHoleRequested.run(); });
+        machiningButton.setDropAction(() -> panelCoordinator.toggle(machiningPanel)); machiningPanel.setAnchorNode(machiningButton);
+        javafx.scene.control.Tooltip.install(machiningButton, new javafx.scene.control.Tooltip("Machining: Cutouts, Patterns, Fillet, Chamfer, and Draft"));
+        machiningButton.addMenuItem("Circle Cutout", () -> { if (onHoleRequested != null) onHoleRequested.run(); });
+        machiningButton.addMenuItem("Fillet...", () -> { if (onFilletRequested != null) onFilletRequested.run(); });
+        machiningButton.addMenuItem("Chamfer...", () -> { if (onChamferRequested != null) onChamferRequested.run(); });
+        machiningButton.addMenuItem("Draft...", () -> { if (onDraftRequested != null) onDraftRequested.run(); });
         machiningButton.addMenuItem("Linear Pattern", () -> { if (onLinearPatternRequested != null) onLinearPatternRequested.run(); });
         machiningButton.addMenuItem("Circular Pattern", () -> { if (onCircularPatternRequested != null) onCircularPatternRequested.run(); });
 
@@ -118,24 +126,13 @@ public class ribbon_ui_main extends HBox {
         getChildren().addAll(buildFilesGroup(), buildShapesGroup(), buildFeaturesGroup(), buildMachiningGroup());
     }
 
-    private VBox buildFilesGroup() {
-        return wrapGroup(new HBox(2, newButton, openButton, saveButton), "Files");
-    }
-
+    private VBox buildFilesGroup() { return wrapGroup(new HBox(2, newButton, openButton, saveButton), "Files"); }
     private VBox buildShapesGroup() {
-        HBox shapesRow = new HBox(4, basicShapesButton, shapesPanel);
-        shapesRow.setAlignment(Pos.CENTER_LEFT);
-        return wrapGroup(shapesRow, "Basic Shapes");
+        HBox r = new HBox(4, basicShapesButton, shapesPanel); r.setAlignment(Pos.CENTER_LEFT); return wrapGroup(r, "Basic Shapes");
     }
-
-    private VBox buildFeaturesGroup() {
-        return wrapGroup(new HBox(4, sketchButton, extrudeButton, extrudePanel, sketchPanel), "Features");
-    }
-
+    private VBox buildFeaturesGroup() { return wrapGroup(new HBox(4, sketchButton, sketchPanel, extrudeButton, extrudePanel), "Features"); }
     private VBox buildMachiningGroup() {
-        HBox machiningRow = new HBox(4, machiningButton, machiningPanel);
-        machiningRow.setAlignment(Pos.CENTER_LEFT);
-        return wrapGroup(machiningRow, "Machining");
+        HBox r = new HBox(4, machiningButton, machiningPanel); r.setAlignment(Pos.CENTER_LEFT); return wrapGroup(r, "Machining");
     }
 
     private VBox wrapGroup(HBox buttonsRow, String labelText) {
@@ -187,6 +184,9 @@ public class ribbon_ui_main extends HBox {
     public void setOnCutoutRequested(java.util.function.Consumer<ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape> cb) { machiningPanel.setOnCutoutRequested(cb); }
     public void setOnLinearPatternRequested(Runnable r) { this.onLinearPatternRequested = r; machiningPanel.setOnLinearPatternRequested(r); }
     public void setOnCircularPatternRequested(Runnable r) { this.onCircularPatternRequested = r; machiningPanel.setOnCircularPatternRequested(r); }
+    public void setOnFilletRequested(Runnable r) { this.onFilletRequested = r; machiningPanel.setOnFilletRequested(r); }
+    public void setOnChamferRequested(Runnable r) { this.onChamferRequested = r; machiningPanel.setOnChamferRequested(r); }
+    public void setOnDraftRequested(Runnable r) { this.onDraftRequested = r; machiningPanel.setOnDraftRequested(r); }
 
     public void setOnShapeSelected(Consumer<basic_shapes_ui_main> cb) { this.onShapeSelected = cb; }
 

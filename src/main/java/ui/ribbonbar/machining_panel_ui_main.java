@@ -27,13 +27,18 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
 
     private final Button btnCatCutouts = new Button("Cutouts");
     private final Button btnCatPatterns = new Button("Patterns");
+    private final Button btnCatEdges = new Button("Edges");
     private final HBox paneCutouts;
     private final HBox panePatterns;
+    private final HBox paneEdges;
 
     private Consumer<CutoutShape> onCutoutRequested;
     private Runnable onHoleRequested;
     private Runnable onLinearPatternRequested;
     private Runnable onCircularPatternRequested;
+    private Runnable onFilletRequested;
+    private Runnable onChamferRequested;
+    private Runnable onDraftRequested;
 
     public machining_panel_ui_main() {
         setAlignment(Pos.CENTER_LEFT);
@@ -45,11 +50,13 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
                  "-fx-border-color: " + framework_ui_main.SHAPES_PANEL_BORDER + "; " +
                  "-fx-border-radius: 4; -fx-background-radius: 4;");
 
-        initCategoryBtn(btnCatCutouts, true);
-        initCategoryBtn(btnCatPatterns, false);
-        btnCatCutouts.setOnAction(e -> selectCategory(true));
-        btnCatPatterns.setOnAction(e -> selectCategory(false));
-        VBox catCol = new VBox(2, btnCatCutouts, btnCatPatterns);
+        initCategoryBtn(btnCatCutouts, true, "Holes and Cutouts");
+        initCategoryBtn(btnCatPatterns, false, "Linear and Circular Patterns");
+        initCategoryBtn(btnCatEdges, false, "Fillet, Chamfer, and Draft");
+        btnCatCutouts.setOnAction(e -> selectCategory(0));
+        btnCatPatterns.setOnAction(e -> selectCategory(1));
+        btnCatEdges.setOnAction(e -> selectCategory(2));
+        VBox catCol = new VBox(2, btnCatCutouts, btnCatPatterns, btnCatEdges);
         catCol.setAlignment(Pos.CENTER);
 
         Color iconColor = Color.web(framework_ui_main.PRIMARY_BRAND_COLOR);
@@ -74,15 +81,22 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
         panePatterns = new HBox(4,
             createItem("Linear", ribbonicons_ui_main.createLinearPatternIcon(15, iconColor), () -> {
                 if (onLinearPatternRequested != null) onLinearPatternRequested.run();
-            }),
+            }, "Pattern cutouts along linear axes"),
             createItem("Circular", ribbonicons_ui_main.createCircularPatternIcon(15, iconColor), () -> {
                 if (onCircularPatternRequested != null) onCircularPatternRequested.run();
-            })
+            }, "Pattern cutouts in a circular ring")
         );
         panePatterns.setVisible(false);
         panePatterns.setManaged(false);
+        paneEdges = new HBox(4,
+            createItem("Fillet", ribbonicons_ui_main.createFilletIcon(15, iconColor), () -> { if (onFilletRequested != null) onFilletRequested.run(); }, "Round selected eligible edges using a radius"),
+            createItem("Chamfer", ribbonicons_ui_main.createChamferIcon(15, iconColor), () -> { if (onChamferRequested != null) onChamferRequested.run(); }, "Bevel selected eligible edges using a distance"),
+            createItem("Draft", ribbonicons_ui_main.createDraftIcon(15, iconColor), () -> { if (onDraftRequested != null) onDraftRequested.run(); }, "Apply a draft angle to planar side faces")
+        );
+        paneEdges.setVisible(false);
+        paneEdges.setManaged(false);
 
-        StackPane contentStack = new StackPane(paneCutouts, panePatterns);
+        StackPane contentStack = new StackPane(paneCutouts, panePatterns, paneEdges);
         contentStack.setAlignment(Pos.CENTER_LEFT);
 
         Button closeBtn = new Button("✕");
@@ -105,6 +119,9 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
     public void setOnHoleRequested(Runnable r) { this.onHoleRequested = r; }
     public void setOnLinearPatternRequested(Runnable r) { this.onLinearPatternRequested = r; }
     public void setOnCircularPatternRequested(Runnable r) { this.onCircularPatternRequested = r; }
+    public void setOnFilletRequested(Runnable r) { this.onFilletRequested = r; }
+    public void setOnChamferRequested(Runnable r) { this.onChamferRequested = r; }
+    public void setOnDraftRequested(Runnable r) { this.onDraftRequested = r; }
 
     public void show() { setVisible(true); setManaged(true); }
     public void hide() { setVisible(false); setManaged(false); }
@@ -112,17 +129,22 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
     @Override public boolean isPanelVisible() { return isVisible(); }
     @Override public Node asNode() { return this; }
 
-    private void selectCategory(boolean isCutouts) {
-        paneCutouts.setVisible(isCutouts); paneCutouts.setManaged(isCutouts);
-        panePatterns.setVisible(!isCutouts); panePatterns.setManaged(!isCutouts);
-        btnCatCutouts.setStyle(getCategoryStyle(isCutouts));
-        btnCatPatterns.setStyle(getCategoryStyle(!isCutouts));
+    private void selectCategory(int cat) {
+        paneCutouts.setVisible(cat == 0); paneCutouts.setManaged(cat == 0);
+        panePatterns.setVisible(cat == 1); panePatterns.setManaged(cat == 1);
+        paneEdges.setVisible(cat == 2); paneEdges.setManaged(cat == 2);
+        btnCatCutouts.setStyle(getCategoryStyle(cat == 0));
+        btnCatPatterns.setStyle(getCategoryStyle(cat == 1));
+        btnCatEdges.setStyle(getCategoryStyle(cat == 2));
     }
 
-    private void initCategoryBtn(Button b, boolean active) {
+    private void initCategoryBtn(Button b, boolean active, String tip) {
         b.setPrefWidth(60); b.setPrefHeight(18);
         b.setStyle(getCategoryStyle(active));
+        if (tip != null) b.setTooltip(new javafx.scene.control.Tooltip(tip));
     }
+
+    private void initCategoryBtn(Button b, boolean active) { initCategoryBtn(b, active, null); }
 
     private String getCategoryStyle(boolean active) {
         if (active) {
@@ -134,9 +156,10 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
                "-fx-font-size: 9px; -fx-background-radius: 3; -fx-padding: 1 4 1 4; -fx-cursor: hand;";
     }
 
-    private Button createItem(String label, Node icon, Runnable action) {
+    private Button createItem(String label, Node icon, Runnable action, String tip) {
         Button b = new Button();
         b.setPrefWidth(54); b.setPrefHeight(40);
+        if (tip != null) b.setTooltip(new javafx.scene.control.Tooltip(tip));
         VBox vb = new VBox(1);
         vb.setAlignment(Pos.CENTER);
         Label lbl = new Label(label);
@@ -153,6 +176,8 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
         b.setOnAction(e -> { if (action != null) action.run(); });
         return b;
     }
+
+    private Button createItem(String label, Node icon, Runnable action) { return createItem(label, icon, action, null); }
 
     private Node loadIcon(String path, Node fallback) {
         try (InputStream is = getClass().getResourceAsStream(path)) {

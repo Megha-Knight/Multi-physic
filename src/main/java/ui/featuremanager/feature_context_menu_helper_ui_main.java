@@ -68,6 +68,27 @@ public final class feature_context_menu_helper_ui_main {
             ren.setOnAction(e -> promptRename("Rename Extrude", item.getExtrude().getName(), n -> { item.getExtrude().setName(n); item.getParentShape().rebuild(); editor.notifyShapesChanged(); }));
             tog.setOnAction(e -> { item.getExtrude().setVisible(!item.getExtrude().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
             cm.getItems().addAll(edit, ren, tog, new SeparatorMenuItem(), del);
+        } else if (item.isFillet()) {
+            MenuItem edit = new MenuItem("Edit Fillet..."), del = new MenuItem("Delete Fillet"),
+                     tog = new MenuItem(item.getFillet().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
+            edit.setOnAction(e -> editor.openFilletEditor(item.getParentShape(), item.getFillet()));
+            del.setOnAction(e -> { item.getParentShape().removeFillet(item.getFillet().getId()); editor.notifyShapesChanged(); });
+            tog.setOnAction(e -> { item.getFillet().setVisible(!item.getFillet().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
+            cm.getItems().addAll(edit, tog, new SeparatorMenuItem(), del);
+        } else if (item.isChamfer()) {
+            MenuItem edit = new MenuItem("Edit Chamfer..."), del = new MenuItem("Delete Chamfer"),
+                     tog = new MenuItem(item.getChamfer().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
+            edit.setOnAction(e -> editor.openChamferEditor(item.getParentShape(), item.getChamfer()));
+            del.setOnAction(e -> { item.getParentShape().removeChamfer(item.getChamfer().getId()); editor.notifyShapesChanged(); });
+            tog.setOnAction(e -> { item.getChamfer().setVisible(!item.getChamfer().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
+            cm.getItems().addAll(edit, tog, new SeparatorMenuItem(), del);
+        } else if (item.isDraft()) {
+            MenuItem edit = new MenuItem("Edit Draft..."), del = new MenuItem("Delete Draft"),
+                     tog = new MenuItem(item.getDraft().isVisible() ? "Suppress / Hide" : "Unsuppress / Show");
+            edit.setOnAction(e -> editor.openDraftEditor(item.getParentShape(), item.getDraft()));
+            del.setOnAction(e -> { item.getParentShape().removeDraft(item.getDraft().getId()); editor.notifyShapesChanged(); });
+            tog.setOnAction(e -> { item.getDraft().setVisible(!item.getDraft().isVisible()); item.getParentShape().rebuild(); editor.notifyShapesChanged(); });
+            cm.getItems().addAll(edit, tog, new SeparatorMenuItem(), del);
         } else if (item.isSketch()) {
             MenuItem edit = new MenuItem("Edit Sketch..."), del = new MenuItem("Delete Sketch");
             edit.setOnAction(e -> { if (onSketch != null) onSketch.accept(item.getSketch()); });

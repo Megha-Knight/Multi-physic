@@ -26,11 +26,12 @@ public class sketch_controller_ui_main {
     private double arcRadius = 0.0, arcStartAngle = 0.0;
     private sketch_entity_ui_main selectedEntity = null;
 
-    public sketch_controller_ui_main(sketch_mode_ui_main mode, Runnable onClose) {
+    public sketch_controller_ui_main(sketch_mode_ui_main mode, Runnable onFinish, Runnable onCancel) {
         this.mode = mode;
-        this.hud = new sketch_hud_overlay_ui_main(onClose);
-        mode.setOnModeChanged(this::onModeUpdated);
+        this.hud = new sketch_hud_overlay_ui_main(onFinish, onCancel);
+        mode.addOnModeChanged(this::onModeUpdated);
     }
+    public sketch_controller_ui_main(sketch_mode_ui_main mode, Runnable onClose) { this(mode, onClose, onClose); }
 
     public Group getView() { return view; } public Group getPreview() { return preview; }
     public sketch_hud_overlay_ui_main getHud() { return hud; } public State getState() { return state; }

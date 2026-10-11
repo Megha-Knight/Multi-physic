@@ -14,13 +14,8 @@ import ui.workspace.drafting.faces.face_overlay_ui_main;
 import ui.workspace.drafting.faces.face_reference_ui_main;
 import ui.workspace.drafting.faces.face_picker_ui_main;
 import ui.workspace.drafting.dimensions.dimension_editor_dialog_ui_main;
-import ui.workspace.drafting.holes.hole_feature_ui_main;
-import ui.workspace.drafting.holes.hole_overlay_ui_main;
-import ui.workspace.drafting.holes.hole_editor_dialog_ui_main;
-import ui.workspace.drafting.holes.hole_pattern_ui_main;
-import ui.workspace.drafting.holes.pattern_editor_dialog_ui_main;
-import ui.workspace.drafting.extrude.extrude_feature_ui_main;
-import ui.workspace.drafting.extrude.extrude_editor_dialog_ui_main;
+import ui.workspace.drafting.holes.*;
+import ui.workspace.drafting.extrude.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -121,6 +116,10 @@ public class shape_editor_ui_main {
 
     public void openDimensionEditor(shape_item_ui_main s) { if (s != null) dimension_editor_dialog_ui_main.open(s, this, container.getScene() != null ? container.getScene().getWindow() : null); } public void openHoleEditor(shape_item_ui_main s, hole_feature_ui_main h) { if (s != null && h != null) hole_editor_dialog_ui_main.open(s, h, this, container.getScene() != null ? container.getScene().getWindow() : null); }
     public void openExtrudeEditor(shape_item_ui_main s, extrude_feature_ui_main e) { if (s != null && e != null) extrude_editor_dialog_ui_main.open(s, e, this, container.getScene() != null ? container.getScene().getWindow() : null); } public void openPatternEditor(shape_item_ui_main s, hole_pattern_ui_main p) { if (s != null && p != null) pattern_editor_dialog_ui_main.open(s, p, this, container.getScene() != null ? container.getScene().getWindow() : null); }
+    private javafx.stage.Window editorWindow() { return container.getScene() != null ? container.getScene().getWindow() : null; }
+    public void openFilletEditor(shape_item_ui_main s, ui.workspace.drafting.machining.fillet_feature_ui_main f) { if (s != null && f != null) ui.workspace.drafting.machining.machining_dialog_ui_main.openEdit(s, f, this, editorWindow()); }
+    public void openChamferEditor(shape_item_ui_main s, ui.workspace.drafting.machining.chamfer_feature_ui_main c) { if (s != null && c != null) ui.workspace.drafting.machining.machining_dialog_ui_main.openEdit(s, c, this, editorWindow()); }
+    public void openDraftEditor(shape_item_ui_main s, ui.workspace.drafting.machining.draft_feature_ui_main d) { if (s != null && d != null) ui.workspace.drafting.machining.machining_dialog_ui_main.openEdit(s, d, this, editorWindow()); }
     public void clearHistory() { history.clear(); } public List<shape_item_ui_main> getShapes() { return new ArrayList<>(shapes); } public shape_item_ui_main getSelectedShape()  { return selectedShape; } public axis_drag_controller_ui_main getAxisDrag() { return axisDrag; }
     public face_reference_ui_main getActiveFace() { return activeFace; } public hole_feature_ui_main getSelectedHole() { return selectedHole; } public shape_item_ui_main getSelectedHoleShape() { return selectedHoleShape; } public extrude_feature_ui_main getSelectedExtrude() { return selectedExtrude; } public hole_pattern_ui_main getSelectedPattern() { return selectedPattern; } public shape_item_ui_main getSelectedPatternShape() { return selectedPatternShape; }
     public ui.workspace.drafting.topology.topology_derived_face_ui_main getSelectedDerivedFace() { return selectedDerivedFace; }

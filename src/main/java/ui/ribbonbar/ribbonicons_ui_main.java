@@ -88,6 +88,25 @@ public final class ribbonicons_ui_main {
         scaleIcon(path, size);
         return path;
     }
+    public static Node createFilletIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 2 14 L 2 6 Q 2 2 6 2 L 14 2");
+        path.setFill(Color.TRANSPARENT); path.setStroke(color); path.setStrokeWidth(1.5);
+        scaleIcon(path, size); return path;
+    }
+    public static Node createChamferIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 2 14 L 2 7 L 7 2 L 14 2");
+        path.setFill(Color.TRANSPARENT); path.setStroke(color); path.setStrokeWidth(1.5);
+        scaleIcon(path, size); return path;
+    }
+    public static Node createDraftIcon(double size, Color color) {
+        SVGPath path = new SVGPath();
+        path.setContent("M 4 14 L 7 2 L 12 2 L 9 14 Z");
+        path.setFill(Color.TRANSPARENT); path.setStroke(color); path.setStrokeWidth(1.5);
+        scaleIcon(path, size); return path;
+    }
+
     /** Machining tool / end mill cutter icon. */
     public static Node createMachiningIcon(double size, Color color) {
         SVGPath path = new SVGPath();
