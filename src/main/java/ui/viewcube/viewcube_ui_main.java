@@ -49,8 +49,8 @@ public class viewcube_ui_main extends StackPane {
 
         cubeRx = new Rotate(mainRx.getAngle(), Rotate.X_AXIS);
         cubeRy = new Rotate(mainRy.getAngle(), Rotate.Y_AXIS);
-        cubeRx.angleProperty().bind(mainRx.angleProperty());
-        cubeRy.angleProperty().bind(mainRy.angleProperty());
+        cubeRx.angleProperty().bind(mainRx.angleProperty().negate());
+        cubeRy.angleProperty().bind(mainRy.angleProperty().negate());
 
         Group root3D = new Group();
         Group cubePivot = new Group(buildFlushFaces(), buildMiniAxes());
@@ -90,12 +90,12 @@ public class viewcube_ui_main extends StackPane {
 
     private Group buildFlushFaces() {
         Group g = new Group();
-        // FRONT (Z = -H, facing camera along +Z) -> Front View (0, 0)
-        g.getChildren().add(createFace(new Point3D(-H,-H,-H), new Point3D(H,-H,-H),
-                                       new Point3D(-H, H,-H), new Point3D(H, H,-H), "FRONT", 0.0, 0.0));
-        // BACK (Z = +H, facing away from camera) -> Back View (0, 180)
+        // FRONT (Z = +H, facing away from camera in default view) -> Front View (0, 180)
         g.getChildren().add(createFace(new Point3D(H,-H, H), new Point3D(-H,-H, H),
-                                       new Point3D(H, H, H), new Point3D(-H, H, H), "BACK", 0.0, 180.0));
+                                       new Point3D(H, H, H), new Point3D(-H, H, H), "FRONT", 0.0, 180.0));
+        // BACK (Z = -H, facing camera in default view) -> Back View (0, 0)
+        g.getChildren().add(createFace(new Point3D(-H,-H,-H), new Point3D(H,-H,-H),
+                                       new Point3D(-H, H,-H), new Point3D(H, H,-H), "BACK", 0.0, 0.0));
         // TOP (Y = -H, sky / +Z in world) -> Top View (-89.9, 0)
         g.getChildren().add(createFace(new Point3D(-H,-H, H), new Point3D(H,-H, H),
                                        new Point3D(-H,-H,-H), new Point3D(H,-H,-H), "TOP", -89.9, 0.0));

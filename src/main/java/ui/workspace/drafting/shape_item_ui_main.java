@@ -32,6 +32,7 @@ public class shape_item_ui_main {
     private String consumedBy = null, faceOwnerId = null, selectedExtrudeId = null;
     private Point3D uAxis = new Point3D(1, 0, 0), vAxis = new Point3D(0, 0, 1), normal = new Point3D(0, -1, 0);
     private face_kind_ui_main faceKind = null;
+    private double localHitU = 0, localHitV = 0;
     private final List<hole_feature_ui_main> holes = new java.util.ArrayList<>();
     private final List<hole_pattern_ui_main> patterns = new java.util.ArrayList<>();
     private final List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions = new java.util.ArrayList<>();
@@ -67,6 +68,7 @@ public class shape_item_ui_main {
     public Point3D getWorldCenter() { Point3D c = getCenter(); return new Point3D(worldX + c.getX(), worldY + c.getY(), worldZ + c.getZ()); }
     public Point3D getUAxis() { return uAxis; } public Point3D getVAxis() { return vAxis; } public Point3D getFaceNormal() { return normal; }
     public String getFaceOwnerId() { return faceOwnerId; } public face_kind_ui_main getFaceKind() { return faceKind; } public boolean isOnFace() { return faceOwnerId != null; }
+    public double getLocalHitU() { return localHitU; } public double getLocalHitV() { return localHitV; }
     public boolean isConsumed() { return consumed; } public void setConsumed(boolean c) { this.consumed = c; rootGroup.setVisible(!c); }
     public String getConsumedBy() { return consumedBy; } public void setConsumedBy(String cb) { this.consumedBy = cb; }
     public List<hole_feature_ui_main> getHoles() { return holes; } public boolean hasHoles() { return !holes.isEmpty(); }
@@ -127,12 +129,20 @@ public class shape_item_ui_main {
     }
     public boolean isFaceOwnerPresent(java.util.Collection<shape_item_ui_main> shapes) {
         if (faceOwnerId == null) return true; if (shapes == null) return false;
-        for (shape_item_ui_main s : shapes) if (s != null && faceOwnerId.equals(s.getId())) return true;
-        return false;
+        for (shape_item_ui_main s : shapes) if (s != null && faceOwnerId.equals(s.getId())) return true; return false;
     }
-    public void setFacePlane(Point3D u, Point3D v, Point3D n, String ownerId, face_kind_ui_main kind) {
-        if (u != null) this.uAxis = u; if (v != null) this.vAxis = v; if (n != null) this.normal = n;
-        this.faceOwnerId = ownerId; this.faceKind = kind; rebuild();
+    public void setFacePlane(Point3D u, Point3D v, Point3D n, String ownerId, face_kind_ui_main kind) { if (u != null) this.uAxis = u; if (v != null) this.vAxis = v; if (n != null) this.normal = n; this.faceOwnerId = ownerId; this.faceKind = kind; rebuild(); }
+    public void setFacePlane(Point3D u, Point3D v, Point3D n, String ownerId, face_kind_ui_main kind, double hitU, double hitV) { if (u != null) this.uAxis = u; if (v != null) this.vAxis = v; if (n != null) this.normal = n; this.faceOwnerId = ownerId; this.faceKind = kind; this.localHitU = hitU; this.localHitV = hitV; rebuild(); }
+    // Re-derives B's world position/axes from A's CURRENT transform. Called BEFORE rebuild() by cascade
+    // handlers that have the full shape list. Does not call rebuild() — caller controls sequencing.
+    // Owner-deleted (ref==null): B keeps last-known position, no crash.
+    public static void recomputeWorldPositionFromOwner(shape_item_ui_main b, shape_item_ui_main owner) {
+        if (b == null || owner == null || b.faceKind == null) return;
+        ui.workspace.drafting.faces.face_reference_ui_main ref = ui.workspace.drafting.topology.topology_geometry_helper_ui_main.reconstructFaceReference(owner, b.faceKind, b.localHitU, b.localHitV);
+        if (ref == null) return;
+        Point3D hit = ref.getWorldHitPoint(); b.worldX = hit.getX(); b.worldY = hit.getY(); b.worldZ = hit.getZ();
+        b.worldTx.setX(b.worldX); b.worldTx.setY(b.worldY); b.worldTx.setZ(b.worldZ);
+        b.uAxis = ref.getUAxis(); b.vAxis = ref.getVAxis(); b.normal = ref.getWorldNormal();
     }
     public void translate(double dx, double dz) { applyWorldDelta(dx, 0, dz); }
 
@@ -169,10 +179,7 @@ public class shape_item_ui_main {
     private void buildResizeHandles() {
         PhongMaterial hMat = new PhongMaterial(Color.web(framework_ui_main.DRAFT_HANDLE_COLOR));
         List<Point3D> handles = getControlHandles();
-        for (int i = 0; i < handles.size(); i++) {
-            Point3D h = handles.get(i); Sphere s = new Sphere(i == 0 ? framework_ui_main.DRAFT_HANDLE_RADIUS * 1.3 : framework_ui_main.DRAFT_HANDLE_RADIUS);
-            s.setMaterial(hMat); s.setTranslateX(h.getX()); s.setTranslateY(h.getY()); s.setTranslateZ(h.getZ()); handlesGroup.getChildren().add(s);
-        }
+        for (int i = 0; i < handles.size(); i++) { Point3D h = handles.get(i); Sphere s = new Sphere(i == 0 ? framework_ui_main.DRAFT_HANDLE_RADIUS * 1.3 : framework_ui_main.DRAFT_HANDLE_RADIUS); s.setMaterial(hMat); s.setTranslateX(h.getX()); s.setTranslateY(h.getY()); s.setTranslateZ(h.getZ()); handlesGroup.getChildren().add(s); }
     }
     public List<Point3D> getControlHandles() { return shape_handles_ui_main.getControlHandles(type, p1, p2); }
     public void moveHandle(int idx, Point3D p) { Point3D[] u = shape_handles_ui_main.moveHandle(type, p1, p2, idx, p); this.p1 = u[0]; this.p2 = u[1]; updateRotationPivot(); revalidateFeatures(); rebuild(); }
@@ -180,13 +187,7 @@ public class shape_item_ui_main {
     public ui.workspace.drafting.topology.topology_body_ui_main getTopology() { return ui.workspace.drafting.topology.topology_body_ui_main.buildTopology(this); }
     public boolean containsNode(Node node) { for (Node c = node; c != null; c = c.getParent()) if (c == rootGroup) return true; return false; }
     public int findHandleByNode(Node node) { return (node == null) ? -1 : handlesGroup.getChildren().indexOf(node); }
-    public int findHandleNear(Point3D groundPt, double threshold) {
-        List<Point3D> handles = getControlHandles();
-        for (int i = 0; i < handles.size(); i++) {
-            Point3D h = handles.get(i); if (new Point3D(h.getX() + worldX, 0, h.getZ() + worldZ).distance(groundPt) <= threshold) return i;
-        }
-        return -1;
-    }
+    public int findHandleNear(Point3D groundPt, double threshold) { List<Point3D> handles = getControlHandles(); for (int i = 0; i < handles.size(); i++) { Point3D h = handles.get(i); if (new Point3D(h.getX() + worldX, 0, h.getZ() + worldZ).distance(groundPt) <= threshold) return i; } return -1; }
     public boolean isNear(Point3D groundPt, double threshold) { return shape_rotation_helper_ui_main.isPointNearShape(this, groundPt, threshold); }
     public String formatDimensions() { return shape_item_formatter_ui_main.formatDimensions(this); }
     public String getId() { return id; } public String getName() { return name != null ? name : ""; } public void setName(String name) { this.name = name; }

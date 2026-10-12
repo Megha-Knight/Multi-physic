@@ -79,42 +79,34 @@ public class UI_Main extends BorderPane {
         spaceBarShortcut = new space_bar_ui_main(workspace3D.getCameraController());
         viewShortcuts = new viewshortcuts_ui_main(workspace3D.getCameraController());
         viewShortcuts.setOnToggleOrthographic(workspace3D::toggleProjection);
-
+        ribbonBar.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> ui.workspace.drafting.faces.viewport_color_state_ui_main.setViewportFocused(false));
+        navigationBar.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> ui.workspace.drafting.faces.viewport_color_state_ui_main.setViewportFocused(false));
+        workspace3D.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> ui.workspace.drafting.faces.viewport_color_state_ui_main.setViewportFocused(true));
+        workspace3D.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_ENTERED, e -> ui.workspace.drafting.faces.viewport_color_state_ui_main.setViewportFocused(true));
         setupDocumentSync();
         initShortcuts();
 
-        sceneProperty().addListener((obs, o, sc) -> {
-            if (sc != null) {
-                shortcuts.attach(sc); spaceBarShortcut.attach(sc); viewShortcuts.attach(sc);
-            }
-        });
-
+        sceneProperty().addListener((obs, o, sc) -> { if (sc != null) { shortcuts.attach(sc); spaceBarShortcut.attach(sc); viewShortcuts.attach(sc); } });
         docHandler.onNewFile();
     }
 
     private void setupRibbonAndDrafting() {
-        ribbonBar.getNewButton().setPrimaryAction(docHandler::onNewFile);
-        ribbonBar.getOpenButton().setPrimaryAction(docHandler::onOpenFile);
+        ribbonBar.getNewButton().setPrimaryAction(docHandler::onNewFile); ribbonBar.getOpenButton().setPrimaryAction(docHandler::onOpenFile);
         ribbonBar.setOnSave(docHandler::onSaveFile); ribbonBar.setOnSaveAs(docHandler::onSaveAsFile);
         ribbonBar.setOnSaveRoot(docHandler::onSaveRootFile); ribbonBar.setOnSaveIn(docHandler::onSaveInFile);
 
         ribbonBar.setOnSketchRequested(() -> ui_sketch_action_helper_ui_main.handleCreateOrEnterSketch(this, workspace3D.getSketchMode()));
-        ribbonBar.getSketchPanel().bind(workspace3D.getSketchController(),
-            () -> workspace3D.getSketchMode().exit(true, workspace3D.getShapeEditor()),
-            () -> workspace3D.getSketchMode().exit(false, workspace3D.getShapeEditor()));
+        ribbonBar.getSketchPanel().bind(workspace3D.getSketchController(), () -> workspace3D.getSketchMode().exit(true, workspace3D.getShapeEditor()), () -> workspace3D.getSketchMode().exit(false, workspace3D.getShapeEditor()));
         workspace3D.getSketchMode().addOnModeChanged(() -> ribbonBar.getSketchPanel().setSketchModeActive(workspace3D.getSketchMode().isActive()));
         workspace3D.getSketchMode().setStatusCallback(footerBar::setStatusText);
 
         ribbonBar.setOnExtrudeRequested(() -> ui_feature_action_helper_ui_main.handleExtrude(this)); ribbonBar.getExtrudePanel().setOnApply(cfg -> ui_feature_action_helper_ui_main.applyExtrudeConfig(this, cfg));
+        ribbonBar.getExtrudePanel().setOnProfileArmed(shape -> workspace3D.getDrafter().setShape(shape));
         ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this)); ribbonBar.setOnCutoutRequested(s -> ui_feature_action_helper_ui_main.handleCutout(this, s));
         ribbonBar.setOnLinearPatternRequested(() -> ui_feature_action_helper_ui_main.handleLinearPattern(this)); ribbonBar.setOnCircularPatternRequested(() -> ui_feature_action_helper_ui_main.handleCircularPattern(this));
         ribbonBar.setOnFilletRequested(() -> ui_feature_action_helper_ui_main.handleFillet(this)); ribbonBar.setOnChamferRequested(() -> ui_feature_action_helper_ui_main.handleChamfer(this)); ribbonBar.setOnDraftRequested(() -> ui_feature_action_helper_ui_main.handleDraft(this));
 
-        ribbonBar.setOnShapeSelected(shape -> {
-            workspace3D.getDrafter().setShape(shape);
-            footerBar.setStatusText(shape.getLabel() + " drafting active: Click & drag on XY ground plane. ESC to cancel.");
-        });
-
+        ribbonBar.setOnShapeSelected(shape -> { workspace3D.getDrafter().setShape(shape); footerBar.setStatusText(shape.getLabel() + " drafting active: Click & drag on XY ground plane. ESC to cancel."); });
         workspace3D.getDrafter().setStatusCallback(footerBar::setStatusText);
         workspace3D.getShapeEditor().setStatusCallback(footerBar::setStatusText);
     }

@@ -136,6 +136,7 @@ public final class document_parse_helper_ui_main {
     public static void commitShape(List<ui.workspace.drafting.shape_item_ui_main> list, ui.workspace.shapes.basic_shapes_ui_main type, String id, String name,
                                    Point3D p1, Point3D p2, double tx, double ty, double tz, double rotX, double rotY,
                                    Point3D uAxis, Point3D vAxis, Point3D norm, String faceOwner, face_kind_ui_main faceKind,
+                                   double faceHitU, double faceHitV,
                                    boolean consumed, String consumedBy, List<hole_feature_ui_main> holes, List<hole_pattern_ui_main> patterns,
                                    List<ui.workspace.drafting.extrude.extrude_feature_ui_main> extrusions, List<ui.workspace.drafting.sketch.sketch_feature_ui_main> sketches,
                                    List<ui.workspace.drafting.machining.chamfer_feature_ui_main> chamfers, List<ui.workspace.drafting.machining.fillet_feature_ui_main> fillets,
@@ -144,7 +145,7 @@ public final class document_parse_helper_ui_main {
                                    List<ui.workspace.drafting.sweep.sweep_feature_ui_main> sweeps, List<ui.workspace.drafting.revolve.revolve_feature_ui_main> revolves) {
         if (type == null || p1 == null || p2 == null) return;
         var item = new ui.workspace.drafting.shape_item_ui_main(id, name, type, p1, p2, tx, ty, tz, rotX, rotY);
-        if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind);
+        if (uAxis != null) item.setFacePlane(uAxis, vAxis, norm, faceOwner, faceKind, faceHitU, faceHitV);
         item.setConsumed(consumed); if (consumedBy != null) item.setConsumedBy(consumedBy);
         for (hole_feature_ui_main h : holes) item.addHole(h);
         for (hole_pattern_ui_main p : patterns) {

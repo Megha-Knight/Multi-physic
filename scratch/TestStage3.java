@@ -192,12 +192,19 @@ public class TestStage3 {
 
         topology_body_ui_main topo = cube.getTopology();
         int boreCount = 0;
+        topology_derived_face_ui_main entryWall = null, exitWall = null;
         for (topology_derived_face_ui_main df : topo.getDerivedFaces()) {
             if (df.getRegionKind() == hole_region_kind_ui_main.BORE_WALL && "H_THRU_UNIQ".equals(df.getCreatingFeatureId())) {
                 boreCount++;
+                if (df.getSourceFaceKind() == face_kind_ui_main.TOP) entryWall = df;
+                else if (df.getSourceFaceKind() == face_kind_ui_main.BOTTOM) exitWall = df;
             }
         }
-        check("Bore Wall Uniqueness: Exactly ONE bore wall per through-hole", boreCount == 1);
+        // Through-holes now register one BORE_WALL per face (entry + exit) — two total.
+        check("Bore Wall Uniqueness: Exactly TWO bore walls per through-hole (entry + exit)", boreCount == 2);
+        check("Bore Wall Uniqueness: Entry wall on TOP face", entryWall != null);
+        check("Bore Wall Uniqueness: Exit wall on BOTTOM face", exitWall != null);
+        check("Bore Wall Uniqueness: Entry and exit walls have distinct IDs", entryWall != null && exitWall != null && !entryWall.getId().equals(exitWall.getId()));
     }
 
     // ============================================================

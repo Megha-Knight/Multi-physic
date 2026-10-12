@@ -1,0 +1,225 @@
+<USER_REQUEST>
+# TASK: Fix hole-overlay rendering bugs, fix Sketch's dead-click gap, rename Feature
+#       Manager labels, auto-expand hole nodes, and redesign Extrude's creation flow
+
+Follow the project's existing rules: 200-line file limit, `_ui_main.java` naming
+(UI_Main.java excepted), only touch src/main/java/ui/ and src/main/resources/,
+never modify pom.xml, never call rebuild() inside applyWorldDelta()/
+setWorldTranslation(), reuse existing verified helpers instead of reimplementing
+them (this has been the root cause of multiple bugs already fixed in this project —
+see Task 2 below for why this matters here specifically).
+
+Do these in order. Items 1, 3, 4, 5 are confirmed bugs/gaps with precise causes.
+Item 2 needs investigation before a fix — don't guess at it blind.
+
+---
+
+## TASK 1 (confirmed, exact fix): Wall/floor overlay ignores CutoutShape, always circular
+
+File: ui/workspace/drafting/topology/derived_region_advanced_mesh_ui_main.java
+Also: ui/workspace/drafting/topology/derived_region_visual_builder_ui_main.java (createDiskMesh)
+
+buildFrustum/buildCylinderSection/buildAnnulusSection parametrize purely by angle
+around a circle (radius * cos(a), radius * sin(a)) for every hole, regardless of
+the hole's actual CutoutShape. The real material-removal cavity (built elsewhere,
+in whatever builds the REMAINING_FACE cutout) correctly follows SQUARE/RECTANGLE/
+EQUILATERAL/RIGHT_TRIANGLE — only the decorative wall/floor overlay is circular-only.
+
+Fix: give these functions a second path for non-circular CutoutShape values that
+walks the actual polygon boundary (4 points for SQUARE/RECTANGLE, 3 for triangles)
+instead of SEGS points around a circle. Find wherever the REAL cutout boundary
+vertices are generated for non-circular shapes and reuse that exact vertex math —
+do not re-derive the polygon shape a second time independently. createDiskMesh has
+the identical circular-only assumption for HOLE_FLOOR; fix both together so wall
+and floor always agree on the same cross-section shape.
+
+Checklist:
+- [ ] Square/Rectangle/Equilateral/Right-Angle cutouts: wall and floor overlay match
+      the real cavity shape, not a circle.
+- [ ] Simple circular holes: unchanged, still circular.
+
+---
+
+## TASK 2 (investigate first, then fix): Wall/floor overlay floats outside the solid
+
+Confirmed: this is present in a build that already includes the earlier
+getCubeDimensions fix, so it is a SEPARATE, still-open bug, not a leftover
+symptom of that one.
+
+I traced the frame math this overlay depends on (getCuboidFaceFrame in
+hole_mesh_triangulator_ui_main) and it is correct: outward normals, origin at the
+real face plane, consistent per face kind. derived_region_visual_builder_ui_main's
+inDir = f.n().multiply(-1.0) is also correct given that. So the bug is NOT in the
+frame/direction math — it is most likely in the VALUES being fed into
+topology_derived_face_ui_main's depth/radius/localCenter fields, computed in
+hole_topology_builder_ui_main (not yet reviewed).
+
+Before writing a fix, read hole_topology_builder_ui_main in full and answer:
+(a) Does it compute depth/radius/localCenter independently, or does it call the
+    SAME functions that actually cut the real cavity (in hole_cuboid_builder_ui_main
+    / hole_mesh_builder_ui_main)? If independent, that is very likely the bug —
+    this project has already had two confirmed bugs (cube center/size, and the
+    circular-only wall above) caused by exactly this pattern: a visual/overlay
+    piece reimplementing a formula instead of calling the function that builds
+    the real geometry. Check this first before checking anything else.
+(b) Specifically verify localCenter's coordinate convention matches what
+    getFaceFrame/getCurvedHoleFrame expect when they do
+    f.origin().add(f.u().multiply(localCenter.X)).add(f.v().multiply(localCenter.Y))
+    — confirm localCenter is stored relative to the SAME origin point the face
+    frame uses, not relative to the face's center or some other reference point.
+(c) Verify depth is a positive distance INTO the solid in the same units the base
+    cavity uses, not inverted or using a stale/default fallback value.
+
+Once the actual divergence is found, fix it by making hole_topology_builder_ui_main
+derive these values from the same source the real cavity cutter uses, rather than
+patching the symptom with an offset constant.
+
+Checklist:
+- [ ] Drill a hole on a cube's TOP face: wall and floor sit flush inside the visible
+      cavity, with zero gap or offset from the actual opening.
+- [ ] Test on a FRONT/side face too — this bug showed on both TOP and FRONT in the
+      reported screenshots, confirm the fix isn't face-kind-specific.
+- [ ] Also re-check Image 4's "only half the hole is yellow" symptom after this fix
+      and Task 1 both land — it may already be resolved by one or both; don't treat
+      it as a separate task until confirmed it persists.
+
+---
+
+## TASK 3 (investigate first, then fix): Second hole on a face with an existing hole closes the hole visually
+
+The feature registers correctly (visible in Feature Manager) and picking/outline-
+highlight works (confirms topology data is fine), but the rendered face shows no
+opening at all. This points at the triangulation that builds one face's boundary
+with MULTIPLE inner hole loops cut into it.
+
+Read whichever function builds a face's mesh from an outer boundary plus one-or-more
+inner hole loops (likely in hole_mesh_triangulator_ui_main or
+hole_cuboid_builder_ui_main's per-face builder). hole_cuboid_builder_ui_main.findHoles()
+already correctly collects multiple holes per face into a list, so multi-hole
+support is intended — the bug is downstream of that, in the actual triangulation.
+Test specifically with two holes close together or slightly overlapping, since
+that's the reported trigger, not just two holes far apart on the same face.
+
+Checklist:
+- [ ] Two holes on the same face, spaced apart: both render correctly (regression
+      check — don't just test the failing case).
+- [ ] Two holes on the same face, close together: both render correctly, face shows
+      both openings, not a closed/unbroken surface.
+- [ ] Both holes independently selectable/colorable via Feature Manager, same as a
+      single hole already is.
+
+---
+
+## TASK 4 (confirmed, exact fix): Sketch button's primary click doesn't enter sketch mode
+
+File: ui/ribbonbar/ribbon_ui_main.java
+
+sketchButton's primary click currently only does panelCoordinator.toggle(sketchPanel)
+— shows the Select/Line/Circle/Rect/Arc/Close toolbar, but doesn't bind a live
+sketch_controller_ui_main to it. Every tool button inside that panel is gated on
+`controller != null`, so the toolbar appears fully usable but silently does nothing
+when clicked. The actual sketch-session creation only happens via the "Start Sketch"
+item hidden behind the dropdown arrow (ui_sketch_action_helper_ui_main.
+handleCreateOrEnterSketch).
+
+Fix: make sketchButton's primary action call the same handleCreateOrEnterSketch
+flow the dropdown item uses, so clicking Sketch once both creates/enters the sketch
+AND shows the now-actually-functional toolbar, instead of showing an inert toolbar
+first. Keep the dropdown menu item if useful, but both paths must route through the
+same real entry logic.
+
+Checklist:
+- [ ] Click Sketch once: toolbar appears and Line/Circle/Rect/Arc are immediately
+      functional, no second hidden step required.
+
+---
+
+## TASK 5 (confirmed, exact fixes): Feature Manager naming and auto-expand
+
+File: ui/workspace/drafting/extrude/extrude_feature_ui_main.java (line 103)
+    String shapeStr = (profileShape != null) ? profileShape.getLabel() : "Boss";
+Change to produce names like "Extruded Cylinder" / "Extruded Cube" etc. — confirm
+what profileShape.getLabel() actually returns for each CutoutShape first, so the
+combined phrasing reads correctly (may want a dedicated 3D-appropriate label map
+rather than reusing the 2D shape name verbatim).
+
+File: ui/workspace/drafting/topology/hole_topology_builder_ui_main.java (line 81)
+    body.getId(), id, "Remaining " + kind.getLabel(), kind, null,
+Drop the "Remaining " + prefix.
+
+File: ui/workspace/drafting/topology/hole_region_kind_ui_main.java (line 8)
+    REMAINING_FACE("Remaining Face", ...)
+Same fix — drop "Remaining" from this label too, since both sources must agree.
+
+File: ui/featuremanager/featuremanager_ui_main.java (refresh(), hNode construction)
+Tree nesting (shape -> hole -> derived faces, including through-hole dual-face
+entries) already exists and is correct — confirmed working once expanded. It's
+just collapsed by default, since only the top-level shape node calls setExpanded(true).
+Add hNode.setExpanded(true) right after each hole TreeItem is constructed, so the
+bore-wall/remaining-face children are visible without a manual click.
+
+Checklist:
+- [ ] Extrude names read "Extruded <Shape>" instead of "Boss".
+- [ ] Hole-region names no longer say "Remaining".
+- [ ] Feature Manager shows hole sub-faces expanded by default, no manual click needed.
+
+---
+
+## TASK 6: Extrude profile creation — click-and-drag icons, matching Basic Shapes
+
+File: ui/ribbonbar/extrude_ribbon_panel_ui_main.java
+
+Replace the Profile dropdown + Size/Height text fields with an icon row (Circle,
+Square, Rectangle, Equilateral, Right Angle) matching Basic Shapes' gallery exactly
+— same icons, same click-to-arm-drafting behavior. Clicking an icon arms
+shape_drafting_ui_main with that profile type, reusing the exact mechanism Basic
+Shapes already uses — do not build a parallel drafting system. The click-and-drag
+in the viewport sets the profile's footprint, same as a 2D shape draw today.
+
+Height: needs a real decision, not an implicit one — either a second drag gesture
+after the footprint is placed (e.g. drag again vertically, or Shift+drag within the
+same gesture), or a small inline numeric field that appears only after the
+footprint shape is placed. Pick one, document the choice in a comment at the call
+site, and implement consistently — don't leave it ambiguous.
+
+"Fixed or joined to the already existing primary object": for now the new
+extrusion is simply its own independent shape_item_ui_main positioned per the drag.
+True fusion/union with an existing body is the separately-requested "glue" feature
+and is explicitly OUT OF SCOPE here — do not attempt it as part of this task.
+
+Checklist:
+- [ ] Click Circle in the extrude panel, drag in the viewport: a 3D cylinder is
+      created at the dragged footprint size, no dropdown or typed number needed.
+- [ ] All five profile shapes work the same way.
+- [ ] Height-setting mechanism is implemented and documented, not left implicit.
+
+---
+
+## OUT OF SCOPE for this prompt (explicitly deferred, not forgotten)
+- "Glue"/magnetic surface-attach for arbitrary objects — idea noted, not implemented.
+- Curved-surface (cylinder/cone lateral) hole placement — still a separate, larger,
+  not-yet-started stage.
+- Chamfer/Fillet/Draft ribbon wiring (the "Modify" category + edge-pick flow) —
+  separately scoped, not part of this prompt.
+
+## MANDATORY BEFORE CALLING ANY TASK DONE
+- No file exceeds 200 lines — split into helper files early if a task pushes one close.
+- Compile clean with JDK 25.
+- For Tasks 2 and 3 specifically: report what was actually found during investigation
+  (which function/line diverged from the real geometry source) before describing the
+  fix — a "done, tests pass" summary without showing the actual root cause will not
+  be treated as verified in this thread; expect the trace to be checked against the
+  real source, the same way every fix so far in this project has been.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-11T07:54:52+05:30.
+
+The user's current state is as follows:
+Active Document: e:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\topology_derived_face_ui_main.java (LANGUAGE_JAVA)
+Cursor is on line: 107
+Other open documents:
+- e:\MultiPhysics\src\main\java\ui\workspace\drafting\topology\topology_derived_face_ui_main.java (LANGUAGE_JAVA)
+- e:\MultiPhysics\scratch\TestStage3.java (LANGUAGE_JAVA)
+Running terminal commands:
+-  & 'C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot\bin\java.exe' '@C:\User... (in e:\MultiPhysics, running for 49m12s)
+</ADDITIONAL_METADATA>

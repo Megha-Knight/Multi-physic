@@ -123,7 +123,10 @@ public class workspace_ui_main extends StackPane {
         StackPane.setAlignment(sketchController.getHud(), Pos.TOP_LEFT);
         StackPane.setMargin(sketchController.getHud(), new Insets(10));
 
-        addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, e -> sketchController.handleMouseMoved(e, this, camera, root3D));
+        addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, e -> {
+            if (!ui.workspace.drafting.faces.viewport_color_state_ui_main.isViewportFocused()) ui.workspace.drafting.faces.viewport_color_state_ui_main.setViewportFocused(true);
+            sketchController.handleMouseMoved(e, this, camera, root3D);
+        });
         addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> { if (sketchController.handleMousePressed(e, this, camera, root3D, shapeEditor)) e.consume(); });
         addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> { if (sketchController.handleKeyPressed(e, shapeEditor)) e.consume(); });
 
@@ -182,12 +185,8 @@ public class workspace_ui_main extends StackPane {
             double focalLen = (h / 2.0) / Math.tan(fovRad / 2.0);
             double projX = (w / 2.0) + (camPt.getX() * focalLen / camPt.getZ());
             double projY = (h / 2.0) + (camPt.getY() * focalLen / camPt.getZ());
-            label.setLayoutX(projX + offX);
-            label.setLayoutY(projY + offY);
-            label.setVisible(true);
-        } else {
-            label.setVisible(false);
-        }
+            label.setLayoutX(projX + offX); label.setLayoutY(projY + offY); label.setVisible(true);
+        } else label.setVisible(false);
     }
 
     public camera_controller_ui_main getCameraController() { return controller; }

@@ -18,12 +18,22 @@ public final class shape_geometry_3d_ui_main {
 
     private shape_geometry_3d_ui_main() {}
 
+    /** Typed return from {@link #getCubeDimensions} — eliminates silent index-transposition risk. */
+    public record CubeDimensions(double cx, double cy, double cz, double s) {}
+
     public static PhongMaterial createMaterial(boolean isPreview, boolean isSelected) {
-        Color c = isPreview ? Color.web(framework_ui_main.DRAFT_PREVIEW_COLOR)
-                : isSelected ? Color.web(framework_ui_main.OBJECT_SELECTED_COLOR)
+        if (isPreview) {
+            PhongMaterial mat = new PhongMaterial(Color.web(framework_ui_main.DRAFT_PREVIEW_COLOR));
+            mat.setSpecularColor(Color.web("#BAE6FD"));
+            mat.setSpecularPower(48.0);
+            return mat;
+        }
+        boolean focused = ui.workspace.drafting.faces.viewport_color_state_ui_main.isViewportFocused();
+        Color c = focused
+                ? Color.web(framework_ui_main.OBJECT_SELECTED_COLOR)
                 : Color.web(framework_ui_main.OBJECT_UNSELECTED_COLOR);
         PhongMaterial mat = new PhongMaterial(c);
-        mat.setSpecularColor(Color.web(isSelected ? "#BAE6FD" : "#5A6B7C"));
+        mat.setSpecularColor(Color.web(focused ? "#BAE6FD" : "#5A6B7C"));
         mat.setSpecularPower(48.0);
         return mat;
     }
@@ -33,18 +43,31 @@ public final class shape_geometry_3d_ui_main {
     }
 
     public static Node createCube(Point3D p1, Point3D p2, boolean isPreview, boolean isSelected) {
-        double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ();
-        double s = Math.max(Math.abs(dx), Math.abs(dz));
-        if (s < 0.2) return new Group();
+        CubeDimensions dim = getCubeDimensions(p1, p2);
+        if (dim.s() < 0.2) return new Group();
 
-        Box box = new Box(s, s, s);
+        Box box = new Box(dim.s(), dim.s(), dim.s());
         box.setMaterial(createMaterial(isPreview, isSelected));
+        box.setTranslateX(dim.cx());
+        box.setTranslateY(dim.cy());
+        box.setTranslateZ(dim.cz());
+        return new Group(box);
+    }
+
+    /**
+     * Returns the cube's centre and uniform side-length for the given p1/p2,
+     * using exactly the same formula as {@link #createCube}.
+     *
+     * @return {@link CubeDimensions} with cx/cy/cz = box centre, s = uniform side length,
+     *         where cy = -s*0.5 (box sits on Y=0, extends downward)
+     */
+    public static CubeDimensions getCubeDimensions(Point3D p1, Point3D p2) {
+        double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ();
+        double s  = Math.max(Math.abs(dx), Math.abs(dz));
         double cx = p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5);
         double cz = p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5);
-        box.setTranslateX(cx);
-        box.setTranslateY(-s * 0.5);
-        box.setTranslateZ(cz);
-        return new Group(box);
+        double cy = -s * 0.5;
+        return new CubeDimensions(cx, cy, cz, s);
     }
 
     public static Node createCuboid(Point3D p1, Point3D p2, boolean isPreview) {

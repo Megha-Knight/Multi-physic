@@ -46,9 +46,11 @@ E:\MultiPhysics\src\main\java\ui\workspace\camera\coordinate_system_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\document\file_tab_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_drafting_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_editor_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_editor_visual_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_event_handler_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_handles_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_history_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_hover_handler_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_item_formatter_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_item_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\booleans\boolean_box_mesh_helper_ui_main.java
@@ -63,13 +65,16 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\dimensions\shape_dimension_h
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_dialog_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_editor_dialog_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_feature_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_magnet_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_mesh_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\face_geometry_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\face_kind_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\face_overlay_mesh_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\face_overlay_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\face_picker_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\face_reference_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\face_selection_resolver_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\viewport_color_state_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\features\dependency_type_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\features\feature_dependency_graph_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\features\feature_dependency_ui_main.java
@@ -105,6 +110,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\draft_feature_ui_m
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\draft_mesh_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\fillet_feature_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\fillet_mesh_builder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\machining_dialog_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\shape_machining_holder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\profiles\profile_loop_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\profiles\profile_reference_ui_main.java

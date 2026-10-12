@@ -100,8 +100,20 @@ public class extrude_feature_ui_main {
     }
 
     public String getDefaultName() {
-        String shapeStr = (profileShape != null) ? profileShape.getLabel() : "Boss";
-        return String.format(Locale.US, "%s Boss (%.1f x %.1f mm)", shapeStr, diameter, height);
+        // Use 3D-appropriate names for the profile (the 2D cutout name is the cross-section shape;
+        // the extruded solid has a different conventional name).
+        return String.format(Locale.US, "Extruded %s (%.1f x %.1f mm)", extrudedLabel(profileShape), diameter, height);
+    }
+
+    private static String extrudedLabel(CutoutShape s) {
+        if (s == null) return "Solid";
+        return switch (s) {
+            case CIRCLE              -> "Cylinder";
+            case SQUARE              -> "Cube";
+            case RECTANGLE           -> "Box";
+            case EQUILATERAL_TRIANGLE -> "Triangular Prism";
+            case RIGHT_TRIANGLE      -> "Wedge";
+        };
     }
 
     public boolean isValid() {

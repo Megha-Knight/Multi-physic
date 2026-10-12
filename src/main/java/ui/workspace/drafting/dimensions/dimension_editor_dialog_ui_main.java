@@ -168,8 +168,12 @@ public class dimension_editor_dialog_ui_main extends Stage {
         if (editor != null) editor.recordSnapshot();
         shape_dimension_helper_ui_main.applyDimensions(item, parsed);
         if (editor != null) {
-            feature_regeneration_engine_ui_main.markDirtyAndCascade(item.getId(), editor.getShapes());
-            feature_regeneration_engine_ui_main.regenerateAll(editor.getShapes());
+            java.util.List<ui.workspace.drafting.shape_item_ui_main> shapes = editor.getShapes();
+            java.util.Map<String, ui.workspace.drafting.shape_item_ui_main> byId = new java.util.HashMap<>();
+            for (ui.workspace.drafting.shape_item_ui_main s : shapes) byId.put(s.getId(), s);
+            for (ui.workspace.drafting.shape_item_ui_main s : shapes) { if (s.isOnFace()) { ui.workspace.drafting.shape_item_ui_main own = byId.get(s.getFaceOwnerId()); if (own != null) ui.workspace.drafting.shape_item_ui_main.recomputeWorldPositionFromOwner(s, own); } }
+            feature_regeneration_engine_ui_main.markDirtyAndCascade(item.getId(), shapes);
+            feature_regeneration_engine_ui_main.regenerateAll(shapes);
             editor.setActiveFace(null);
             editor.getAxisDrag().updateGizmoPosition();
             editor.selectShape(item);

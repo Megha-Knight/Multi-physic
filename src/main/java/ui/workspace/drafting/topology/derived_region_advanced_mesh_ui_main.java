@@ -3,7 +3,10 @@ package ui.workspace.drafting.topology;
 import javafx.geometry.Point3D;
 import javafx.scene.shape.TriangleMesh;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
+import ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape;
 import ui.workspace.drafting.shape_item_ui_main;
+import ui.workspace.shapes.holes.hole_mesh_triangulator_ui_main;
+import ui.workspace.shapes.holes.hole_profile_helper_ui_main;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +23,9 @@ public final class derived_region_advanced_mesh_ui_main {
     public static TriangleMesh createAdvancedWallMesh(Point3D topCenter, Point3D inDir, Point3D uAxis, Point3D vAxis,
                                                       topology_derived_face_ui_main df, shape_item_ui_main shape) {
         hole_feature_ui_main h = findHole(shape, df.getCreatingFeatureId());
+        // Simple holes (or null) delegate to the profile-aware cylinder wall builder
         if (h == null || h.getHoleType() == hole_feature_ui_main.HoleType.SIMPLE) {
-            return createCylinderWall(topCenter, inDir, uAxis, vAxis, df.getRadius(), df.getDepth());
+            return createProfileWall(topCenter, inDir, uAxis, vAxis, df.getRadius(), df.getDepth(), h);
         }
 
         List<Float> pts = new ArrayList<>();
@@ -59,12 +63,31 @@ public final class derived_region_advanced_mesh_ui_main {
         return null;
     }
 
-    public static TriangleMesh createCylinderWall(Point3D topCenter, Point3D inDir, Point3D uAxis, Point3D vAxis, double r, double depth) {
+    /** Profile-aware wall for simple holes — reuses hole_profile_helper so shape matches real cavity. */
+    public static TriangleMesh createProfileWall(Point3D topCenter, Point3D inDir, Point3D uAxis, Point3D vAxis,
+                                                 double r, double depth, hole_feature_ui_main h) {
         List<Float> pts = new ArrayList<>();
         List<Integer> fcs = new ArrayList<>();
         Point3D botCenter = topCenter.add(inDir.multiply(depth));
-        buildCylinderSection(topCenter, botCenter, uAxis, vAxis, r, pts, fcs);
+        // getProfileRing delegates to hole_profile_helper — same vertex math as the real cavity cutter
+        Point3D[] topRing = getProfileRing(topCenter, uAxis, vAxis, r, h);
+        Point3D[] botRing = getProfileRing(botCenter, uAxis, vAxis, r, h);
+        hole_mesh_triangulator_ui_main.buildCylindricalWall(topRing, botRing, pts, fcs);
         return toMesh(pts, fcs);
+    }
+
+    /**
+     * Returns profile points for a ring at {@code center} using hole_profile_helper if the hole
+     * has a non-circular CutoutShape, otherwise falls back to a circular ring.
+     * This is the single authoritative source used by both the overlay and the real cavity cutter.
+     */
+    private static Point3D[] getProfileRing(Point3D center, Point3D uAxis, Point3D vAxis, double r, hole_feature_ui_main h) {
+        int segs = (h != null && h.getCutoutShape() != CutoutShape.CIRCLE) ? 4 : SEGS;
+        return hole_profile_helper_ui_main.getProfilePoints(center, uAxis, vAxis, h, r, segs);
+    }
+
+    public static TriangleMesh createCylinderWall(Point3D topCenter, Point3D inDir, Point3D uAxis, Point3D vAxis, double r, double depth) {
+        return createProfileWall(topCenter, inDir, uAxis, vAxis, r, depth, null);
     }
 
     private static void buildFrustum(Point3D topC, Point3D botC, Point3D uAxis, Point3D vAxis, double r1, double r2, List<Float> pts, List<Integer> fcs) {

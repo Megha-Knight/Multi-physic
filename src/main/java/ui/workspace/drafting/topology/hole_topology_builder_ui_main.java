@@ -5,6 +5,7 @@ import ui.workspace.drafting.faces.face_kind_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.shapes.holes.hole_intersection_helper_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +37,11 @@ public final class hole_topology_builder_ui_main {
             for (hole_feature_ui_main h : faceHoles) {
                 if (h.getState() == ui.workspace.drafting.features.feature_state_ui_main.INVALID) continue;
                 buildHoleRegions(body, shape, kind, h);
+            }
+            // Through-holes also get an independent BORE_WALL on the exit face, attributed to
+            // the exit face's kind so it is independently addressable, clickable, and colorable.
+            for (hole_feature_ui_main h : exitHoles) {
+                if (h.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) buildHoleRegions(body, shape, kind, h);
             }
         }
     }
@@ -73,7 +79,7 @@ public final class hole_topology_builder_ui_main {
                                                                     List<hole_feature_ui_main> exitHoles) {
         String id = body.getId() + ":F:" + kind.name() + ":REMAINING";
         topology_derived_face_ui_main rem = new topology_derived_face_ui_main(
-            body.getId(), id, "Remaining " + kind.getLabel(), kind, null,
+            body.getId(), id, kind.getLabel(), kind, null,
             hole_region_kind_ui_main.REMAINING_FACE, baseFace.getWidth(), baseFace.getHeight(), 0.0, 0.0, new Point3D(0, 0, 0)
         );
         rem.addLoop(topology_boundary_loop_ui_main.createRectangular("OUTER", baseFace.getWidth(), baseFace.getHeight()));
@@ -132,6 +138,12 @@ public final class hole_topology_builder_ui_main {
             double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
             return kind.isLateral() ? r * 2.0 : h;
         }
+        // For cube (uniform side): use getCubeDimensions so s matches the actual rendered body size
+        if (s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CUBE) {
+            double sz = shape_geometry_3d_ui_main.getCubeDimensions(p1, p2).s();
+            return sz; // all six faces have thickness = s (cube is uniform)
+        }
+        // Cuboid / other box shapes: use actual per-axis spans
         double w = Math.abs(p2.getX() - p1.getX()), h = Math.abs(p2.getY() - p1.getY()), d = Math.abs(p2.getZ() - p1.getZ());
         if (h <= 0.1) h = Math.max(6.0, Math.min(w, d) * 0.5);
         return switch (kind) {

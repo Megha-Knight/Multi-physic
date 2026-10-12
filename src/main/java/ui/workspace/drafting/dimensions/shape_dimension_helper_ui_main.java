@@ -52,16 +52,19 @@ public final class shape_dimension_helper_ui_main {
         map.put("Position X (mm)", curX);
         map.put("Position Y (mm)", curY);
         map.put("Position Z (mm)", curZ);
-        map.put("Rotation Y (Left/Right °)", item.getRotationY());
-        map.put("Rotation X (Top/Bottom °)", item.getRotationX());
+        map.put("Rotation Y (deg)", item.getRotationY());
+        map.put("Rotation X (deg)", item.getRotationX());
         return map;
     }
 
     public static void applyDimensions(shape_item_ui_main item, Map<String, Double> vals) {
         if (item == null || vals == null) return;
-        if (vals.containsKey("Rotation Y (Left/Right °)")) item.setRotationY(vals.get("Rotation Y (Left/Right °)"));
-        if (vals.containsKey("Rotation X (Top/Bottom °)")) item.setRotationX(vals.get("Rotation X (Top/Bottom °)"));
-        if (vals.containsKey("Rotation Angle (°)")) item.setRotationAngle(vals.get("Rotation Angle (°)"));
+        if (vals.containsKey("Rotation Y (deg)")) item.setRotationY(vals.get("Rotation Y (deg)"));
+        else if (vals.containsKey("Rotation Y")) item.setRotationY(vals.get("Rotation Y"));
+        if (vals.containsKey("Rotation X (deg)")) item.setRotationX(vals.get("Rotation X (deg)"));
+        else if (vals.containsKey("Rotation X")) item.setRotationX(vals.get("Rotation X"));
+        if (vals.containsKey("Rotation Angle (deg)")) item.setRotationAngle(vals.get("Rotation Angle (deg)"));
+        else if (vals.containsKey("Rotation Angle")) item.setRotationAngle(vals.get("Rotation Angle"));
         basic_shapes_ui_main type = item.getType();
         Point3D p1 = item.getP1(), p2 = item.getP2();
 

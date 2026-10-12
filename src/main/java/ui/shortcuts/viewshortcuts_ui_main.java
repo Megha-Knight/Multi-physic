@@ -54,8 +54,8 @@ public class viewshortcuts_ui_main {
     private void registerDefaults() {
         actionMap.put(VIEW_TOP,          () -> setOrientation(-89.9, 0.0, "Top View (Ctrl+Shift+T)"));
         actionMap.put(VIEW_BOTTOM,       () -> setOrientation(89.9, 0.0, "Bottom View (Ctrl+Shift+B)"));
-        actionMap.put(VIEW_FRONT,        () -> setOrientation(0.0, 0.0, "Front View (Ctrl+Shift+F)"));
-        actionMap.put(VIEW_BACK,         () -> setOrientation(0.0, 180.0, "Back View (Ctrl+Shift+K)"));
+        actionMap.put(VIEW_FRONT,        () -> setOrientation(0.0, 180.0, "Front View (Ctrl+Shift+F)"));
+        actionMap.put(VIEW_BACK,         () -> setOrientation(0.0, 0.0, "Back View (Ctrl+Shift+K)"));
         actionMap.put(VIEW_LEFT,         () -> setOrientation(0.0, 90.0, "Left View (Ctrl+Shift+L)"));
         actionMap.put(VIEW_RIGHT,        () -> setOrientation(0.0, -90.0, "Right View (Ctrl+Shift+R)"));
         actionMap.put(VIEW_ISOMETRIC,    () -> setOrientation(framework_ui_main.ISO_PITCH, framework_ui_main.ISO_YAW, "Isometric View (Ctrl+Shift+I)"));

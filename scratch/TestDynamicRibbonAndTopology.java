@@ -220,6 +220,15 @@ public class TestDynamicRibbonAndTopology {
         check("Through Hole: Exit BOTTOM face has remaining face region", remBottom != null);
         check("Through Hole: Exit face has inner opening loop", remBottom != null && remBottom.getInnerLoops().size() == 1);
 
+        // Exit-side BORE_WALL — new: through-holes now register a wall on BOTH faces
+        topology_derived_face_ui_main exitBoreWall = blockBody.getDerivedFaceById(block.getId() + ":F:BOTTOM:BORE_WALL:TH1");
+        check("Through Hole: Exit-side BORE_WALL exists", exitBoreWall != null);
+        check("Through Hole: Exit-side wall is through-bore kind", exitBoreWall != null && exitBoreWall.getRegionKind().isThroughBore());
+        check("Through Hole: Exit-side wall sourceFaceKind is BOTTOM", exitBoreWall != null && exitBoreWall.getSourceFaceKind() == face_kind_ui_main.BOTTOM);
+        check("Through Hole: Exit-side wall radius matches entry wall", exitBoreWall != null && boreWall != null && Math.abs(exitBoreWall.getRadius() - boreWall.getRadius()) < 1e-4);
+        long boreWallCount = blockBody.getDerivedFaces().stream().filter(df -> df.getRegionKind() == hole_region_kind_ui_main.BORE_WALL && df.getCreatingFeatureId() != null && df.getCreatingFeatureId().equals("TH1")).count();
+        check("Through Hole: Exactly 2 BORE_WALL faces (entry + exit)", boreWallCount == 2);
+
         // 3. Multiple holes on single face
         shape_item_ui_main multiShape = new shape_item_ui_main(basic_shapes_ui_main.CUBOID, new Point3D(-50, 0, -50), new Point3D(50, 30, 50));
         hole_feature_ui_main mh1 = new hole_feature_ui_main("MH1", multiShape.getId(), "Hole A", HoleType.SIMPLE, face_kind_ui_main.TOP, -20.0, 0.0, 10.0, 15.0, false, 0,0,0,0, CutoutShape.CIRCLE, 0);

@@ -87,6 +87,8 @@ public class featuremanager_ui_main extends BorderPane {
                             for (var df : body.getDerivedFacesForFeature(h.getId())) hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, df)));
                         }
                     }
+                    // Auto-expand hole node so bore-wall/face children are visible without a manual click.
+                    hNode.setExpanded(true);
                     sNode.getChildren().add(hNode);
                 }
                 for (hole_pattern_ui_main p : s.getPatterns()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forPattern(s, p)));

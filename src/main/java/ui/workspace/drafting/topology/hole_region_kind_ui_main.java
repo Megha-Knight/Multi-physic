@@ -5,7 +5,7 @@ package ui.workspace.drafting.topology;
  * Semantic classification of topology regions created or modified by hole features.
  */
 public enum hole_region_kind_ui_main {
-    REMAINING_FACE("Remaining Face", false, false, true),
+    REMAINING_FACE("Face", false, false, true),
     HOLE_WALL("Hole Wall", true, true, false),
     HOLE_FLOOR("Hole Floor", true, false, false),
     BORE_WALL("Bore Wall", true, true, false),

@@ -31,11 +31,17 @@ public final class shape_geometry_ui_main {
     }
 
     public static PhongMaterial createMaterial(boolean isPreview, boolean isSelected) {
-        Color c = isPreview ? Color.web(framework_ui_main.DRAFT_PREVIEW_COLOR)
-                : isSelected ? Color.web(framework_ui_main.OBJECT_SELECTED_COLOR)
+        if (isPreview) {
+            PhongMaterial mat = new PhongMaterial(Color.web(framework_ui_main.DRAFT_PREVIEW_COLOR));
+            mat.setSpecularColor(Color.web("#E0F2FE"));
+            return mat;
+        }
+        boolean focused = ui.workspace.drafting.faces.viewport_color_state_ui_main.isViewportFocused();
+        Color c = focused
+                ? Color.web(framework_ui_main.OBJECT_SELECTED_COLOR)
                 : Color.web(framework_ui_main.OBJECT_UNSELECTED_EDGE_COLOR);
         PhongMaterial mat = new PhongMaterial(c);
-        mat.setSpecularColor(Color.web(isSelected ? "#E0F2FE" : framework_ui_main.OBJECT_UNSELECTED_COLOR));
+        mat.setSpecularColor(Color.web(focused ? "#E0F2FE" : framework_ui_main.OBJECT_UNSELECTED_COLOR));
         return mat;
     }
 

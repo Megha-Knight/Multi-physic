@@ -107,18 +107,16 @@ public class shape_drafting_ui_main {
                 shape_item_ui_main item = new shape_item_ui_main(activeShape, startPt, hit);
                 if (draftingFace != null) {
                     item.setFacePlane(draftingFace.getUAxis(), draftingFace.getVAxis(), draftingFace.getWorldNormal(),
-                                      draftingFace.getOwnerShapeId(), draftingFace.getFaceKind());
+                                      draftingFace.getOwnerShapeId(), draftingFace.getFaceKind(),
+                                      draftingFace.getLocalHitU(), draftingFace.getLocalHitV());
+                } else if (activeShape.is3D() && editor != null) {
+                    ui.workspace.drafting.extrude.extrude_magnet_helper_ui_main.trySnapToNearestFace(item, activeShape, startPt, hit, editor);
                 }
-                if (editor != null) editor.addShape(item);
-                else shapesGroup.getChildren().add(item.getRootGroup());
+                if (editor != null) editor.addShape(item); else shapesGroup.getChildren().add(item.getRootGroup());
                 if (statusCallback != null)
-                    statusCallback.accept(activeShape.getLabel() + " created on " + (draftingFace != null ? draftingFace.getFaceKind().getLabel() : "ground") + ".");
+                    statusCallback.accept(activeShape.getLabel() + " created on " + (item.isOnFace() ? item.getFaceKind().getLabel() : "ground") + ".");
             }
-            previewGroup.getChildren().clear();
-            startPt = null;
-            hudLabel.setVisible(false);
-            cancelDrafting();
-            e.consume();
+            previewGroup.getChildren().clear(); startPt = null; hudLabel.setVisible(false); cancelDrafting(); e.consume();
         });
 
         viewportPane.addEventFilter(KeyEvent.KEY_PRESSED, e -> {

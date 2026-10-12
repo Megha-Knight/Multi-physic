@@ -42,6 +42,7 @@ public final class document_serializer_ui_main {
                         pw.printf(java.util.Locale.US, "uAxis: %.4f, %.4f, %.4f%nvAxis: %.4f, %.4f, %.4f%nnorm: %.4f, %.4f, %.4f%n", u.getX(), u.getY(), u.getZ(), v.getX(), v.getY(), v.getZ(), n.getX(), n.getY(), n.getZ());
                         if (s.getFaceOwnerId() != null) pw.println("faceOwner: " + s.getFaceOwnerId());
                         if (s.getFaceKind() != null) pw.println("faceKind: " + s.getFaceKind().name());
+                        pw.printf(java.util.Locale.US, "faceHit: %.4f, %.4f%n", s.getLocalHitU(), s.getLocalHitV());
                     }
                     for (hole_feature_ui_main h : s.getHoles()) {
                         pw.printf(java.util.Locale.US, "hole: %s, %s, %.4f, %.4f, %.4f, %.4f, %b, %s, %.4f, %.4f, %.4f, %.4f, %s, %.4f, %s%n",
@@ -86,7 +87,7 @@ public final class document_serializer_ui_main {
             String line, id = null, name = null, faceOwner = null, consumedBy = null;
             boolean consumed = false; face_kind_ui_main faceKind = null; basic_shapes_ui_main currentType = null;
             Point3D p1 = null, p2 = null, uAxis = null, vAxis = null, norm = null;
-            double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0;
+            double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0, faceHitU = 0, faceHitV = 0;
             List<hole_feature_ui_main> pendingHoles = new ArrayList<>();
             List<hole_pattern_ui_main> pendingPatterns = new ArrayList<>();
             List<ui.workspace.drafting.extrude.extrude_feature_ui_main> pendingExtrusions = new ArrayList<>();
@@ -108,10 +109,10 @@ public final class document_serializer_ui_main {
 
                 if (line.startsWith("SHAPE:")) {
                     if (currentSketch != null) { pendingSketches.add(currentSketch); currentSketch = null; }
-                    document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps, pendingRevolves);
+            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, faceHitU, faceHitV, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps, pendingRevolves);
                     try { currentType = basic_shapes_ui_main.valueOf(line.substring(6).trim()); } catch (Exception ex) { currentType = null; }
                     id = null; name = null; p1 = null; p2 = null; tx = 0; ty = 0; tz = 0; rotY = 0; rotX = 0; consumed = false; consumedBy = null;
-                    uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null;
+                    uAxis = null; vAxis = null; norm = null; faceOwner = null; faceKind = null; faceHitU = 0; faceHitV = 0;
                     pendingHoles.clear(); pendingPatterns.clear(); pendingExtrusions.clear(); pendingSketches.clear(); pendingChamfers.clear(); pendingFillets.clear(); pendingDrafts.clear(); pendingBooleans.clear(); pendingShells.clear(); pendingLofts.clear(); pendingSweeps.clear(); pendingRevolves.clear();
                 } else if (line.startsWith("id:")) id = line.substring(3).trim();
                 else if (line.startsWith("name:")) name = line.substring(5).trim();
@@ -126,6 +127,7 @@ public final class document_serializer_ui_main {
                 else if (line.startsWith("norm:")) norm = document_parse_helper_ui_main.parsePoint(line.substring(5).trim());
                 else if (line.startsWith("faceOwner:")) faceOwner = line.substring(10).trim();
                 else if (line.startsWith("faceKind:")) { try { faceKind = face_kind_ui_main.valueOf(line.substring(9).trim()); } catch (Exception ignored) {} }
+                else if (line.startsWith("faceHit:")) { try { String[] fh = line.substring(8).trim().split(","); faceHitU = Double.parseDouble(fh[0].trim()); faceHitV = Double.parseDouble(fh[1].trim()); } catch (Exception ignored) {} }
                 else if (line.startsWith("hole:")) document_parse_helper_ui_main.parseHoleLine(line.substring(5).trim(), id, pendingHoles);
                 else if (line.startsWith("pattern:")) document_parse_helper_ui_main.parsePatternLine(line.substring(8).trim(), id, pendingPatterns);
                 else if (line.startsWith("extrude:")) document_parse_helper_ui_main.parseExtrudeLine(line.substring(8).trim(), id, pendingExtrusions);
@@ -151,7 +153,7 @@ public final class document_serializer_ui_main {
                 }
             }
             if (currentSketch != null) pendingSketches.add(currentSketch);
-            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps, pendingRevolves);
+            document_parse_helper_ui_main.commitShape(list, currentType, id, name, p1, p2, tx, ty, tz, rotX, rotY, uAxis, vAxis, norm, faceOwner, faceKind, faceHitU, faceHitV, consumed, consumedBy, pendingHoles, pendingPatterns, pendingExtrusions, pendingSketches, pendingChamfers, pendingFillets, pendingDrafts, pendingBooleans, pendingShells, pendingLofts, pendingSweeps, pendingRevolves);
         } catch (Exception ignored) {}
         return list;
     }

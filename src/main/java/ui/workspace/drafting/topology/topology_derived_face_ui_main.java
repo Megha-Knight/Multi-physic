@@ -78,8 +78,11 @@ public class topology_derived_face_ui_main extends topology_face_ui_main {
     public void setDiagnosticMessage(String msg) { this.diagnosticMessage = msg; }
 
     private boolean selected = false;
+    private boolean hovered = false;
     public boolean isSelected() { return selected; }
     public void setSelected(boolean sel) { this.selected = sel; }
+    public boolean isHovered() { return hovered; }
+    public void setHovered(boolean h) { this.hovered = h; }
 
     public topology_face_appearance_ui_main getAppearanceOverride() { return appearanceOverride; }
     public void setAppearanceOverride(topology_face_appearance_ui_main app) { this.appearanceOverride = app; }
@@ -89,11 +92,17 @@ public class topology_derived_face_ui_main extends topology_face_ui_main {
         if (appearanceOverride != null && appearanceOverride.diffuseColor() != null) {
             return appearanceOverride.diffuseColor();
         }
+        if (selected || hovered) {
+            return ui.workspace.drafting.faces.viewport_color_state_ui_main.getFaceHighlightColor();
+        }
         return hole_surface_appearance_ui_main.forRegion(regionKind).diffuseColor();
     }
 
     public double getEffectiveOpacity() {
         if (appearanceOverride != null) return appearanceOverride.opacity();
+        if (selected || hovered) {
+            return ui.workspace.drafting.faces.viewport_color_state_ui_main.getFaceHighlightOpacity();
+        }
         return hole_surface_appearance_ui_main.forRegion(regionKind).opacity();
     }
 
