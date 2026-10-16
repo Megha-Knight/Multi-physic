@@ -49,7 +49,7 @@ public class sketch_coord_system_ui_main {
                 origin = Point3D.ZERO;
                 uAxis = new Point3D(1, 0, 0);
                 vAxis = new Point3D(0, -1, 0); // -Y is up in Astra CAD world
-                normal = new Point3D(0, 0, 1);
+                normal = new Point3D(0, 0, -1);
             }
             case BASE_YZ -> {
                 origin = Point3D.ZERO;
