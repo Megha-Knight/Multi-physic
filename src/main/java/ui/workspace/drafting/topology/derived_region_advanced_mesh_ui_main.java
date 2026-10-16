@@ -82,7 +82,7 @@ public final class derived_region_advanced_mesh_ui_main {
      * This is the single authoritative source used by both the overlay and the real cavity cutter.
      */
     private static Point3D[] getProfileRing(Point3D center, Point3D uAxis, Point3D vAxis, double r, hole_feature_ui_main h) {
-        int segs = (h != null && h.getCutoutShape() != CutoutShape.CIRCLE) ? 4 : SEGS;
+        int segs = hole_profile_helper_ui_main.getProfileVertexCount(h, SEGS);
         return hole_profile_helper_ui_main.getProfilePoints(center, uAxis, vAxis, h, r, segs);
     }
 

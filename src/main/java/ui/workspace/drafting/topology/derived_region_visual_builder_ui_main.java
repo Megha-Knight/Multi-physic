@@ -99,7 +99,7 @@ public final class derived_region_visual_builder_ui_main {
 
     private static TriangleMesh createDiskMesh(Point3D center, Point3D norm, Point3D uAxis, Point3D vAxis, double r, hole_feature_ui_main h) {
         // Reuse hole_profile_helper — same vertex math as the real cavity cutter for non-circle shapes
-        int segs = (h != null && h.getCutoutShape() != hole_feature_ui_main.CutoutShape.CIRCLE) ? 4 : SEGS;
+        int segs = hole_profile_helper_ui_main.getProfileVertexCount(h, SEGS);
         Point3D[] ring = hole_profile_helper_ui_main.getProfilePoints(center, uAxis, vAxis, h, r, segs);
 
         TriangleMesh m = new TriangleMesh();
@@ -153,10 +153,15 @@ public final class derived_region_visual_builder_ui_main {
 
     private static Frame getFaceFrame(shape_item_ui_main s, face_kind_ui_main kind) {
         Point3D p1 = s.getP1(), p2 = s.getP2();
-        if (s.getType().isBox()) {
+        if (s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CUBE) {
             shape_geometry_3d_ui_main.CubeDimensions dim = shape_geometry_3d_ui_main.getCubeDimensions(p1, p2);
             Point3D c = new Point3D(dim.cx(), dim.cy(), dim.cz());
             return hole_mesh_triangulator_ui_main.getCubeFaceFrame(c, dim.s(), kind);
+        } else if (s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CUBOID) {
+            double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
+            double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
+            Point3D c = new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY() - h * 0.5, (p1.getZ() + p2.getZ()) * 0.5);
+            return hole_mesh_triangulator_ui_main.getCuboidFaceFrame(c, w, h, d, kind);
         } else if (s.getType() == ui.workspace.shapes.basic_shapes_ui_main.CYLINDER) {
             double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
             if (kind == face_kind_ui_main.TOP_CAP) return new Frame(new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(0, -1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, 1));

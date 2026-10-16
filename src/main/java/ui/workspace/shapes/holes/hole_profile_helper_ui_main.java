@@ -60,8 +60,23 @@ public final class hole_profile_helper_ui_main {
         return new double[][]{ { hw, -hh }, { -hw, hh }, { -hw, -hh } };
     }
 
+    public static int getProfileVertexCount(hole_feature_ui_main h, int circleDefault) {
+        if (h == null || h.getCutoutShape() == CutoutShape.CIRCLE) return circleDefault;
+        return switch (h.getCutoutShape()) {
+            case EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE -> 3;
+            case SQUARE, RECTANGLE -> 4;
+            default -> circleDefault;
+        };
+    }
+
     private static void samplePolygon(Point3D center, Point3D u, Point3D v, double[][] poly, Point3D[] out) {
         int nVerts = poly.length, segs = out.length;
+        if (segs == nVerts) {
+            for (int i = 0; i < nVerts; i++) {
+                out[i] = center.add(u.multiply(poly[i][0])).add(v.multiply(poly[i][1]));
+            }
+            return;
+        }
         double totalLen = 0;
         double[] edgeLens = new double[nVerts];
         for (int i = 0; i < nVerts; i++) {

@@ -115,20 +115,6 @@ public final class hole_cuboid_builder_ui_main {
 
         double sVal = splitU ? (clusters.get(bestK - 1).u + clusters.get(bestK).u) * 0.5 : (clusters.get(bestK - 1).v + clusters.get(bestK).v) * 0.5;
 
-        // Guard: if the split plane is too close to any hole (within its cutout radius), the sub-box
-        // would be smaller than the hole circle → degenerate triangulation. Fall back to sequential
-        // annular removal so all holes on the same face render correctly regardless of proximity.
-        boolean splitIsSafe = true;
-        for (HoleCluster cl : clusters) {
-            double dist = splitU ? Math.abs(cl.u - sVal) : Math.abs(cl.v - sVal);
-            if (dist < cl.cutoutRadius + 1e-3) { splitIsSafe = false; break; }
-        }
-        if (!splitIsSafe) {
-            // Build one face with all holes punched out using sequential triangulateAnnularFace passes
-            buildMultiHoleFace(b, clusters, cf, pts, fcs);
-            return;
-        }
-
         List<HoleCluster> left = new ArrayList<>(clusters.subList(0, bestK)), right = new ArrayList<>(clusters.subList(bestK, clusters.size()));
         partitionBox(new Box(b.uMin, splitU ? sVal : b.uMax, b.vMin, splitU ? b.vMax : sVal), left, cf, ctx, pts, fcs);
         partitionBox(new Box(splitU ? sVal : b.uMin, b.uMax, splitU ? b.vMin : sVal, b.vMax), right, cf, ctx, pts, fcs);
@@ -179,14 +165,6 @@ public final class hole_cuboid_builder_ui_main {
         return res;
     }
 
-    /** Fallback for closely-spaced multi-hole faces: punch each hole from the full-face octagonal boundary. */
-    private static void buildMultiHoleFace(Box b, List<HoleCluster> clusters, CuboidFace cf, List<Float> pts, List<Integer> fcs) {
-        for (HoleCluster cl : clusters) {
-            Point3D[] outer = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(cf.frame, b.uMin, b.uMax, b.vMin, b.vMax);
-            Point3D[] inner = hole_profile_helper_ui_main.getProfilePoints(cl.center, cf.frame.u(), cf.frame.v(), cl.primaryHole, cl.cutoutRadius, SEGS);
-            hole_mesh_triangulator_ui_main.triangulateAnnularFace(outer, inner, pts, fcs, cl.isExitOnly());
-        }
-    }
 
     private static CuboidFace getOppFace(CuboidFace[] faces, face_kind_ui_main kind) {
         for (CuboidFace cf : faces) if (cf.kind == kind) return cf;
