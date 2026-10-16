@@ -22,9 +22,22 @@ public class topology_edge_ui_main implements topology_entity_ui_main {
     private final Point3D localP1;
     private final Point3D localP2;
     private final boolean linear;
+    private final double customLength;
+    private final String creatingFeatureId;
 
     public topology_edge_ui_main(String bodyId, String name, String v1Id, String v2Id,
                                 Point3D localP1, Point3D localP2, boolean linear) {
+        this(bodyId, name, v1Id, v2Id, localP1, localP2, linear, 0.0, null);
+    }
+
+    public topology_edge_ui_main(String bodyId, String name, String v1Id, String v2Id,
+                                Point3D localP1, Point3D localP2, boolean linear, double customLength) {
+        this(bodyId, name, v1Id, v2Id, localP1, localP2, linear, customLength, null);
+    }
+
+    public topology_edge_ui_main(String bodyId, String name, String v1Id, String v2Id,
+                                Point3D localP1, Point3D localP2, boolean linear,
+                                double customLength, String creatingFeatureId) {
         this.bodyId = Objects.requireNonNull(bodyId, "bodyId cannot be null");
         this.name = Objects.requireNonNull(name, "name cannot be null");
         this.id = bodyId + ":E:" + name;
@@ -33,6 +46,8 @@ public class topology_edge_ui_main implements topology_entity_ui_main {
         this.localP1 = (localP1 != null) ? localP1 : Point3D.ZERO;
         this.localP2 = (localP2 != null) ? localP2 : Point3D.ZERO;
         this.linear = linear;
+        this.customLength = customLength;
+        this.creatingFeatureId = creatingFeatureId;
     }
 
     public void addAdjacentFace(String faceId) {
@@ -47,6 +62,7 @@ public class topology_edge_ui_main implements topology_entity_ui_main {
     public Point3D getLocalP1() { return localP1; }
     public Point3D getLocalP2() { return localP2; }
     public boolean isLinear() { return linear; }
+    public String getCreatingFeatureId() { return creatingFeatureId; }
     public List<String> getAdjacentFaceIds() { return Collections.unmodifiableList(adjacentFaceIds); }
 
     public Point3D getLocalMidpoint() {
@@ -60,7 +76,7 @@ public class topology_edge_ui_main implements topology_entity_ui_main {
     }
 
     public double getLength() {
-        return localP1.distance(localP2);
+        return customLength > 1e-6 ? customLength : localP1.distance(localP2);
     }
 
     public Point3D computeWorldMidpoint(shape_item_ui_main shape) {

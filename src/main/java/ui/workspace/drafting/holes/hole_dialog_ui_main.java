@@ -149,14 +149,18 @@ public class hole_dialog_ui_main extends Stage {
                 java.util.UUID.randomUUID().toString(), shape.getId(), type, face.getFaceKind(),
                 u, v, dia, depth, throughCheck.isSelected(), csDia, csAngle, cbDia, cbDepth, cutoutShape, w2
             );
+            if (face.isFeatureFace()) hole.setTargetFeatureId(face.getTargetFeatureId());
 
             if (!hole.isValid()) { showError("Invalid parameters. Verify diameter, angles, and depths."); return; }
-            boolean isCyl = (face.getFaceKind() == face_kind_ui_main.TOP_CAP || face.getFaceKind() == face_kind_ui_main.BOTTOM_CAP);
+            boolean isCyl = (face.getFaceKind() == face_kind_ui_main.TOP_CAP || face.getFaceKind() == face_kind_ui_main.BOTTOM_CAP)
+                || (face.isFeatureFace() && isTargetCircleExtrude(face.getTargetFeatureId()));
             boolean fits = isCyl ? hole.fitsWithinCylinderCap(face.getFaceWidth() * 0.5) : hole.fitsWithinFace(face.getFaceWidth(), face.getFaceHeight());
             if (!fits) { showError("Cutout boundary extends outside the selected face bounds."); return; }
 
             for (hole_feature_ui_main existing : shape.getHoles()) {
-                if (existing.getFaceKind() == face.getFaceKind()) {
+                boolean sameTgt = (hole.getTargetFeatureId() == null && existing.getTargetFeatureId() == null)
+                    || (hole.getTargetFeatureId() != null && hole.getTargetFeatureId().equals(existing.getTargetFeatureId()));
+                if (sameTgt && existing.getFaceKind() == face.getFaceKind()) {
                     double dist = Math.hypot(u - existing.getU(), v - existing.getV());
                     if (dist < 0.5) {
                         if (Math.abs(dia - existing.getDiameter()) < 0.1 && Math.abs(depth - existing.getDepth()) < 0.1) {
@@ -175,6 +179,12 @@ public class hole_dialog_ui_main extends Stage {
         } catch (NumberFormatException ex) {
             showError("Please enter valid numeric values.");
         }
+    }
+
+    private boolean isTargetCircleExtrude(String extId) {
+        if (shape == null || extId == null) return false;
+        for (var e : shape.getExtrusions()) if (extId.equals(e.getId())) return e.getProfileShape() == CutoutShape.CIRCLE;
+        return false;
     }
 
     private void showError(String msg) {

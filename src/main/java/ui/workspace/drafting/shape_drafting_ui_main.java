@@ -105,12 +105,12 @@ public class shape_drafting_ui_main {
             Point3D hit = hitDrafting(e);
             if (hit != null && hit.distance(startPt) > 0.5) {
                 shape_item_ui_main item = new shape_item_ui_main(activeShape, startPt, hit);
-                if (draftingFace != null) {
+                if (activeShape.is3D() && editor != null) {
+                    ui.workspace.drafting.extrude.extrude_magnet_helper_ui_main.trySnapToNearestFace(item, activeShape, startPt, hit, editor);
+                } else if (draftingFace != null) {
                     item.setFacePlane(draftingFace.getUAxis(), draftingFace.getVAxis(), draftingFace.getWorldNormal(),
                                       draftingFace.getOwnerShapeId(), draftingFace.getFaceKind(),
                                       draftingFace.getLocalHitU(), draftingFace.getLocalHitV());
-                } else if (activeShape.is3D() && editor != null) {
-                    ui.workspace.drafting.extrude.extrude_magnet_helper_ui_main.trySnapToNearestFace(item, activeShape, startPt, hit, editor);
                 }
                 if (editor != null) editor.addShape(item); else shapesGroup.getChildren().add(item.getRootGroup());
                 if (statusCallback != null)

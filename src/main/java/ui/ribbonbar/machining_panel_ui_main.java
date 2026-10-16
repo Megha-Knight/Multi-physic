@@ -27,7 +27,7 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
 
     private final Button btnCatCutouts = new Button("Cutouts");
     private final Button btnCatPatterns = new Button("Patterns");
-    private final Button btnCatEdges = new Button("Edges");
+    private final Button btnCatEdges = new Button("Modify");
     private final HBox paneCutouts;
     private final HBox panePatterns;
     private final HBox paneEdges;
@@ -52,7 +52,7 @@ public class machining_panel_ui_main extends HBox implements dynamic_panel_entry
 
         initCategoryBtn(btnCatCutouts, true, "Holes and Cutouts");
         initCategoryBtn(btnCatPatterns, false, "Linear and Circular Patterns");
-        initCategoryBtn(btnCatEdges, false, "Fillet, Chamfer, and Draft");
+        initCategoryBtn(btnCatEdges, false, "Modify: Fillet, Chamfer, and Draft");
         btnCatCutouts.setOnAction(e -> selectCategory(0));
         btnCatPatterns.setOnAction(e -> selectCategory(1));
         btnCatEdges.setOnAction(e -> selectCategory(2));

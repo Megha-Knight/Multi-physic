@@ -67,15 +67,8 @@ public class hole_overlay_ui_main extends Group {
             v = exitUV[1];
         }
 
-        Point3D c = shape.getCenter();
-        double rx = shape.getRotationX(), ry = shape.getRotationY(), wx = shape.getWorldX(), wy = shape.getWorldY(), wz = shape.getWorldZ();
-        Point3D worldOrigin = shape_rotation_helper_ui_main.transformPoint(localOrigin, c, rx, ry, wx, wy, wz);
-        Point3D worldN = shape_rotation_helper_ui_main.transformNormal(localN, rx, ry).normalize();
-        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(localU, rx, ry).normalize();
-        Point3D worldV = shape_rotation_helper_ui_main.transformNormal(localV, rx, ry).normalize();
-
-        Point3D center = worldOrigin.add(worldU.multiply(u)).add(worldV.multiply(v)).add(worldN.multiply(0.2));
-        Point3D[] pts = hole_profile_helper_ui_main.getProfilePoints(center, worldU, worldV, hole, 32);
+        Point3D center = localOrigin.add(localU.multiply(u)).add(localV.multiply(v)).add(localN.multiply(0.2));
+        Point3D[] pts = hole_profile_helper_ui_main.getProfilePoints(center, localU, localV, hole, 32);
         for (int i = 0; i < pts.length; i++) {
             getChildren().add(createLine(pts[i], pts[(i + 1) % pts.length], 0.7));
         }

@@ -36,7 +36,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
     public topology_face_ui_main getFace(face_kind_ui_main kind) { return faces.get(kind); }
     public topology_face_ui_main getFaceById(String faceId) {
         for (topology_face_ui_main f : faces.values()) if (f.getId().equals(faceId)) return f;
-        return null;
+        return derivedFaces.get(faceId);
     }
     public topology_derived_face_ui_main getDerivedFaceById(String id) { return derivedFaces.get(id); }
     public Collection<topology_derived_face_ui_main> getDerivedFaces() { return Collections.unmodifiableCollection(derivedFaces.values()); }
@@ -45,9 +45,18 @@ public class topology_body_ui_main implements topology_entity_ui_main {
         if (fid != null) for (var df : derivedFaces.values()) if (fid.equals(df.getCreatingFeatureId())) l.add(df);
         return l;
     }
-    public topology_edge_ui_main getEdge(String name) { return edges.get(name); }
+    public topology_edge_ui_main getEdge(String name) {
+        if (name == null) return null;
+        topology_edge_ui_main e = edges.get(name);
+        return e != null ? e : getEdgeById(name);
+    }
     public topology_edge_ui_main getEdgeById(String edgeId) {
-        for (topology_edge_ui_main e : edges.values()) if (e.getId().equals(edgeId)) return e;
+        if (edgeId == null) return null;
+        for (topology_edge_ui_main e : edges.values()) {
+            if (edgeId.equals(e.getId()) || edgeId.equals(e.getName())) return e;
+            String n1 = edgeId.replace(':', '_'), n2 = e.getId().replace(':', '_'), n3 = e.getName().replace(':', '_');
+            if (n1.equals(n2) || n1.equals(n3)) return e;
+        }
         return null;
     }
     public topology_vertex_ui_main getVertex(String name) { return vertices.get(name); }
@@ -78,6 +87,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
             body.addFace(new topology_face_ui_main(body.getId(), face_kind_ui_main.SPHERE_SURFACE, 100, 100));
         }
         hole_topology_builder_ui_main.populateDerivedFaces(body, shape);
+        extrude_topology_builder_ui_main.populateExtrudeTopology(body, shape);
         machining_feature_topology_builder_ui_main.populateMachiningTopology(body, shape);
         boolean_topology_builder_ui_main.populateBooleanTopology(body, shape);
         shell_topology_builder_ui_main.populateShellTopology(body, shape);
@@ -153,8 +163,8 @@ public class topology_body_ui_main implements topology_entity_ui_main {
         topology_face_ui_main topCap = new topology_face_ui_main(b.bodyId, face_kind_ui_main.TOP_CAP, r * 2.0, r * 2.0);
         topology_face_ui_main botCap = new topology_face_ui_main(b.bodyId, face_kind_ui_main.BOTTOM_CAP, r * 2.0, r * 2.0);
         topology_face_ui_main lateral = new topology_face_ui_main(b.bodyId, face_kind_ui_main.CYLINDER_LATERAL, 2 * Math.PI * r, h);
-        topology_edge_ui_main topRim = new topology_edge_ui_main(b.bodyId, "TOP_RIM", null, null, new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(p1.getX(), -h, p1.getZ()), false);
-        topology_edge_ui_main botRim = new topology_edge_ui_main(b.bodyId, "BOTTOM_RIM", null, null, new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(p1.getX(), 0, p1.getZ()), false);
+        topology_edge_ui_main topRim = new topology_edge_ui_main(b.bodyId, "TOP_RIM", null, null, new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(p1.getX(), -h, p1.getZ()), false, r * 2.0);
+        topology_edge_ui_main botRim = new topology_edge_ui_main(b.bodyId, "BOTTOM_RIM", null, null, new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(p1.getX(), 0, p1.getZ()), false, r * 2.0);
         topRim.addAdjacentFace(topCap.getId()); topRim.addAdjacentFace(lateral.getId());
         botRim.addAdjacentFace(botCap.getId()); botRim.addAdjacentFace(lateral.getId());
         topCap.addEdge(topRim.getId()); botCap.addEdge(botRim.getId());
@@ -169,7 +179,7 @@ public class topology_body_ui_main implements topology_entity_ui_main {
         double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
         topology_face_ui_main baseCap = new topology_face_ui_main(b.bodyId, face_kind_ui_main.BASE_CAP, r * 2.0, r * 2.0);
         topology_face_ui_main lateral = new topology_face_ui_main(b.bodyId, face_kind_ui_main.CONE_LATERAL, 2 * Math.PI * r, h);
-        topology_edge_ui_main baseRim = new topology_edge_ui_main(b.bodyId, "BASE_RIM", null, null, new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(p1.getX(), 0, p1.getZ()), false);
+        topology_edge_ui_main baseRim = new topology_edge_ui_main(b.bodyId, "BASE_RIM", null, null, new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(p1.getX(), 0, p1.getZ()), false, r * 2.0);
         baseRim.addAdjacentFace(baseCap.getId()); baseRim.addAdjacentFace(lateral.getId());
         baseCap.addEdge(baseRim.getId()); lateral.addEdge(baseRim.getId());
         b.addFace(baseCap); b.addFace(lateral); b.addEdge(baseRim);

@@ -23,29 +23,41 @@ public class face_reference_ui_main {
     private final double localHitV;
     private final double faceWidth;
     private final double faceHeight;
+    private final String targetFeatureId;
+
+    public face_reference_ui_main(String ownerShapeId, String targetFeatureId, face_kind_ui_main faceKind,
+                                 Point3D worldHitPoint, Point3D worldNormal,
+                                 Point3D faceOrigin, Point3D uAxis, Point3D vAxis,
+                                 double localHitU, double localHitV,
+                                 double faceWidth, double faceHeight) {
+        this.ownerShapeId    = ownerShapeId;
+        this.targetFeatureId = targetFeatureId;
+        this.faceKind        = faceKind;
+        this.worldHitPoint   = (worldHitPoint != null) ? worldHitPoint : Point3D.ZERO;
+        this.worldNormal     = (worldNormal != null && worldNormal.magnitude() > 1e-9) ? worldNormal.normalize() : new Point3D(0, -1, 0);
+        this.faceOrigin      = (faceOrigin != null) ? faceOrigin : Point3D.ZERO;
+        this.uAxis           = (uAxis != null && uAxis.magnitude() > 1e-9) ? uAxis.normalize() : new Point3D(1, 0, 0);
+        this.vAxis           = (vAxis != null && vAxis.magnitude() > 1e-9) ? vAxis.normalize() : new Point3D(0, 0, 1);
+        this.localHitU       = localHitU;
+        this.localHitV       = localHitV;
+        this.faceWidth       = faceWidth;
+        this.faceHeight      = faceHeight;
+    }
 
     public face_reference_ui_main(String ownerShapeId, face_kind_ui_main faceKind,
                                  Point3D worldHitPoint, Point3D worldNormal,
                                  Point3D faceOrigin, Point3D uAxis, Point3D vAxis,
                                  double localHitU, double localHitV,
                                  double faceWidth, double faceHeight) {
-        this.ownerShapeId  = ownerShapeId;
-        this.faceKind      = faceKind;
-        this.worldHitPoint = (worldHitPoint != null) ? worldHitPoint : Point3D.ZERO;
-        this.worldNormal   = (worldNormal != null && worldNormal.magnitude() > 1e-9) ? worldNormal.normalize() : new Point3D(0, -1, 0);
-        this.faceOrigin    = (faceOrigin != null) ? faceOrigin : Point3D.ZERO;
-        this.uAxis         = (uAxis != null && uAxis.magnitude() > 1e-9) ? uAxis.normalize() : new Point3D(1, 0, 0);
-        this.vAxis         = (vAxis != null && vAxis.magnitude() > 1e-9) ? vAxis.normalize() : new Point3D(0, 0, 1);
-        this.localHitU     = localHitU;
-        this.localHitV     = localHitV;
-        this.faceWidth     = faceWidth;
-        this.faceHeight    = faceHeight;
+        this(ownerShapeId, null, faceKind, worldHitPoint, worldNormal, faceOrigin, uAxis, vAxis, localHitU, localHitV, faceWidth, faceHeight);
     }
 
     public String getOwnerShapeId()        { return ownerShapeId; }
+    public String getTargetFeatureId()     { return targetFeatureId; }
+    public boolean isFeatureFace()         { return targetFeatureId != null && !targetFeatureId.isBlank(); }
     public face_kind_ui_main getFaceKind() { return faceKind; }
-    public String getFaceId()              { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":" + faceKind.name() : ""; }
-    public String getTopologyFaceId()      { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":F:" + faceKind.name() : ""; }
+    public String getFaceId()              { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":" + faceKind.name() + (targetFeatureId != null ? ":" + targetFeatureId : "") : ""; }
+    public String getTopologyFaceId()      { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":F:" + faceKind.name() + (targetFeatureId != null ? ":" + targetFeatureId : "") : ""; }
     public Point3D getWorldHitPoint()      { return worldHitPoint; }
     public Point3D getWorldNormal()        { return worldNormal; }
     public Point3D getFaceOrigin()         { return faceOrigin; }
@@ -68,7 +80,7 @@ public class face_reference_ui_main {
 
     public face_reference_ui_main refresh(shape_item_ui_main shape) {
         if (shape == null || faceKind == null) return this;
-        return topology_geometry_helper_ui_main.reconstructFaceReference(shape, faceKind, localHitU, localHitV);
+        return topology_geometry_helper_ui_main.reconstructFaceReference(shape, faceKind, localHitU, localHitV, targetFeatureId);
     }
 
     @Override

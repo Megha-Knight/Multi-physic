@@ -129,6 +129,7 @@ public final class hole_topology_builder_ui_main {
             reattachAppearance(floor);
             body.addDerivedFace(floor);
         }
+        derived_edge_helper_ui_main.registerHoleRims(body, shape, kind, h);
     }
 
     private static double getSolidThickness(shape_item_ui_main s, face_kind_ui_main kind) {

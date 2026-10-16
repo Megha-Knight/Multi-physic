@@ -11,7 +11,14 @@ $tests = @(
     @{ Name = "Stage 10"; Script = "scratch/run_test_stage10.ps1" },
     @{ Name = "Stage 11"; Script = "scratch/run_test_stage11.ps1" },
     @{ Name = "Stage 12"; Script = "scratch/run_test_stage12.ps1" },
-    @{ Name = "Machining & Sketch"; Script = "scratch/run_test_machining_sketch.ps1" }
+    @{ Name = "Machining & Sketch"; Script = "scratch/run_test_machining_sketch.ps1" },
+    @{ Name = "Task 2 (Flush Snap Alignment)"; Script = "scratch/run_test_task2.ps1" },
+    @{ Name = "Task 3 (Three-State Color Model)"; Script = "scratch/run_test_task3.ps1" },
+    @{ Name = "Task 4 (Feature Tree Connectors)"; Script = "scratch/run_test_task4.ps1" },
+    @{ Name = "Task 5a (Derived Geometry Edges)"; Script = "scratch/run_test_task5a.ps1" },
+    @{ Name = "Task 5b (Interactive Edge Selection)"; Script = "scratch/run_test_task5b.ps1" },
+    @{ Name = "Task 5c (Extrusion Machining & Topology)"; Script = "scratch/run_test_task5c.ps1" },
+    @{ Name = "ViewCube Alignment"; Script = "scratch/run_test_viewcube_alignment.ps1" }
 )
 
 Write-Host "=========================================="

@@ -72,9 +72,20 @@ public final class ui_feature_action_helper_ui_main {
         }
     }
 
-    public static void handleFillet(UI_Main app) { openMachining(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.FILLET); }
-    public static void handleChamfer(UI_Main app) { openMachining(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.CHAMFER); }
+    public static void handleFillet(UI_Main app) { enterEdgePick(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.FILLET); }
+    public static void handleChamfer(UI_Main app) { enterEdgePick(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.CHAMFER); }
     public static void handleDraft(UI_Main app) { openMachining(app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.DRAFT); }
+
+    private static void enterEdgePick(UI_Main app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind kind) {
+        var ed = app.getWorkspace3D().getShapeEditor();
+        var s = ed.getSelectedShape();
+        if (s == null || !s.getType().is3D()) {
+            app.getFooterBar().setStatusText("Select a 3D solid (cube/cuboid/cylinder/cone) first, then click " + (kind == ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.FILLET ? "Fillet" : "Chamfer") + ".");
+            return;
+        }
+        ed.enterEdgePickMode(kind);
+        app.getFooterBar().setStatusText("Edge Pick: Click any edge on " + s.getName() + " to " + kind.name().toLowerCase() + " (Esc to cancel)");
+    }
 
     private static void openMachining(UI_Main app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind kind) {
         var ed = app.getWorkspace3D().getShapeEditor();

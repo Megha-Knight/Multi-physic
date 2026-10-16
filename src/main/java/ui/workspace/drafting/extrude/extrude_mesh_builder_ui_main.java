@@ -33,17 +33,23 @@ public final class extrude_mesh_builder_ui_main {
         Point3D mid = baseCenter.add(f.n().multiply(len * 0.5));
         var mat = createExtrudeMaterial(isSelected, isFocused);
 
-        Node geoNode;
-        if (ext.getProfileShape() == CutoutShape.CIRCLE) {
-            Cylinder cyl = new Cylinder(ext.getRadius(), len);
-            cyl.setMaterial(mat);
-            cyl.getTransforms().add(new Translate(mid.getX(), mid.getY(), mid.getZ()));
-            orientCylinder(cyl, f.n());
-            geoNode = cyl;
-        } else {
-            double w = ext.getDiameter();
-            double d = (ext.getWidth2() > 0.1) ? ext.getWidth2() : w;
-            geoNode = createOrientedBox(f.n(), mid, w, d, len, mat, ext.getFaceKind());
+        Node geoNode = null;
+        var effHoles = shape.getEffectiveHolesForFeature(ext.getId());
+        if (effHoles != null && !effHoles.isEmpty()) {
+            geoNode = extrude_hole_mesh_helper_ui_main.buildExtrudeWithHoles(f, ext, effHoles, mat);
+        }
+        if (geoNode == null) {
+            if (ext.getProfileShape() == CutoutShape.CIRCLE) {
+                Cylinder cyl = new Cylinder(ext.getRadius(), len);
+                cyl.setMaterial(mat);
+                cyl.getTransforms().add(new Translate(mid.getX(), mid.getY(), mid.getZ()));
+                orientCylinder(cyl, f.n());
+                geoNode = cyl;
+            } else {
+                double w = ext.getDiameter();
+                double d = (ext.getWidth2() > 0.1) ? ext.getWidth2() : w;
+                geoNode = createOrientedBox(f.n(), mid, w, d, len, mat, ext.getFaceKind());
+            }
         }
 
         geoNode.setUserData(ext);
@@ -96,23 +102,8 @@ public final class extrude_mesh_builder_ui_main {
     }
 
     public static hole_mesh_triangulator_ui_main.Frame getLocalFaceFrame(shape_item_ui_main shape, face_kind_ui_main kind) {
-        Point3D p1 = shape.getP1(), p2 = shape.getP2();
-        if (shape.getType() == basic_shapes_ui_main.CUBE) {
-            double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ(), s = Math.max(Math.abs(dx), Math.abs(dz));
-            Point3D c = new Point3D(p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5), p1.getY() - s * 0.5, p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5));
-            return hole_mesh_triangulator_ui_main.getCubeFaceFrame(c, s, kind);
-        } else if (shape.getType() == basic_shapes_ui_main.CUBOID) {
-            double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
-            double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
-            Point3D c = new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY() - h * 0.5, (p1.getZ() + p2.getZ()) * 0.5);
-            return hole_mesh_triangulator_ui_main.getCuboidFaceFrame(c, w, h, d, kind);
-        } else if (shape.getType() == basic_shapes_ui_main.CYLINDER) {
-            double r = p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, r * 2.0);
-            if (kind == face_kind_ui_main.TOP_CAP || kind == face_kind_ui_main.TOP)
-                return new hole_mesh_triangulator_ui_main.Frame(new Point3D(p1.getX(), -h, p1.getZ()), new Point3D(0, -1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, 1));
-            if (kind == face_kind_ui_main.BOTTOM_CAP || kind == face_kind_ui_main.BOTTOM)
-                return new hole_mesh_triangulator_ui_main.Frame(new Point3D(p1.getX(), 0, p1.getZ()), new Point3D(0, 1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, -1));
-        }
-        return null;
+        if (shape == null || kind == null) return null;
+        var info = ui.workspace.drafting.faces.face_geometry_helper_ui_main.getFaceInfo(shape, kind);
+        return new hole_mesh_triangulator_ui_main.Frame(info.origin(), info.normal(), info.uAxis(), info.vAxis());
     }
 }

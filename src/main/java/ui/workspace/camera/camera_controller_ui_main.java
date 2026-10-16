@@ -35,13 +35,13 @@ public class camera_controller_ui_main {
 
     public void attach(Pane container) {
         container.setOnMousePressed((MouseEvent event) -> {
-            if (!enabled && event.isPrimaryButtonDown()) return;
+            if (!enabled) return;
             mouseOldX = event.getSceneX();
             mouseOldY = event.getSceneY();
         });
 
         container.setOnMouseDragged((MouseEvent event) -> {
-            if (!enabled && event.isPrimaryButtonDown()) return;
+            if (!enabled) return;
             double dx = event.getSceneX() - mouseOldX;
             double dy = event.getSceneY() - mouseOldY;
 

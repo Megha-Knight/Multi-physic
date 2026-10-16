@@ -28,8 +28,8 @@ public class featuremanager_ui_main extends BorderPane {
         HBox header = new HBox(lbl); header.setAlignment(Pos.CENTER_LEFT); header.setPadding(new Insets(4, 10, 4, 10)); header.setPrefHeight(26);
         header.setStyle("-fx-background-color: #F1F5F9; -fx-border-color: #CBD5E1; -fx-border-width: 0 0 1 0;"); setTop(header);
         treeView.setRoot(rootItem); treeView.setShowRoot(false);
-        treeView.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
-        treeView.setCellFactory(tv -> new FeatureTreeCell());
+        treeView.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; -fx-indent: 0;");
+        treeView.setCellFactory(tv -> new feature_tree_cell_ui_main(() -> editor, () -> onSketchDoubleClicked));
         treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (syncLock || editor == null || newVal == null || newVal.getValue() == null) return;
             syncLock = true;
@@ -120,19 +120,26 @@ public class featuremanager_ui_main extends BorderPane {
 
         for (TreeItem<feature_tree_node_ui_main> sItem : rootItem.getChildren()) {
             if (sItem.getValue().getShape() == selShape) {
+                TreeItem<feature_tree_node_ui_main> target = sItem;
                 if (selDfId != null) {
                     for (var hItem : sItem.getChildren()) {
                         for (var dfItem : hItem.getChildren()) {
                             if (dfItem.getValue().isDerivedFace() && selDfId.equals(dfItem.getValue().getDerivedFace().getId())) {
-                                sItem.setExpanded(true); hItem.setExpanded(true); treeView.getSelectionModel().select(dfItem); treeView.scrollTo(treeView.getRow(dfItem)); return;
+                                sItem.setExpanded(true); hItem.setExpanded(true); target = dfItem; break;
                             }
                         }
                     }
+                } else if (selHole != null) {
+                    for (var hItem : sItem.getChildren()) if (hItem.getValue().getHole() == selHole) { sItem.setExpanded(true); target = hItem; break; }
+                } else if (selPat != null) {
+                    for (var pItem : sItem.getChildren()) if (pItem.getValue().getPattern() == selPat) { sItem.setExpanded(true); target = pItem; break; }
+                } else if (selExt != null) {
+                    for (var eItem : sItem.getChildren()) if (eItem.getValue().getExtrude() == selExt) { sItem.setExpanded(true); target = eItem; break; }
                 }
-                if (selHole != null) for (var hItem : sItem.getChildren()) if (hItem.getValue().getHole() == selHole) { sItem.setExpanded(true); treeView.getSelectionModel().select(hItem); treeView.scrollTo(treeView.getRow(hItem)); return; }
-                if (selPat != null) for (var pItem : sItem.getChildren()) if (pItem.getValue().getPattern() == selPat) { sItem.setExpanded(true); treeView.getSelectionModel().select(pItem); treeView.scrollTo(treeView.getRow(pItem)); return; }
-                if (selExt != null) for (var eItem : sItem.getChildren()) if (eItem.getValue().getExtrude() == selExt) { sItem.setExpanded(true); treeView.getSelectionModel().select(eItem); treeView.scrollTo(treeView.getRow(eItem)); return; }
-                treeView.getSelectionModel().select(sItem); treeView.scrollTo(treeView.getRow(sItem)); return;
+                if (treeView.getSelectionModel().getSelectedItem() != target) {
+                    treeView.getSelectionModel().select(target); treeView.scrollTo(treeView.getRow(target));
+                }
+                return;
             }
         }
     }
@@ -157,39 +164,5 @@ public class featuremanager_ui_main extends BorderPane {
             lbl += " [" + String.join(", ", p) + "]";
         }
         return lbl;
-    }
-
-    private class FeatureTreeCell extends TreeCell<feature_tree_node_ui_main> {
-        private final ImageView iconView = new ImageView();
-        private final Label nameLabel = new Label();
-        private final HBox row = new HBox(6, iconView, nameLabel);
-
-        FeatureTreeCell() {
-            row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(2, 4, 2, 4));
-            iconView.setFitWidth(14); iconView.setFitHeight(14);
-            nameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #1E293B;");
-            setOnMouseClicked(e -> {
-                if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 2 && !isEmpty() && editor != null) {
-                    feature_tree_node_ui_main val = getItem();
-                    if (val.isHole()) editor.openHoleEditor(val.getParentShape(), val.getHole());
-                    else if (val.isPattern()) editor.openPatternEditor(val.getParentShape(), val.getPattern());
-                    else if (val.isExtrude()) editor.openExtrudeEditor(val.getParentShape(), val.getExtrude());
-                    else if (val.isSketch() && onSketchDoubleClicked != null) onSketchDoubleClicked.accept(val.getSketch());
-                    else if (val.isShape()) editor.openDimensionEditor(val.getShape());
-                    e.consume();
-                }
-            });
-        }
-
-        @Override
-        protected void updateItem(feature_tree_node_ui_main item, boolean empty) {
-            super.updateItem(item, empty);
-            if (empty || item == null) { setGraphic(null); setText(null); setContextMenu(null); setStyle("-fx-background-color: transparent;"); }
-            else {
-                nameLabel.setText(item.getLabel()); iconView.setImage(item.getIcon()); setGraphic(row); setText(null); setContextMenu(feature_context_menu_helper_ui_main.createMenu(item, editor, onSketchDoubleClicked));
-                setStyle(isSelected() ? "-fx-background-color: " + framework_ui_main.FEATURE_ROW_SELECTED_BG + "; -fx-border-color: " + framework_ui_main.OBJECT_SELECTED_COLOR + "; -fx-border-width: 0 0 0 3;" : "-fx-background-color: transparent; -fx-border-width: 0;");
-                nameLabel.setStyle(isSelected() ? "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #0369A1;" : "-fx-font-size: 11px; -fx-font-weight: normal; -fx-text-fill: #1E293B;");
-            }
-        }
     }
 }

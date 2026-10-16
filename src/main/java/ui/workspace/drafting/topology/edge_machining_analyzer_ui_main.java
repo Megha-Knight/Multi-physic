@@ -28,12 +28,10 @@ public final class edge_machining_analyzer_ui_main {
         var collision = checkIntersections(shape, hole, srcFaceId);
         if (collision != null) return collision;
 
-        if (kind.isCylinderCap() || kind == face_kind_ui_main.BASE_CAP) {
-            return analyzeCylinderCap(shape, body, hole, kind, srcFaceId);
-        }
-        if (kind.isLateral()) {
-            return analyzeLateralFace(shape, body, hole, kind, srcFaceId);
-        }
+        if (hole.isOnFeature()) return analyzeExtrudeHole(shape, body, hole, kind);
+
+        if (kind.isCylinderCap() || kind == face_kind_ui_main.BASE_CAP) return analyzeCylinderCap(shape, body, hole, kind, srcFaceId);
+        if (kind.isLateral()) return analyzeLateralFace(shape, body, hole, kind, srcFaceId);
         return analyzeBoxFace(shape, body, hole, kind, srcFaceId);
     }
 
@@ -41,6 +39,9 @@ public final class edge_machining_analyzer_ui_main {
         List<hole_feature_ui_main> all = shape.getHoles();
         for (hole_feature_ui_main other : all) {
             if (other == hole || other.getId().equals(hole.getId())) continue;
+            boolean sameTgt = (hole.getTargetFeatureId() == null && other.getTargetFeatureId() == null)
+                || (hole.getTargetFeatureId() != null && hole.getTargetFeatureId().equals(other.getTargetFeatureId()));
+            if (!sameTgt) continue;
             if (other.getFaceKind() == hole.getFaceKind()) {
                 double dist = Math.hypot(hole.getU() - other.getU(), hole.getV() - other.getV());
                 double req = hole.getRadius() + other.getRadius();
@@ -56,12 +57,34 @@ public final class edge_machining_analyzer_ui_main {
         return null;
     }
 
-    private static boundary_relationship_ui_main analyzeBoxFace(
-            shape_item_ui_main shape, topology_body_ui_main body, hole_feature_ui_main hole,
-            face_kind_ui_main kind, String srcFaceId) {
+    private static boundary_relationship_ui_main analyzeExtrudeHole(shape_item_ui_main shape, topology_body_ui_main body, hole_feature_ui_main hole, face_kind_ui_main kind) {
+        String extId = hole.getTargetFeatureId(), bId = (body != null) ? body.getId() : shape.getId();
+        var ext = shape.getExtrusions().stream().filter(e -> e.getId().equals(extId)).findFirst().orElse(null);
+        if (ext == null) return boundary_relationship_ui_main.contained(kind, bId + ":F:EXTRUDE_CAP:" + extId, 0.0);
+        if (kind == face_kind_ui_main.EXTRUDE_LATERAL) return boundary_relationship_ui_main.crossesEdge(kind, bId + ":F:EXTRUDE_LATERAL:" + extId, null, null, null, null, 0.0, "Machining on curved extrusion lateral surface is not supported.");
+        double r = hole.getOuterRadius(), u = hole.getU(), v = hole.getV();
+        if (kind.isExtrudeSide()) {
+            var sInfo = ui.workspace.drafting.faces.face_geometry_helper_ui_main.getExtrudeFaceInfo(shape, ext, kind);
+            double shw = sInfo.width() * 0.5, shh = sInfo.height() * 0.5, minDu = Math.min(u + shw, shw - u), minDv = Math.min(v + shh, shh - v);
+            String sId = bId + ":F:" + kind.name() + ":" + extId;
+            if (minDu < r - TANGENT_TOLERANCE || minDv < r - TANGENT_TOLERANCE) return boundary_relationship_ui_main.crossesEdge(kind, sId, null, "EXTRUDE_SIDE_EDGE", kind, null, Math.max(r - minDu, r - minDv), "Cutout crosses extrusion side boundary.");
+            return boundary_relationship_ui_main.contained(kind, sId, Math.min(minDu, minDv) - r);
+        }
+        String srcFaceId = bId + ":F:EXTRUDE_CAP:" + extId, rimEdge = "EXTRUDE_CAP_RIM_" + extId;
+        if (ext.getProfileShape() == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE) {
+            double capR = ext.getRadius(), dist = Math.hypot(u, v), margin = capR - dist;
+            if (dist + r > capR + TANGENT_TOLERANCE) return boundary_relationship_ui_main.crossesEdge(kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, kind, bId + ":F:EXTRUDE_LATERAL:" + extId, dist + r - capR, "Cutout crosses extrusion rim.");
+            return boundary_relationship_ui_main.contained(kind, srcFaceId, margin - r);
+        }
+        double hw = ext.getDiameter() * 0.5, hh = ((ext.getWidth2() > 0.1 ? ext.getWidth2() : ext.getDiameter())) * 0.5;
+        double minDu = Math.min(u + hw, hw - u), minDv = Math.min(v + hh, hh - v), margin = Math.min(minDu, minDv);
+        if (minDu < r - TANGENT_TOLERANCE || minDv < r - TANGENT_TOLERANCE) return boundary_relationship_ui_main.crossesEdge(kind, srcFaceId, bId + ":E:" + rimEdge, rimEdge, kind, bId + ":F:EXTRUDE_LATERAL:" + extId, Math.max(r - minDu, r - minDv), "Cutout crosses extrusion rim.");
+        return boundary_relationship_ui_main.contained(kind, srcFaceId, margin - r);
+    }
+
+    private static boundary_relationship_ui_main analyzeBoxFace(shape_item_ui_main shape, topology_body_ui_main body, hole_feature_ui_main hole, face_kind_ui_main kind, String srcFaceId) {
         var bounds = topology_geometry_helper_ui_main.getFaceBounds(shape, kind);
-        double fw = bounds[0], fh = bounds[1], r = hole.getOuterRadius();
-        double u = hole.getU(), v = hole.getV(), hw = fw * 0.5, hh = fh * 0.5;
+        double fw = bounds[0], fh = bounds[1], r = hole.getOuterRadius(), u = hole.getU(), v = hole.getV(), hw = fw * 0.5, hh = fh * 0.5;
         double minDu = Math.min(u + hw, hw - u), minDv = Math.min(v + hh, hh - v), margin = Math.min(minDu, minDv);
         boolean overU = (minDu < r - TANGENT_TOLERANCE), overV = (minDv < r - TANGENT_TOLERANCE);
         boolean tanU = Math.abs(minDu - r) <= TANGENT_TOLERANCE, tanV = Math.abs(minDv - r) <= TANGENT_TOLERANCE;
@@ -172,4 +195,3 @@ public final class edge_machining_analyzer_ui_main {
         };
     }
 }
-

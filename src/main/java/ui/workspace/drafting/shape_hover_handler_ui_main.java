@@ -22,6 +22,19 @@ public final class shape_hover_handler_ui_main {
                                    shape_editor_ui_main editor, Node hitNode) {
         if (editor == null) return;
 
+        if (editor.isEdgePickMode()) {
+            shape_item_ui_main sel = editor.getSelectedShape();
+            if (sel == null) sel = editor.findShapeByNode(hitNode);
+            if (sel != null && sel.getType().is3D() && camera != null && viewport != null && container != null) {
+                double[] ray = world_raycaster_ui_main.buildRay(e, viewport, camera, container);
+                editor.setHoveredEdge(ui.workspace.drafting.faces.edge_picker_ui_main.pickEdge(ray, sel));
+            } else {
+                editor.clearEdgeHover();
+            }
+            return;
+        }
+        editor.clearEdgeHover();
+
         // 1. Check if hovering a derived hole region MeshView
         if (hitNode != null && hitNode.getUserData() instanceof topology_derived_face_ui_main df) {
             shape_item_ui_main shape = editor.findShapeByNode(hitNode);

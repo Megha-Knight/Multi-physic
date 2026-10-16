@@ -92,6 +92,25 @@ public final class face_geometry_helper_ui_main {
         return (Math.abs(u) + outerRadius <= hw + CAD_TOLERANCE) && (Math.abs(v) + outerRadius <= hh + CAD_TOLERANCE);
     }
 
+    public static FaceInfo getExtrudeFaceInfo(shape_item_ui_main shape, ui.workspace.drafting.extrude.extrude_feature_ui_main ext, face_kind_ui_main kind) {
+        if (shape == null || ext == null) return createDefault();
+        var f = ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.getLocalFaceFrame(shape, ext.getFaceKind());
+        if (f == null) return createDefault();
+        Point3D n = f.n(), u = f.u(), v = f.v();
+        Point3D baseCenter = f.origin().add(u.multiply(ext.getU())).add(v.multiply(ext.getV()));
+        double len = ext.getHeight(), rad = ext.getRadius();
+        double w = ext.getDiameter(), d = (ext.getWidth2() > 0.1 ? ext.getWidth2() : w);
+        Point3D capCenter = baseCenter.add(n.multiply(len)), mid = baseCenter.add(n.multiply(len * 0.5));
+        boolean isCircle = (ext.getProfileShape() == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE);
+
+        if (kind == face_kind_ui_main.EXTRUDE_LATERAL) return new FaceInfo(mid, u, n, v, 2 * Math.PI * rad, len, rad, rad, false);
+        if (kind == face_kind_ui_main.EXTRUDE_SIDE_POS_U) return new FaceInfo(mid.add(u.multiply(w * 0.5)), v, n, u, d, len, w, 0.0, false);
+        if (kind == face_kind_ui_main.EXTRUDE_SIDE_NEG_U) return new FaceInfo(mid.add(u.multiply(-w * 0.5)), v.multiply(-1), n, u.multiply(-1), d, len, w, 0.0, false);
+        if (kind == face_kind_ui_main.EXTRUDE_SIDE_POS_V) return new FaceInfo(mid.add(v.multiply(d * 0.5)), u.multiply(-1), n, v, w, len, d, 0.0, false);
+        if (kind == face_kind_ui_main.EXTRUDE_SIDE_NEG_V) return new FaceInfo(mid.add(v.multiply(-d * 0.5)), u, n, v.multiply(-1), w, len, d, 0.0, false);
+        return new FaceInfo(capCenter, u, v, n, w, (isCircle ? w : d), len, (isCircle ? rad : 0.0), isCircle);
+    }
+
     private static FaceInfo createDefault() {
         return new FaceInfo(Point3D.ZERO, new Point3D(1, 0, 0), new Point3D(0, 0, 1),
                 new Point3D(0, -1, 0), 100.0, 100.0, 100.0, 0.0, false);

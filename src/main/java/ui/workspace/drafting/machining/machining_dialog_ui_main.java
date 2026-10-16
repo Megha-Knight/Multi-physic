@@ -38,6 +38,16 @@ public class machining_dialog_ui_main extends Stage {
     public static void openCreate(Kind k, shape_item_ui_main s, shape_editor_ui_main ed, Window w) {
         if (k != null && s != null) new machining_dialog_ui_main(k, s, ed, w, null, null, null).show();
     }
+    public static void openCreateWithTarget(Kind k, shape_item_ui_main s, String target, shape_editor_ui_main ed, Window w) {
+        if (k != null && s != null) {
+            machining_dialog_ui_main dlg = new machining_dialog_ui_main(k, s, ed, w, null, null, null);
+            if (target != null && !target.isBlank()) {
+                if (!dlg.targetCombo.getItems().contains(target)) dlg.targetCombo.getItems().add(target);
+                dlg.targetCombo.setValue(target);
+            }
+            dlg.show();
+        }
+    }
     public static void openEdit(shape_item_ui_main s, fillet_feature_ui_main f, shape_editor_ui_main ed, Window w) {
         if (s != null && f != null) new machining_dialog_ui_main(Kind.FILLET, s, ed, w, f, null, null).show();
     }

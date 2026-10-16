@@ -107,6 +107,15 @@ public class topology_derived_face_ui_main extends topology_face_ui_main {
     }
 
     @Override
+    public ui.workspace.drafting.faces.face_reference_ui_main toFaceReference(ui.workspace.drafting.shape_item_ui_main shape, double localU, double localV) {
+        if (shape == null) return null;
+        if (creatingFeatureId != null) {
+            return topology_geometry_helper_ui_main.reconstructFaceReference(shape, getFaceKind(), localU, localV, creatingFeatureId);
+        }
+        return super.toFaceReference(shape, localU, localV);
+    }
+
+    @Override
     public String toString() {
         return String.format("DerivedFace[%s (%s on %s, loops=%d, r=%.1f, d=%.1f)]",
             getId(), regionKind.name(), sourceFaceKind != null ? sourceFaceKind.name() : "NONE",

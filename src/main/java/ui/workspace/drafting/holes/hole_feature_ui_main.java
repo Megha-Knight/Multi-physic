@@ -33,7 +33,7 @@ public class hole_feature_ui_main {
     private double u, v, diameter, depth, csDiameter, csAngle = 90.0, cbDiameter, cbDepth, width2 = 0.0;
     private boolean throughAll, visible = true;
     private CutoutShape cutoutShape = CutoutShape.CIRCLE;
-    private String name, diagnosticMessage = null;
+    private String name, diagnosticMessage = null, targetFeatureId = null;
     private ui.workspace.drafting.features.feature_state_ui_main state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
     private boundary_relationship_ui_main boundaryRelationship = null;
 
@@ -172,6 +172,9 @@ public class hole_feature_ui_main {
     public void setCutoutShape(CutoutShape s) { this.cutoutShape = s; }
     public double getWidth2() { return width2; }
     public void setWidth2(double w) { this.width2 = w; }
+    public String getTargetFeatureId() { return targetFeatureId; }
+    public void setTargetFeatureId(String id) { this.targetFeatureId = id; }
+    public boolean isOnFeature() { return targetFeatureId != null && !targetFeatureId.isBlank(); }
 
     @Override
     public String toString() {

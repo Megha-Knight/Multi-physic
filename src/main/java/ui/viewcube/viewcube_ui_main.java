@@ -54,7 +54,9 @@ public class viewcube_ui_main extends StackPane {
 
         Group root3D = new Group();
         Group cubePivot = new Group(buildFlushFaces(), buildMiniAxes());
-        cubePivot.getTransforms().addAll(cubeRy, cubeRx);
+        // The viewport camera hierarchy is Ry * Rx.
+        // The ViewCube must apply the inverse orientation in reverse order.
+        cubePivot.getTransforms().setAll(cubeRx, cubeRy);
         root3D.getChildren().add(cubePivot);
 
         AmbientLight ambient = new AmbientLight(Color.web("#E2E8F0"));

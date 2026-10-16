@@ -7,7 +7,11 @@ import ui.workspace.drafting.gizmo.shape_rotation_helper_ui_main;
 
 public final class face_picker_ui_main {
 
-    private record Hit(double t, face_kind_ui_main kind, Point3D localPt, Point3D localNormal, Point3D localOrigin, Point3D localU, Point3D localV, double w, double h) {}
+    record Hit(double t, face_kind_ui_main kind, Point3D localPt, Point3D localNormal, Point3D localOrigin, Point3D localU, Point3D localV, double w, double h, String targetFeatureId) {
+        Hit(double t, face_kind_ui_main kind, Point3D localPt, Point3D localNormal, Point3D localOrigin, Point3D localU, Point3D localV, double w, double h) {
+            this(t, kind, localPt, localNormal, localOrigin, localU, localV, w, h, null);
+        }
+    }
 
     private face_picker_ui_main() {}
 
@@ -23,22 +27,33 @@ public final class face_picker_ui_main {
         Point3D rayDirLocal = inverseTransformDir(rayDirWorld, rx, ry);
 
         Hit best = intersectShapeLocal(shape, rayOriginLocal, rayDirLocal);
-        if (best == null || best.t <= 0) return null;
+        Hit extHit = extrude_face_picker_ui_main.intersectExtrusions(shape, rayOriginLocal, rayDirLocal);
+        if (extHit != null && (best == null || extHit.t() < best.t())) best = extHit;
+        if (best == null || best.t() <= 0) return null;
 
-        Point3D worldHit = shape_rotation_helper_ui_main.transformPoint(best.localPt, c, rx, ry, wx, wy, wz);
-        Point3D worldNorm = shape_rotation_helper_ui_main.transformNormal(best.localNormal, rx, ry).normalize();
-        Point3D worldOrigin = shape_rotation_helper_ui_main.transformPoint(best.localOrigin, c, rx, ry, wx, wy, wz);
-        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(best.localU, rx, ry).normalize(), worldV = shape_rotation_helper_ui_main.transformNormal(best.localV, rx, ry).normalize();
+        Point3D worldHit = shape_rotation_helper_ui_main.transformPoint(best.localPt(), c, rx, ry, wx, wy, wz);
+        Point3D worldNorm = shape_rotation_helper_ui_main.transformNormal(best.localNormal(), rx, ry).normalize();
+        Point3D worldOrigin = shape_rotation_helper_ui_main.transformPoint(best.localOrigin(), c, rx, ry, wx, wy, wz);
+        Point3D worldU = shape_rotation_helper_ui_main.transformNormal(best.localU(), rx, ry).normalize(), worldV = shape_rotation_helper_ui_main.transformNormal(best.localV(), rx, ry).normalize();
         Point3D delta = worldHit.subtract(worldOrigin);
-        return new face_reference_ui_main(shape.getId(), best.kind, worldHit, worldNorm,
-            worldOrigin, worldU, worldV, delta.dotProduct(worldU), delta.dotProduct(worldV), best.w, best.h);
+        return new face_reference_ui_main(shape.getId(), best.targetFeatureId(), best.kind(), worldHit, worldNorm,
+            worldOrigin, worldU, worldV, delta.dotProduct(worldU), delta.dotProduct(worldV), best.w(), best.h());
     }
 
     public static face_reference_ui_main refreshFace(face_reference_ui_main prev, shape_item_ui_main shape) {
         if (prev == null || shape == null || !shape.getType().is3D()) return null;
-        return ui.workspace.drafting.topology.topology_geometry_helper_ui_main.reconstructFaceReference(
-            shape, prev.getFaceKind(), prev.getLocalHitU(), prev.getLocalHitV()
+        var ref = ui.workspace.drafting.topology.topology_geometry_helper_ui_main.reconstructFaceReference(
+            shape, prev.getFaceKind(), prev.getLocalHitU(), prev.getLocalHitV(), prev.getTargetFeatureId()
         );
+        if (ref != null && (prev.getFaceKind() == face_kind_ui_main.EXTRUDE_LATERAL || prev.getFaceKind() == face_kind_ui_main.CYLINDER_LATERAL) && prev.getWorldNormal() != null) {
+            return new face_reference_ui_main(
+                ref.getOwnerShapeId(), ref.getTargetFeatureId(), ref.getFaceKind(),
+                ref.getWorldHitPoint(), prev.getWorldNormal(), ref.getFaceOrigin(),
+                ref.getUAxis(), ref.getVAxis(), ref.getLocalHitU(), ref.getLocalHitV(),
+                ref.getFaceWidth(), ref.getFaceHeight()
+            );
+        }
+        return ref;
     }
 
     private static Hit getBoxFace(Point3D p1, Point3D p2, face_kind_ui_main kind, boolean isCube) {

@@ -24,7 +24,15 @@ public enum face_kind_ui_main {
     CONE_LATERAL("Cone Lateral", false),
 
     // Sphere
-    SPHERE_SURFACE("Sphere Surface", false);
+    SPHERE_SURFACE("Sphere Surface", false),
+
+    // Extrusion faces
+    EXTRUDE_CAP("Extrude Cap", true),
+    EXTRUDE_LATERAL("Extrude Lateral", false),
+    EXTRUDE_SIDE_POS_U("Extrude Side +U", true),
+    EXTRUDE_SIDE_NEG_U("Extrude Side -U", true),
+    EXTRUDE_SIDE_POS_V("Extrude Side +V", true),
+    EXTRUDE_SIDE_NEG_V("Extrude Side -V", true);
 
     private final String label;
     private final boolean planar;
@@ -37,7 +45,9 @@ public enum face_kind_ui_main {
     public String getLabel() { return label; }
     public boolean isPlanar() { return planar; }
     public boolean isCurved() { return !planar; }
-    public boolean isLateral() { return this == CYLINDER_LATERAL || this == CONE_LATERAL; }
+    public boolean isLateral() { return this == CYLINDER_LATERAL || this == CONE_LATERAL || this == EXTRUDE_LATERAL; }
     public boolean isCylinderCap() { return this == TOP_CAP || this == BOTTOM_CAP; }
+    public boolean isExtrudeSide() { return this == EXTRUDE_SIDE_POS_U || this == EXTRUDE_SIDE_NEG_U || this == EXTRUDE_SIDE_POS_V || this == EXTRUDE_SIDE_NEG_V; }
+    public boolean isExtrudeFace() { return this == EXTRUDE_CAP || this == EXTRUDE_LATERAL || isExtrudeSide(); }
 }
 
