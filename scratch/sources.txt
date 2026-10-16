@@ -224,3 +224,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\shapes\primitives\mesh_helper_ui_main
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\primitives\plane_geometry_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\primitives\shape_geometry_3d_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\shapes\primitives\shape_geometry_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\triad\coordinate_triad_math_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\triad\local_triad_3d_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\triad\triad_coordinator_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\triad\world_triad_ui_main.java

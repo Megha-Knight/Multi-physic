@@ -48,6 +48,7 @@ public class workspace_ui_main extends StackPane {
     private final shape_editor_ui_main shapeEditor;
     private final sketch_mode_ui_main sketchMode = new sketch_mode_ui_main();
     private final sketch_controller_ui_main sketchController;
+    private final ui.workspace.triad.triad_coordinator_ui_main triadCoordinator;
 
     private boolean isOrthographic = false;
     private double savedDist = -400.0;
@@ -119,6 +120,7 @@ public class workspace_ui_main extends StackPane {
         drafter.setEditor(shapeEditor);
         sketchController = new sketch_controller_ui_main(sketchMode, () -> sketchMode.exit(true, shapeEditor), () -> sketchMode.exit(false, shapeEditor));
         root3D.getChildren().addAll(drafter.getShapesGroup(), drafter.getPreviewGroup(), sketchController.getView(), sketchController.getPreview());
+        triadCoordinator = new ui.workspace.triad.triad_coordinator_ui_main(this, root3D, rx, ry, sketchMode, controller::setOrientation);
         getChildren().add(sketchController.getHud());
         StackPane.setAlignment(sketchController.getHud(), Pos.TOP_LEFT);
         StackPane.setMargin(sketchController.getHud(), new Insets(10));
@@ -193,4 +195,5 @@ public class workspace_ui_main extends StackPane {
     public PerspectiveCamera getCamera() { return camera; } public viewcube_ui_main getViewCube() { return viewCube; }
     public shape_drafting_ui_main getDrafter() { return drafter; } public shape_editor_ui_main getShapeEditor() { return shapeEditor; }
     public sketch_mode_ui_main getSketchMode() { return sketchMode; } public sketch_controller_ui_main getSketchController() { return sketchController; }
+    public ui.workspace.triad.triad_coordinator_ui_main getTriadCoordinator() { return triadCoordinator; }
 }
