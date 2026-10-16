@@ -31,7 +31,7 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) {
-        // UI_Main is the top-level governing view that builds the bars.
+        Thread.setDefaultUncaughtExceptionHandler(new application_error_handler_ui_main());
         UI_Main root = new UI_Main();
 
         Scene scene = new Scene(root, INITIAL_WIDTH, INITIAL_HEIGHT);

@@ -20,7 +20,8 @@ $tests = @(
     @{ Name = "Task 5c (Extrusion Machining & Topology)"; Script = "scratch/run_test_task5c.ps1" },
     @{ Name = "ViewCube Alignment"; Script = "scratch/run_test_viewcube_alignment.ps1" },
     @{ Name = "Tasks 1-3 (Hole Overlays & Multi-Hole)"; Script = "scratch/run_test_tasks123.ps1" },
-    @{ Name = "Task 02 (Global & Local Coordinate Triads)"; Script = "scratch/run_test_task02_triads.ps1" }
+    @{ Name = "Task 02 (Global & Local Coordinate Triads)"; Script = "scratch/run_test_task02_triads.ps1" },
+    @{ Name = "Task 03 (Completed MultiPhysics Features)"; Script = "scratch/run_test_task03_features.ps1" }
 )
 
 Write-Host "=========================================="

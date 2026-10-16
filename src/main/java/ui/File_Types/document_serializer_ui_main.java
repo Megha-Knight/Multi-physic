@@ -83,23 +83,21 @@ public final class document_serializer_ui_main {
     public static List<shape_item_ui_main> loadFromFile(File file) {
         List<shape_item_ui_main> list = new ArrayList<>();
         if (file == null || !file.exists() || file.length() == 0) return list;
+        String fn = file.getName().toLowerCase();
+        if (fn.endsWith(".stl")) return stl_importer_ui_main.importFromStl(file);
+        if (fn.endsWith(".obj")) return obj_importer_ui_main.importFromObj(file);
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line, id = null, name = null, faceOwner = null, consumedBy = null;
             boolean consumed = false; face_kind_ui_main faceKind = null; basic_shapes_ui_main currentType = null;
             Point3D p1 = null, p2 = null, uAxis = null, vAxis = null, norm = null;
             double tx = 0, ty = 0, tz = 0, rotY = 0, rotX = 0, faceHitU = 0, faceHitV = 0;
-            List<hole_feature_ui_main> pendingHoles = new ArrayList<>();
-            List<hole_pattern_ui_main> pendingPatterns = new ArrayList<>();
+            List<hole_feature_ui_main> pendingHoles = new ArrayList<>(); List<hole_pattern_ui_main> pendingPatterns = new ArrayList<>();
             List<ui.workspace.drafting.extrude.extrude_feature_ui_main> pendingExtrusions = new ArrayList<>();
             List<ui.workspace.drafting.sketch.sketch_feature_ui_main> pendingSketches = new ArrayList<>();
-            List<ui.workspace.drafting.machining.chamfer_feature_ui_main> pendingChamfers = new ArrayList<>();
-            List<ui.workspace.drafting.machining.fillet_feature_ui_main> pendingFillets = new ArrayList<>();
-            List<ui.workspace.drafting.machining.draft_feature_ui_main> pendingDrafts = new ArrayList<>();
-            List<ui.workspace.drafting.booleans.boolean_feature_ui_main> pendingBooleans = new ArrayList<>();
-            List<ui.workspace.drafting.shell.shell_feature_ui_main> pendingShells = new ArrayList<>();
-            List<ui.workspace.drafting.loft.loft_feature_ui_main> pendingLofts = new ArrayList<>();
-            List<ui.workspace.drafting.sweep.sweep_feature_ui_main> pendingSweeps = new ArrayList<>();
-            List<ui.workspace.drafting.revolve.revolve_feature_ui_main> pendingRevolves = new ArrayList<>();
+            List<ui.workspace.drafting.machining.chamfer_feature_ui_main> pendingChamfers = new ArrayList<>(); List<ui.workspace.drafting.machining.fillet_feature_ui_main> pendingFillets = new ArrayList<>();
+            List<ui.workspace.drafting.machining.draft_feature_ui_main> pendingDrafts = new ArrayList<>(); List<ui.workspace.drafting.booleans.boolean_feature_ui_main> pendingBooleans = new ArrayList<>();
+            List<ui.workspace.drafting.shell.shell_feature_ui_main> pendingShells = new ArrayList<>(); List<ui.workspace.drafting.loft.loft_feature_ui_main> pendingLofts = new ArrayList<>();
+            List<ui.workspace.drafting.sweep.sweep_feature_ui_main> pendingSweeps = new ArrayList<>(); List<ui.workspace.drafting.revolve.revolve_feature_ui_main> pendingRevolves = new ArrayList<>();
             ui.workspace.drafting.sketch.sketch_feature_ui_main currentSketch = null;
 
             while ((line = br.readLine()) != null) {

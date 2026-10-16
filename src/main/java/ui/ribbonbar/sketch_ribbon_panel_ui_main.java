@@ -22,10 +22,11 @@ public class sketch_ribbon_panel_ui_main extends HBox implements dynamic_panel_e
     private final ToggleButton btnSelect = createToolBtn("Select", sketch_tool_type_ui_main.SELECT);
     private final ToggleButton btnLine   = createToolBtn("Line", sketch_tool_type_ui_main.LINE);
     private final ToggleButton btnCircle = createToolBtn("Circle", sketch_tool_type_ui_main.CIRCLE);
-    private final ToggleButton btnRect   = createToolBtn("Rect", sketch_tool_type_ui_main.RECTANGLE);
-    private final ToggleButton btnArc    = createToolBtn("Arc", sketch_tool_type_ui_main.ARC);
-    private final Button btnFinish       = new Button("Finish Sketch");
-    private final Button btnCancel       = new Button("Cancel");
+    private final ToggleButton btnRect       = createToolBtn("Rect", sketch_tool_type_ui_main.RECTANGLE);
+    private final ToggleButton btnCenterRect = createToolBtn("Center Rect", sketch_tool_type_ui_main.CENTER_RECTANGLE);
+    private final ToggleButton btnArc        = createToolBtn("Arc", sketch_tool_type_ui_main.ARC);
+    private final Button btnFinish           = new Button("Finish Sketch");
+    private final Button btnCancel           = new Button("Cancel");
 
     private sketch_controller_ui_main controller = null;
     private Runnable onFinishRequested = null;
@@ -40,7 +41,8 @@ public class sketch_ribbon_panel_ui_main extends HBox implements dynamic_panel_e
         btnSelect.setTooltip(new javafx.scene.control.Tooltip("Select / pick sketch geometry (Del/Backspace to delete)"));
         btnLine.setTooltip(new javafx.scene.control.Tooltip("Line: Click start point, then click end point"));
         btnCircle.setTooltip(new javafx.scene.control.Tooltip("Circle: Click center point, then click radius"));
-        btnRect.setTooltip(new javafx.scene.control.Tooltip("Rectangle: Click first corner, then opposite corner"));
+        btnRect.setTooltip(new javafx.scene.control.Tooltip("Corner Rectangle: Click first corner, then opposite corner"));
+        btnCenterRect.setTooltip(new javafx.scene.control.Tooltip("Center Rectangle: Click center, then corner (with diagonal construction lines)"));
         btnArc.setTooltip(new javafx.scene.control.Tooltip("Arc: Click center, start angle, and end angle"));
 
         btnFinish.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 11px; " +
@@ -53,7 +55,7 @@ public class sketch_ribbon_panel_ui_main extends HBox implements dynamic_panel_e
         btnCancel.setTooltip(new javafx.scene.control.Tooltip("Cancel sketch mode without saving"));
         btnCancel.setOnAction(e -> { if (onCancelRequested != null) onCancelRequested.run(); });
 
-        HBox toolsRow = new HBox(3, btnSelect, btnLine, btnCircle, btnRect, btnArc, btnCancel, btnFinish);
+        HBox toolsRow = new HBox(3, btnSelect, btnLine, btnCircle, btnRect, btnCenterRect, btnArc, btnCancel, btnFinish);
         toolsRow.setAlignment(Pos.CENTER_LEFT);
 
         Label lbl = new Label("Sketch Tools");

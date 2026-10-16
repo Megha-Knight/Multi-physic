@@ -49,8 +49,14 @@ public class sketch_view_ui_main extends Group {
         Point3D p2 = cs.toWorldPoint(line.getEnd());
         Line l = new Line(p1.getX(), p1.getY(), p2.getX(), p2.getY());
         l.setTranslateZ((p1.getZ() + p2.getZ()) * 0.5);
-        l.setStroke(color);
-        l.setStrokeWidth(width);
+        if (line.isConstruction()) {
+            l.setStroke(Color.web("#64748B"));
+            l.getStrokeDashArray().addAll(6.0, 4.0);
+            l.setStrokeWidth(1.2);
+        } else {
+            l.setStroke(color);
+            l.setStrokeWidth(width);
+        }
         getChildren().add(l);
     }
 

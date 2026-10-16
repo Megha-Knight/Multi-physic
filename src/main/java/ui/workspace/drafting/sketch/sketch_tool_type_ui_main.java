@@ -9,6 +9,7 @@ public enum sketch_tool_type_ui_main {
     LINE("Line", "Draw 2-point line segments"),
     CIRCLE("Circle", "Draw center-radius circles"),
     RECTANGLE("Rectangle", "Draw 2-corner rectangles"),
+    CENTER_RECTANGLE("Center Rect", "Draw center-to-corner rectangles with construction diagonals"),
     ARC("Arc", "Draw 3-point center-start-end circular arcs");
 
     private final String label;

@@ -33,16 +33,14 @@ public class sketch_controller_ui_main {
     }
     public sketch_controller_ui_main(sketch_mode_ui_main mode, Runnable onClose) { this(mode, onClose, onClose); }
 
-    public Group getView() { return view; } public Group getPreview() { return preview; }
-    public sketch_hud_overlay_ui_main getHud() { return hud; } public State getState() { return state; }
+    public Group getView() { return view; }
+    public Group getPreview() { return preview; }
+    public sketch_hud_overlay_ui_main getHud() { return hud; }
+    public State getState() { return state; }
     public sketch_tool_type_ui_main getActiveTool() { return activeTool; }
     public void setTool(sketch_tool_type_ui_main t) { this.activeTool = t; cancelActiveDrawing(); }
     public sketch_entity_ui_main getSelectedEntity() { return selectedEntity; }
-
-    public void cancelActiveDrawing() {
-        state = State.IDLE; startPt = null; arcCenter = null;
-        preview.clearAll();
-    }
+    public void cancelActiveDrawing() { state = State.IDLE; startPt = null; arcCenter = null; preview.clearAll(); }
 
     private void onModeUpdated() {
         if (mode.isActive()) {
@@ -77,7 +75,7 @@ public class sketch_controller_ui_main {
         switch (state) {
             case LINE_END -> preview.showLinePreview(cs.toWorldPoint(startPt), cs.toWorldPoint(p));
             case CIRCLE_RADIUS -> preview.showCirclePreview(startPt, startPt.distance(p), cs);
-            case RECT_CORNER2 -> preview.showRectPreview(startPt, p, cs);
+            case RECT_CORNER2 -> preview.showRectPreview(activeTool == sketch_tool_type_ui_main.CENTER_RECTANGLE ? new sketch_point_2d_ui_main(2 * startPt.x() - p.x(), 2 * startPt.y() - p.y()) : startPt, p, cs);
             case ARC_START -> preview.showCirclePreview(arcCenter, arcCenter.distance(p), cs);
             case ARC_END -> {
                 double end = Math.toDegrees(Math.atan2(p.y() - arcCenter.y(), p.x() - arcCenter.x()));
@@ -96,7 +94,7 @@ public class sketch_controller_ui_main {
             case SELECT -> handleSelectClick(p, sk);
             case LINE -> handleLineClick(p, sk, editor);
             case CIRCLE -> handleCircleClick(p, sk, editor);
-            case RECTANGLE -> handleRectClick(p, sk, editor);
+            case RECTANGLE, CENTER_RECTANGLE -> handleRectClick(p, sk, editor);
             case ARC -> handleArcClick(p, sk, editor);
         }
         hud.update(sk);
@@ -139,12 +137,21 @@ public class sketch_controller_ui_main {
     }
 
     private void handleRectClick(sketch_point_2d_ui_main p, sketch_feature_ui_main sk, shape_editor_ui_main editor) {
-        if (state == State.IDLE) {
-            startPt = p; state = State.RECT_CORNER2;
-        } else if (state == State.RECT_CORNER2) {
+        if (state == State.IDLE) { startPt = p; state = State.RECT_CORNER2; }
+        else if (state == State.RECT_CORNER2) {
             if (Math.abs(p.x() - startPt.x()) > 0.05 && Math.abs(p.y() - startPt.y()) > 0.05) {
                 if (editor != null) editor.recordSnapshot();
-                sk.addEntity(new sketch_rect_ui_main("R-" + System.currentTimeMillis(), startPt.x(), startPt.y(), p.x(), p.y()));
+                long ts = System.currentTimeMillis();
+                if (activeTool == sketch_tool_type_ui_main.CENTER_RECTANGLE) {
+                    double cx = startPt.x(), cy = startPt.y(), x1 = 2 * cx - p.x(), y1 = 2 * cy - p.y(), x2 = p.x(), y2 = p.y();
+                    sk.addEntity(new sketch_rect_ui_main("CR-" + ts, x1, y1, x2, y2));
+                    sketch_line_ui_main d1 = new sketch_line_ui_main("CD1-" + ts, x1, y1, x2, y2);
+                    d1.setConstruction(true); sk.addEntity(d1);
+                    sketch_line_ui_main d2 = new sketch_line_ui_main("CD2-" + ts, x1, y2, x2, y1);
+                    d2.setConstruction(true); sk.addEntity(d2);
+                } else {
+                    sk.addEntity(new sketch_rect_ui_main("R-" + ts, startPt.x(), startPt.y(), p.x(), p.y()));
+                }
                 view.render(sk);
             }
             cancelActiveDrawing();
@@ -177,22 +184,14 @@ public class sketch_controller_ui_main {
         if (!mode.isActive()) return false;
         if (e.getCode() == KeyCode.ESCAPE) {
             cancelActiveDrawing();
-            if (selectedEntity != null) {
-                selectedEntity.setSelected(false);
-                selectedEntity = null;
-                view.render(mode.getActiveSketch());
-            }
-            e.consume();
-            return true;
+            if (selectedEntity != null) { selectedEntity.setSelected(false); selectedEntity = null; view.render(mode.getActiveSketch()); }
+            e.consume(); return true;
         }
         if ((e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.BACK_SPACE) && selectedEntity != null) {
             if (editor != null) editor.recordSnapshot();
             mode.getActiveSketch().removeEntity(selectedEntity.getId());
-            selectedEntity = null;
-            view.render(mode.getActiveSketch());
-            hud.update(mode.getActiveSketch());
-            e.consume();
-            return true;
+            selectedEntity = null; view.render(mode.getActiveSketch()); hud.update(mode.getActiveSketch());
+            e.consume(); return true;
         }
         return false;
     }

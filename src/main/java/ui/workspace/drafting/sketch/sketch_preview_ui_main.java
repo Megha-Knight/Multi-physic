@@ -108,11 +108,6 @@ public class sketch_preview_ui_main extends Group {
     public void showSnapIndicator(Point3D worldPt, sketch_snap_type_ui_main snapType) {
         clearSnap();
         if (worldPt == null || snapType == null) return;
-        Circle dot = new Circle(worldPt.getX(), worldPt.getY(), 4.5);
-        dot.setTranslateZ(worldPt.getZ());
-        dot.setFill(Color.TRANSPARENT);
-        dot.setStroke(SNAP_COLOR);
-        dot.setStrokeWidth(2.0);
-        snapIndicatorGroup.getChildren().add(dot);
+        snapIndicatorGroup.getChildren().add(sketch_snap_glyph_helper_ui_main.createGlyph(worldPt, snapType));
     }
 }

@@ -148,9 +148,9 @@ public class shape_item_ui_main {
     public void translate(double dx, double dz) { applyWorldDelta(dx, 0, dz); }
 
     public void rebuild() {
-        shapeGroup.getChildren().clear(); handlesGroup.getChildren().clear();
-        List<hole_feature_ui_main> eff = getAllEffectiveHoles();
-        if (shells.hasValidShell()) shapeGroup.getChildren().addAll(shells.buildVisuals(this, selected));
+        shapeGroup.getChildren().clear(); handlesGroup.getChildren().clear(); List<hole_feature_ui_main> eff = getAllEffectiveHoles();
+        if (overlays.hasCustomMesh()) overlays.updateCustomMeshMaterial(selected);
+        else if (shells.hasValidShell()) shapeGroup.getChildren().addAll(shells.buildVisuals(this, selected));
         else if (lofts.hasValidLoft()) shapeGroup.getChildren().addAll(lofts.buildVisuals(this, selected));
         else if (sweeps.hasValidSweep()) shapeGroup.getChildren().addAll(sweeps.buildVisuals(this, selected));
         else if (revolves.hasValidRevolve()) shapeGroup.getChildren().addAll(revolves.buildVisuals(this, selected));

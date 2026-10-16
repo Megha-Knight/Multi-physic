@@ -1,3 +1,4 @@
+E:\MultiPhysics\src\main\java\application\application_error_handler_ui_main.java
 E:\MultiPhysics\src\main\java\application\Launcher.java
 E:\MultiPhysics\src\main\java\application\Main.java
 E:\MultiPhysics\src\main\java\ui\documenthandler_ui_main.java
@@ -24,7 +25,9 @@ E:\MultiPhysics\src\main\java\ui\File_Types\mesh_primitive_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\File_Types\nc_exporter_ui_main.java
 E:\MultiPhysics\src\main\java\ui\File_Types\nc_hole_toolpath_ui_main.java
 E:\MultiPhysics\src\main\java\ui\File_Types\nc_validator_ui_main.java
+E:\MultiPhysics\src\main\java\ui\File_Types\obj_importer_ui_main.java
 E:\MultiPhysics\src\main\java\ui\File_Types\step_exporter_ui_main.java
+E:\MultiPhysics\src\main\java\ui\File_Types\stl_importer_ui_main.java
 E:\MultiPhysics\src\main\java\ui\footerbar\footer_ui_main.java
 E:\MultiPhysics\src\main\java\ui\navigationbar\navigation_ui_main.java
 E:\MultiPhysics\src\main\java\ui\ribbonbar\basicshapespanel_ui_main.java
@@ -169,6 +172,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_profile_loop_u
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_profile_type_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_rect_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_serializer_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_snap_glyph_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_snap_system_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_snap_type_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\sketch\sketch_solver_ui_main.java
