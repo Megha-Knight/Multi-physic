@@ -95,6 +95,15 @@ public class sketch_mode_ui_main {
         if (!active) return;
         String name = (activeSketch != null) ? activeSketch.getName() : "Sketch";
         if (commit && activeSketch != null) {
+            if (activeHost == null && editor != null) {
+                var holder = new shape_item_ui_main(
+                    ui.workspace.shapes.basic_shapes_ui_main.NONE, new Point3D(0, 0, 0), new Point3D(0, 0, 0)
+                );
+                holder.setName(activeSketch.getName());
+                holder.addSketch(activeSketch);
+                this.activeHost = holder;
+                editor.addShape(holder);
+            }
             activeSketch.revalidate(activeHost);
             if (editor != null) {
                 feature_regeneration_engine_ui_main.regenerateAll(editor.getShapes());

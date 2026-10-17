@@ -34,17 +34,28 @@ public final class extrude_mesh_builder_ui_main {
         var mat = createExtrudeMaterial(isSelected, isFocused);
 
         Node geoNode = null;
-        var effHoles = shape.getEffectiveHolesForFeature(ext.getId());
-        if (effHoles != null && !effHoles.isEmpty()) {
-            geoNode = extrude_hole_mesh_helper_ui_main.buildExtrudeWithHoles(f, ext, effHoles, mat);
+        if (ext.getSketchId() != null) {
+            var sk = shape.getSketch(ext.getSketchId());
+            if (sk != null && sk.isValid()) {
+                geoNode = ui.workspace.drafting.sketch.sketch_extrude_bridge_ui_main.buildExtrusion(shape, sk, ext.getHeight(), isSelected || isFocused);
+            }
         }
         if (geoNode == null) {
-            if (ext.getProfileShape() == CutoutShape.CIRCLE) {
+            var effHoles = shape.getEffectiveHolesForFeature(ext.getId());
+            if (effHoles != null && !effHoles.isEmpty()) {
+                geoNode = extrude_hole_mesh_helper_ui_main.buildExtrudeWithHoles(f, ext, effHoles, mat);
+            }
+        }
+        if (geoNode == null) {
+            CutoutShape ps = ext.getProfileShape();
+            if (ps == CutoutShape.CIRCLE) {
                 Cylinder cyl = new Cylinder(ext.getRadius(), len);
                 cyl.setMaterial(mat);
                 cyl.getTransforms().add(new Translate(mid.getX(), mid.getY(), mid.getZ()));
                 orientCylinder(cyl, f.n());
                 geoNode = cyl;
+            } else if (ps == CutoutShape.EQUILATERAL_TRIANGLE || ps == CutoutShape.RIGHT_TRIANGLE) {
+                geoNode = extrude_prism_mesh_helper_ui_main.buildPrismNode(f, ext, mat);
             } else {
                 double w = ext.getDiameter();
                 double d = (ext.getWidth2() > 0.1) ? ext.getWidth2() : w;
@@ -52,8 +63,8 @@ public final class extrude_mesh_builder_ui_main {
             }
         }
 
-        geoNode.setUserData(ext);
-        return geoNode;
+        if (geoNode != null) geoNode.setUserData(ext);
+        return geoNode != null ? geoNode : new Group();
     }
 
     public static javafx.scene.paint.PhongMaterial createExtrudeMaterial(boolean isSelected, boolean isFocused) {

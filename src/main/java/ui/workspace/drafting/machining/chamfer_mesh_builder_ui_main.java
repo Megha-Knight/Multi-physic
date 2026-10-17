@@ -83,13 +83,13 @@ public final class chamfer_mesh_builder_ui_main {
 
     private static Point3D getFaceOutwardNormal(ui.workspace.drafting.faces.face_kind_ui_main kind) {
         return switch (kind) {
-            case TOP -> new Point3D(0, -1, 0);
-            case BOTTOM -> new Point3D(0, 1, 0);
+            case TOP, TOP_CAP -> new Point3D(0, -1, 0);
+            case BOTTOM, BOTTOM_CAP, BASE_CAP -> new Point3D(0, 1, 0);
             case FRONT -> new Point3D(0, 0, 1);
             case BACK -> new Point3D(0, 0, -1);
             case LEFT -> new Point3D(-1, 0, 0);
             case RIGHT -> new Point3D(1, 0, 0);
-            default -> new Point3D(0, 1, 0);
+            default -> new Point3D(0, -1, 0);
         };
     }
 }

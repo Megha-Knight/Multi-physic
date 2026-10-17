@@ -35,7 +35,8 @@ public final class extrude_magnet_helper_ui_main {
 
     public static SnapResult trySnapToNearestFace(shape_item_ui_main item, basic_shapes_ui_main type,
                                                   Point3D p1, Point3D p2, Collection<shape_item_ui_main> shapes) {
-        if (item == null || type == null || !type.is3D() || p1 == null || p2 == null || shapes == null || shapes.isEmpty()) return null;
+        if (item == null || type == null || p1 == null || p2 == null || shapes == null || shapes.isEmpty()) return null;
+        if (!type.is3D() && !item.hasExtrusions() && type != basic_shapes_ui_main.EQUILATERAL_TRIANGLE && type != basic_shapes_ui_main.RIGHT_TRIANGLE) return null;
 
         Point3D drawCenter = shape_rotation_helper_ui_main.computeCenter(type, p1, p2);
         SnapResult best = findNearestFace(drawCenter, shapes, item.getId());
@@ -45,13 +46,24 @@ public final class extrude_magnet_helper_ui_main {
         return best;
     }
 
+    public static SnapResult trySnapExistingShape(shape_item_ui_main item, Collection<shape_item_ui_main> shapes) {
+        if (item == null || shapes == null || shapes.size() <= 1) return null;
+        Point3D worldCtr = item.getWorldCenter();
+        SnapResult best = findNearestFace(worldCtr, shapes, item.getId());
+        if (best == null || best.distance > SNAP_THRESHOLD_MM) return null;
+        applyFlushSnap(item, item.getType(), item.getP1(), item.getP2(), best);
+        item.rebuild();
+        return best;
+    }
+
     public static SnapResult findNearestFace(Point3D center, Collection<shape_item_ui_main> shapes, String excludeId) {
         if (center == null || shapes == null) return null;
         SnapResult best = null;
         double minDistance = Double.MAX_VALUE;
 
         for (shape_item_ui_main s : shapes) {
-            if (s == null || !s.getType().is3D() || s.isConsumed()) continue;
+            if (s == null || s.isConsumed()) continue;
+            if (!s.getType().is3D() && !s.hasExtrusions() && s.getType() != basic_shapes_ui_main.EQUILATERAL_TRIANGLE && s.getType() != basic_shapes_ui_main.RIGHT_TRIANGLE) continue;
             if (excludeId != null && excludeId.equals(s.getId())) continue;
 
             for (face_kind_ui_main kind : getPlanarFaces(s.getType())) {
@@ -114,9 +126,20 @@ public final class extrude_magnet_helper_ui_main {
             }
             case CUBE -> {
                 double s = Math.max(Math.abs(p2.getX() - p1.getX()), Math.abs(p2.getZ() - p1.getZ()));
-                item.setP1P2(new Point3D(-s * 0.5, 0, -s * 0.5), new Point3D(s * 0.5, 0, s * 0.5));
+                item.setP1P2(new Point3D(-s * 0.5, 0, -s * 0.5), new Point3D(s * 0.5, -s, s * 0.5));
             }
-            default -> {}
+            case EQUILATERAL_TRIANGLE, RIGHT_TRIANGLE -> {
+                double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
+                double h = item.hasExtrusions() ? item.getExtrusions().get(0).getHeight() : (Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : 25.0);
+                item.setP1P2(new Point3D(-w * 0.5, 0, -d * 0.5), new Point3D(w * 0.5, -h, d * 0.5));
+            }
+            default -> {
+                if (item.hasExtrusions()) {
+                    double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
+                    double h = item.getExtrusions().get(0).getHeight();
+                    item.setP1P2(new Point3D(-w * 0.5, 0, -d * 0.5), new Point3D(w * 0.5, -h, d * 0.5));
+                }
+            }
         }
 
         item.setWorldTranslation(pt.getX(), pt.getY(), pt.getZ());
@@ -126,13 +149,13 @@ public final class extrude_magnet_helper_ui_main {
 
     private static face_kind_ui_main[] getPlanarFaces(basic_shapes_ui_main type) {
         return switch (type) {
-            case CUBE, CUBOID -> new face_kind_ui_main[]{
+            case CUBE, CUBOID, SQUARE, RECTANGLE -> new face_kind_ui_main[]{
                 face_kind_ui_main.TOP, face_kind_ui_main.BOTTOM, face_kind_ui_main.FRONT,
                 face_kind_ui_main.BACK, face_kind_ui_main.RIGHT, face_kind_ui_main.LEFT
             };
-            case CYLINDER -> new face_kind_ui_main[]{face_kind_ui_main.TOP_CAP, face_kind_ui_main.BOTTOM_CAP};
+            case CYLINDER, CIRCLE -> new face_kind_ui_main[]{face_kind_ui_main.TOP_CAP, face_kind_ui_main.BOTTOM_CAP};
             case CONE -> new face_kind_ui_main[]{face_kind_ui_main.BASE_CAP};
-            default -> new face_kind_ui_main[0];
+            default -> new face_kind_ui_main[]{face_kind_ui_main.TOP, face_kind_ui_main.BOTTOM};
         };
     }
 }

@@ -101,12 +101,13 @@ public class UI_Main extends BorderPane {
         workspace3D.getSketchMode().setStatusCallback(footerBar::setStatusText);
 
         ribbonBar.setOnExtrudeRequested(() -> ui_feature_action_helper_ui_main.handleExtrude(this)); ribbonBar.getExtrudePanel().setOnApply(cfg -> ui_feature_action_helper_ui_main.applyExtrudeConfig(this, cfg));
-        ribbonBar.getExtrudePanel().setOnProfileArmed(shape -> workspace3D.getDrafter().setShape(shape));
+        ribbonBar.getExtrudePanel().setOnExtrudeArmed((shape, prof, h) -> { workspace3D.getDrafter().setExtrudeMode(true, prof, h); workspace3D.getDrafter().setShape(shape); });
+        ribbonBar.getExtrudePanel().setOnProfileArmed(shape -> { workspace3D.getDrafter().setExtrudeMode(true, ribbonBar.getExtrudePanel().getProfileShape(), ribbonBar.getExtrudePanel().getExtrudeHeight()); workspace3D.getDrafter().setShape(shape); });
         ribbonBar.setOnHoleRequested(() -> ui_feature_action_helper_ui_main.handleHole(this)); ribbonBar.setOnCutoutRequested(s -> ui_feature_action_helper_ui_main.handleCutout(this, s));
         ribbonBar.setOnLinearPatternRequested(() -> ui_feature_action_helper_ui_main.handleLinearPattern(this)); ribbonBar.setOnCircularPatternRequested(() -> ui_feature_action_helper_ui_main.handleCircularPattern(this));
         ribbonBar.setOnFilletRequested(() -> ui_feature_action_helper_ui_main.handleFillet(this)); ribbonBar.setOnChamferRequested(() -> ui_feature_action_helper_ui_main.handleChamfer(this)); ribbonBar.setOnDraftRequested(() -> ui_feature_action_helper_ui_main.handleDraft(this));
 
-        ribbonBar.setOnShapeSelected(shape -> { workspace3D.getDrafter().setShape(shape); footerBar.setStatusText(shape.getLabel() + " drafting active: Click & drag on XY ground plane. ESC to cancel."); });
+        ribbonBar.setOnShapeSelected(shape -> { workspace3D.getDrafter().setExtrudeMode(false, null, 25.0); workspace3D.getDrafter().setShape(shape); footerBar.setStatusText(shape.getLabel() + " drafting active: Click & drag on XY ground plane. ESC to cancel."); });
         workspace3D.getDrafter().setStatusCallback(footerBar::setStatusText);
         workspace3D.getShapeEditor().setStatusCallback(footerBar::setStatusText);
     }

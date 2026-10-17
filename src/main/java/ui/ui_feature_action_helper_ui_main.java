@@ -14,11 +14,72 @@ public final class ui_feature_action_helper_ui_main {
     public static void handleExtrude(UI_Main app) {
         var ed = app.getWorkspace3D().getShapeEditor();
         var s = ed.getSelectedShape();
+        var sk = ed.getSelectedSketch();
+        if (sk == null && s != null && s.hasSketches()) {
+            sk = s.getSketches().get(s.getSketches().size() - 1);
+        }
+        if (sk != null) {
+            if (!sk.isValid()) {
+                app.getFooterBar().setStatusText("Sketch profile is open or invalid: cannot extrude.");
+                return;
+            }
+            double height = 25.0;
+            ed.recordSnapshot();
+            String name = "Extrude (" + sk.getName() + ")";
+            var cs = ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE;
+            double dia = 20.0, w2 = 0.0;
+            if (!sk.getEntities().isEmpty()) {
+                var ent = sk.getEntities().get(0);
+                if (ent instanceof ui.workspace.drafting.sketch.sketch_rect_ui_main r) {
+                    cs = (Math.abs(r.getWidth() - r.getHeight()) < 1e-3) ? ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.SQUARE : ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RECTANGLE;
+                    dia = r.getWidth(); w2 = r.getHeight();
+                } else if (ent instanceof ui.workspace.drafting.sketch.sketch_circle_ui_main c) {
+                    cs = ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE;
+                    dia = c.getRadius() * 2.0;
+                }
+            }
+            var ext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(
+                null, s != null ? s.getId() : sk.getOwnerShapeId(), name,
+                sk.getFaceKind() != null ? sk.getFaceKind() : ui.workspace.drafting.faces.face_kind_ui_main.TOP,
+                cs, 0.0, 0.0, dia, w2, height
+            );
+            ext.setSketchId(sk.getId());
+            if (s != null) {
+                s.addExtrude(ext);
+                ed.notifyShapesChanged();
+                ed.selectExtrude(s, ext);
+            }
+            app.getFooterBar().setStatusText("Extruded " + sk.getName() + " (Height: " + height + " mm)");
+            return;
+        }
+        if (s != null && !s.getType().is3D()) {
+            ed.recordSnapshot();
+            double height = 25.0;
+            var cs = switch (s.getType()) {
+                case EQUILATERAL_TRIANGLE -> ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.EQUILATERAL_TRIANGLE;
+                case RIGHT_TRIANGLE -> ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RIGHT_TRIANGLE;
+                case RECTANGLE -> ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RECTANGLE;
+                case SQUARE -> ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.SQUARE;
+                default -> ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE;
+            };
+            double w = Math.max(0.2, Math.abs(s.getP2().getX() - s.getP1().getX())), d = Math.max(0.2, Math.abs(s.getP2().getZ() - s.getP1().getZ()));
+            double dia = (cs == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE) ? s.getP1().distance(s.getP2()) : Math.max(w, d);
+            String name = "Extrude (" + s.getName() + ")";
+            var ext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(
+                null, s.getId(), name, s.getFaceKind() != null ? s.getFaceKind() : ui.workspace.drafting.faces.face_kind_ui_main.TOP,
+                cs, 0.0, 0.0, dia, Math.min(w, d), height
+            );
+            s.addExtrude(ext);
+            ed.notifyShapesChanged();
+            ed.selectExtrude(s, ext);
+            app.getFooterBar().setStatusText("Extruded " + s.getName() + " (Height: " + height + " mm)");
+            return;
+        }
         var f = ed.getActiveFace();
         if (s != null && f != null && f.isPlanar()) {
             ui.workspace.drafting.extrude.extrude_dialog_ui_main.open(s, f, ed, app.getScene() != null ? app.getScene().getWindow() : null);
         } else {
-            app.getFooterBar().setStatusText(s == null ? "Select a 3D shape first." : (f == null ? "Select a planar face on the shape to extrude." : "Face is not planar."));
+            app.getFooterBar().setStatusText(s == null ? "Select a sketch or 3D shape first." : (f == null ? "Select a planar face on the shape to extrude." : "Face is not planar."));
         }
     }
 
@@ -95,6 +156,11 @@ public final class ui_feature_action_helper_ui_main {
             return;
         }
         var w = app.getScene() != null ? app.getScene().getWindow() : null;
-        ui.workspace.drafting.machining.machining_dialog_ui_main.openCreate(kind, s, ed, w);
+        var f = ed.getActiveFace();
+        if (kind == ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.DRAFT && f != null && f.getFaceKind() != null) {
+            ui.workspace.drafting.machining.machining_dialog_ui_main.openCreateWithTarget(kind, s, f.getFaceKind().name(), ed, w);
+        } else {
+            ui.workspace.drafting.machining.machining_dialog_ui_main.openCreate(kind, s, ed, w);
+        }
     }
 }

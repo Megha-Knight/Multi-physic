@@ -61,11 +61,11 @@ public class extrude_ribbon_panel_ui_main extends HBox implements dynamic_panel_
 
         // Profile icon gallery — same visual style as basicshapespanel_ui_main
         HBox gallery = new HBox(4,
-            createProfileItem("Circle",     "/icons/circle.png",               CutoutShape.CIRCLE,               basic_shapes_ui_main.CYLINDER),
-            createProfileItem("Square",     "/icons/square.png",               CutoutShape.SQUARE,               basic_shapes_ui_main.CUBE),
-            createProfileItem("Rectangle",  "/icons/rectangle.png",            CutoutShape.RECTANGLE,            basic_shapes_ui_main.CUBOID),
-            createProfileItem("Equilateral","/icons/triangle_equilateral.png", CutoutShape.EQUILATERAL_TRIANGLE, basic_shapes_ui_main.CYLINDER),
-            createProfileItem("Right Angle","/icons/triangle_right.png",       CutoutShape.RIGHT_TRIANGLE,       basic_shapes_ui_main.CYLINDER)
+            createProfileItem("Circle",     "/icons/circle.png",               CutoutShape.CIRCLE,               basic_shapes_ui_main.CIRCLE),
+            createProfileItem("Square",     "/icons/square.png",               CutoutShape.SQUARE,               basic_shapes_ui_main.SQUARE),
+            createProfileItem("Rectangle",  "/icons/rectangle.png",            CutoutShape.RECTANGLE,            basic_shapes_ui_main.RECTANGLE),
+            createProfileItem("Equilateral","/icons/triangle_equilateral.png", CutoutShape.EQUILATERAL_TRIANGLE, basic_shapes_ui_main.EQUILATERAL_TRIANGLE),
+            createProfileItem("Right Angle","/icons/triangle_right.png",       CutoutShape.RIGHT_TRIANGLE,       basic_shapes_ui_main.RIGHT_TRIANGLE)
         );
         gallery.setAlignment(Pos.CENTER_LEFT);
 
@@ -93,6 +93,11 @@ public class extrude_ribbon_panel_ui_main extends HBox implements dynamic_panel_
         setVisible(false);
         setManaged(false);
     }
+
+    @FunctionalInterface
+    public interface ExtrudeArmHandler { void onArmed(basic_shapes_ui_main shape, CutoutShape profile, double height); }
+    private ExtrudeArmHandler onExtrudeArmed;
+    public void setOnExtrudeArmed(ExtrudeArmHandler cb) { this.onExtrudeArmed = cb; }
 
     /** Arms the drafter with the matching 3D shape (same path as Basic Shapes). */
     public void setOnProfileArmed(Consumer<basic_shapes_ui_main> cb) { this.onProfileArmed = cb; }
@@ -148,7 +153,7 @@ public class extrude_ribbon_panel_ui_main extends HBox implements dynamic_panel_
         b.setOnMouseExited(e -> b.setStyle(base));
         b.setOnAction(e -> {
             armedProfile = cutout;
-            // Arm the drafter with the 3D shape matching this profile — same mechanism as Basic Shapes.
+            if (onExtrudeArmed != null) onExtrudeArmed.onArmed(shape3d, cutout, getExtrudeHeight());
             if (onProfileArmed != null) onProfileArmed.accept(shape3d);
         });
         return b;

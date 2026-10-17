@@ -9,7 +9,7 @@ import ui.workspace.drafting.topology.topology_edge_ui_main;
 
 public final class edge_picker_ui_main {
 
-    public static final double DEFAULT_TOLERANCE = 8.0;
+    public static final double DEFAULT_TOLERANCE = 12.0;
     private static final int CIRCLE_CHORDS = 24;
 
     private edge_picker_ui_main() {}
@@ -50,7 +50,8 @@ public final class edge_picker_ui_main {
                 dist = res[0]; t = res[1];
             }
             if (dist <= tolerance) {
-                if (dist < bestDist - 0.5 || (Math.abs(dist - bestDist) <= 0.5 && t < bestT)) {
+                boolean better = (bestEdge == null) || (t < bestT - 5.0) || (Math.abs(t - bestT) <= 5.0 && dist < bestDist);
+                if (better) {
                     bestEdge = edge;
                     bestDist = dist;
                     bestT = t;

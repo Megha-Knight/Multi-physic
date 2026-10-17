@@ -60,6 +60,31 @@ public final class face_geometry_helper_ui_main {
                     2 * Math.PI * r, h, r, r, false);
         }
 
+        if (shape.getType() == basic_shapes_ui_main.SPHERE) {
+            double r = Math.max(0.1, p1.distance(p2));
+            return new FaceInfo(p1, new Point3D(1, 0, 0), new Point3D(0, 0, 1), new Point3D(0, 1, 0),
+                    2 * Math.PI * r, Math.PI * r, r, r, false);
+        }
+
+        if (shape.getType() == basic_shapes_ui_main.CIRCLE) {
+            double r = Math.max(0.1, p1.distance(new Point3D(p2.getX(), p1.getY(), p2.getZ())));
+            Point3D u = shape.getUAxis() != null ? shape.getUAxis() : new Point3D(1, 0, 0);
+            Point3D v = shape.getVAxis() != null ? shape.getVAxis() : new Point3D(0, 0, 1);
+            Point3D n = shape.getFaceNormal() != null ? shape.getFaceNormal() : new Point3D(0, -1, 0);
+            return new FaceInfo(p1, u, v, n, r * 2.0, r * 2.0, 0.0, r, true);
+        }
+
+        if (shape.getType() == basic_shapes_ui_main.SQUARE || shape.getType() == basic_shapes_ui_main.RECTANGLE ||
+            shape.getType() == basic_shapes_ui_main.EQUILATERAL_TRIANGLE || shape.getType() == basic_shapes_ui_main.RIGHT_TRIANGLE) {
+            double tw = Math.max(0.1, Math.abs(p2.getX() - p1.getX())), td = Math.max(0.1, Math.abs(p2.getZ() - p1.getZ()));
+            if (shape.getType() == basic_shapes_ui_main.SQUARE) { double s = Math.max(tw, td); tw = s; td = s; }
+            Point3D tc = new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY(), (p1.getZ() + p2.getZ()) * 0.5);
+            Point3D u = shape.getUAxis() != null ? shape.getUAxis() : new Point3D(1, 0, 0);
+            Point3D v = shape.getVAxis() != null ? shape.getVAxis() : new Point3D(0, 0, 1);
+            Point3D n = shape.getFaceNormal() != null ? shape.getFaceNormal() : new Point3D(0, -1, 0);
+            return new FaceInfo(tc, u, v, n, tw, td, 0.0, 0.0, false);
+        }
+
         double w, h, d;
         Point3D c;
         if (shape.getType() == basic_shapes_ui_main.CUBE) {

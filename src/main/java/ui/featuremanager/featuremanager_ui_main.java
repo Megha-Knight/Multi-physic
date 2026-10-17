@@ -35,11 +35,15 @@ public class featuremanager_ui_main extends BorderPane {
             syncLock = true;
             try {
                 feature_tree_node_ui_main val = newVal.getValue();
-                if (val.isShape()) { editor.selectShape(val.getShape()); editor.selectHole(val.getShape(), null); editor.selectExtrude(val.getShape(), null); }
+                if (val.isShape()) { editor.selectShape(val.getShape()); }
                 else if (val.isHole()) editor.selectHole(val.getParentShape(), val.getHole());
                 else if (val.isPattern()) editor.selectPattern(val.getParentShape(), val.getPattern());
                 else if (val.isExtrude()) editor.selectExtrude(val.getParentShape(), val.getExtrude());
                 else if (val.isDerivedFace()) { editor.selectDerivedFace(val.getParentShape(), val.getDerivedFace()); }
+                else if (val.isSketch()) editor.selectSketch(val.getParentShape(), val.getSketch());
+                else if (val.isFillet()) editor.selectFillet(val.getParentShape(), val.getFillet());
+                else if (val.isChamfer()) editor.selectChamfer(val.getParentShape(), val.getChamfer());
+                else if (val.isDraft()) editor.selectDraft(val.getParentShape(), val.getDraft());
             } finally { syncLock = false; }
         });
 
@@ -58,17 +62,27 @@ public class featuremanager_ui_main extends BorderPane {
         editor.setOnSelectionChanged(s -> syncFromCanvas()); editor.setOnHoleSelectionChanged((s, h) -> syncFromCanvas());
         editor.setOnPatternSelectionChanged((s, p) -> syncFromCanvas()); editor.setOnExtrudeSelectionChanged((s, ext) -> syncFromCanvas());
         editor.setOnDerivedFaceSelectionChanged((s, df) -> syncFromCanvas());
+        editor.setOnSketchSelectionChanged((s, sk) -> syncFromCanvas());
+        editor.setOnFilletSelectionChanged((s, f) -> syncFromCanvas());
+        editor.setOnChamferSelectionChanged((s, c) -> syncFromCanvas());
+        editor.setOnDraftSelectionChanged((s, d) -> syncFromCanvas());
         refresh();
     }
 
+    private boolean refreshing = false;
+
     public void refresh() {
         if (editor == null) return;
-        syncLock = true;
+        if (!javafx.application.Platform.isFxApplicationThread()) {
+            try { javafx.application.Platform.runLater(this::refresh); return; } catch (IllegalStateException ignored) {}
+        }
+        if (refreshing) return;
+        refreshing = true;
         try {
-            rootItem.getChildren().clear();
+            java.util.List<TreeItem<feature_tree_node_ui_main>> newItems = new java.util.ArrayList<>();
             for (shape_item_ui_main s : editor.getShapes()) {
                 TreeItem<feature_tree_node_ui_main> sNode = new TreeItem<>(feature_tree_node_ui_main.forShape(s));
-                sNode.setExpanded(true); rootItem.getChildren().add(sNode);
+                sNode.setExpanded(true); newItems.add(sNode);
                 for (var sk : s.getSketches()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forSketch(s, sk)));
                 for (hole_feature_ui_main h : s.getHoles()) {
                     TreeItem<feature_tree_node_ui_main> hNode = new TreeItem<>(feature_tree_node_ui_main.forHole(s, h));
@@ -87,9 +101,7 @@ public class featuremanager_ui_main extends BorderPane {
                             for (var df : body.getDerivedFacesForFeature(h.getId())) hNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forDerivedFace(s, h, df)));
                         }
                     }
-                    // Auto-expand hole node so bore-wall/face children are visible without a manual click.
-                    hNode.setExpanded(true);
-                    sNode.getChildren().add(hNode);
+                    hNode.setExpanded(true); sNode.getChildren().add(hNode);
                 }
                 for (hole_pattern_ui_main p : s.getPatterns()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forPattern(s, p)));
                 for (extrude_feature_ui_main ext : s.getExtrusions()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forExtrude(s, ext)));
@@ -102,9 +114,10 @@ public class featuremanager_ui_main extends BorderPane {
                 for (var sw : s.getSweeps()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forSweep(s, sw)));
                 for (var rev : s.getRevolves()) sNode.getChildren().add(new TreeItem<>(feature_tree_node_ui_main.forRevolve(s, rev)));
             }
-            legacyListView.getItems().setAll(editor.getShapes());
+            syncLock = true;
+            try { treeView.getSelectionModel().clearSelection(); rootItem.getChildren().setAll(newItems); legacyListView.getItems().setAll(editor.getShapes()); } finally { syncLock = false; }
             syncFromCanvas();
-        } finally { syncLock = false; }
+        } finally { refreshing = false; }
     }
 
     public TreeView<feature_tree_node_ui_main> getTreeView() { return treeView; }
@@ -112,36 +125,50 @@ public class featuremanager_ui_main extends BorderPane {
 
     private void syncFromCanvas() {
         if (editor == null) return;
-        shape_item_ui_main selShape = editor.getSelectedShape();
-        hole_feature_ui_main selHole = editor.getSelectedHole(); hole_pattern_ui_main selPat = editor.getSelectedPattern();
-        extrude_feature_ui_main selExt = editor.getSelectedExtrude(); String selDfId = editor.getSelectedDerivedFaceId();
-        if (selShape == null) { treeView.getSelectionModel().clearSelection(); legacyListView.getSelectionModel().clearSelection(); return; }
-        legacyListView.getSelectionModel().select(selShape);
+        if (!javafx.application.Platform.isFxApplicationThread()) {
+            try { javafx.application.Platform.runLater(this::syncFromCanvas); return; } catch (IllegalStateException ignored) {}
+        }
+        if (syncLock) return;
+        syncLock = true;
+        try {
+            shape_item_ui_main selShape = editor.getSelectedShape();
+            hole_feature_ui_main selHole = editor.getSelectedHole(); hole_pattern_ui_main selPat = editor.getSelectedPattern();
+            extrude_feature_ui_main selExt = editor.getSelectedExtrude(); String selDfId = editor.getSelectedDerivedFaceId();
+            if (selShape == null) { treeView.getSelectionModel().clearSelection(); legacyListView.getSelectionModel().clearSelection(); return; }
+            if (legacyListView.getSelectionModel().getSelectedItem() != selShape) legacyListView.getSelectionModel().select(selShape);
 
-        for (TreeItem<feature_tree_node_ui_main> sItem : rootItem.getChildren()) {
-            if (sItem.getValue().getShape() == selShape) {
-                TreeItem<feature_tree_node_ui_main> target = sItem;
-                if (selDfId != null) {
-                    for (var hItem : sItem.getChildren()) {
-                        for (var dfItem : hItem.getChildren()) {
-                            if (dfItem.getValue().isDerivedFace() && selDfId.equals(dfItem.getValue().getDerivedFace().getId())) {
+            for (TreeItem<feature_tree_node_ui_main> sItem : rootItem.getChildren()) {
+                if (sItem.getValue() != null && sItem.getValue().getShape() == selShape) {
+                    TreeItem<feature_tree_node_ui_main> target = sItem;
+                    if (selDfId != null) {
+                        for (var hItem : sItem.getChildren()) for (var dfItem : hItem.getChildren()) {
+                            if (dfItem.getValue() != null && dfItem.getValue().isDerivedFace() && selDfId.equals(dfItem.getValue().getDerivedFace().getId())) {
                                 sItem.setExpanded(true); hItem.setExpanded(true); target = dfItem; break;
                             }
                         }
+                    } else if (selHole != null) {
+                        for (var hItem : sItem.getChildren()) if (hItem.getValue() != null && hItem.getValue().getHole() == selHole) { sItem.setExpanded(true); target = hItem; break; }
+                    } else if (selPat != null) {
+                        for (var pItem : sItem.getChildren()) if (pItem.getValue() != null && pItem.getValue().getPattern() == selPat) { sItem.setExpanded(true); target = pItem; break; }
+                    } else if (selExt != null) {
+                        for (var eItem : sItem.getChildren()) if (eItem.getValue() != null && eItem.getValue().getExtrude() == selExt) { sItem.setExpanded(true); target = eItem; break; }
+                    } else if (editor.getSelectedSketch() != null) {
+                        for (var skItem : sItem.getChildren()) if (skItem.getValue() != null && skItem.getValue().getSketch() == editor.getSelectedSketch()) { sItem.setExpanded(true); target = skItem; break; }
+                    } else if (editor.getSelectedFillet() != null) {
+                        for (var fItem : sItem.getChildren()) if (fItem.getValue() != null && fItem.getValue().getFillet() == editor.getSelectedFillet()) { sItem.setExpanded(true); target = fItem; break; }
+                    } else if (editor.getSelectedChamfer() != null) {
+                        for (var cItem : sItem.getChildren()) if (cItem.getValue() != null && cItem.getValue().getChamfer() == editor.getSelectedChamfer()) { sItem.setExpanded(true); target = cItem; break; }
+                    } else if (editor.getSelectedDraft() != null) {
+                        for (var dItem : sItem.getChildren()) if (dItem.getValue() != null && dItem.getValue().getDraft() == editor.getSelectedDraft()) { sItem.setExpanded(true); target = dItem; break; }
                     }
-                } else if (selHole != null) {
-                    for (var hItem : sItem.getChildren()) if (hItem.getValue().getHole() == selHole) { sItem.setExpanded(true); target = hItem; break; }
-                } else if (selPat != null) {
-                    for (var pItem : sItem.getChildren()) if (pItem.getValue().getPattern() == selPat) { sItem.setExpanded(true); target = pItem; break; }
-                } else if (selExt != null) {
-                    for (var eItem : sItem.getChildren()) if (eItem.getValue().getExtrude() == selExt) { sItem.setExpanded(true); target = eItem; break; }
+                    if (treeView.getSelectionModel().getSelectedItem() != target) {
+                        treeView.getSelectionModel().select(target);
+                        int row = treeView.getRow(target); if (row >= 0) treeView.scrollTo(row);
+                    }
+                    return;
                 }
-                if (treeView.getSelectionModel().getSelectedItem() != target) {
-                    treeView.getSelectionModel().select(target); treeView.scrollTo(treeView.getRow(target));
-                }
-                return;
             }
-        }
+        } finally { syncLock = false; }
     }
 
     public static String formatItemLabel(shape_item_ui_main item) {

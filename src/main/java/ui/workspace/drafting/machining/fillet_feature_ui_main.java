@@ -73,6 +73,11 @@ public class fillet_feature_ui_main {
             diagnosticMessage = "Host body not found";
             return false;
         }
+        if (host.getType() == ui.workspace.shapes.basic_shapes_ui_main.SPHERE) {
+            state = feature_state_ui_main.INVALID;
+            diagnosticMessage = "Sphere has no topological edges for fillet operations";
+            return false;
+        }
         if (radius <= 0.01) {
             state = feature_state_ui_main.INVALID;
             diagnosticMessage = "Fillet radius must be > 0";

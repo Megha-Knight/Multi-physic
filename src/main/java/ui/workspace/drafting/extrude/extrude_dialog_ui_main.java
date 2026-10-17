@@ -49,7 +49,7 @@ public class extrude_dialog_ui_main extends Stage {
         hdr.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #1E293B;");
         root.getChildren().add(hdr);
 
-        shapeCombo.getItems().addAll(CutoutShape.CIRCLE, CutoutShape.SQUARE, CutoutShape.RECTANGLE);
+        shapeCombo.getItems().addAll(CutoutShape.CIRCLE, CutoutShape.SQUARE, CutoutShape.RECTANGLE, CutoutShape.EQUILATERAL_TRIANGLE, CutoutShape.RIGHT_TRIANGLE);
         shapeCombo.setValue(CutoutShape.CIRCLE);
         shapeCombo.setPrefWidth(190);
 
@@ -61,8 +61,9 @@ public class extrude_dialog_ui_main extends Stage {
         root.getChildren().add(w2Row);
 
         shapeCombo.setOnAction(e -> {
-            boolean isRect = (shapeCombo.getValue() == CutoutShape.RECTANGLE);
-            w2Row.setVisible(isRect); w2Row.setManaged(isRect);
+            CutoutShape shapeVal = shapeCombo.getValue();
+            boolean needW2 = (shapeVal == CutoutShape.RECTANGLE || shapeVal == CutoutShape.RIGHT_TRIANGLE);
+            w2Row.setVisible(needW2); w2Row.setManaged(needW2);
         });
 
         root.getChildren().add(row("Height (mm):", heightField));

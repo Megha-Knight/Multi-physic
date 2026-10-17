@@ -85,6 +85,11 @@ public class draft_feature_ui_main {
             diagnosticMessage = "Host body not found";
             return false;
         }
+        if (host.getType() == ui.workspace.shapes.basic_shapes_ui_main.SPHERE) {
+            state = feature_state_ui_main.INVALID;
+            diagnosticMessage = "Sphere does not have planar faces for draft operations";
+            return false;
+        }
         if (faceKind == null) {
             state = feature_state_ui_main.INVALID;
             diagnosticMessage = "Target face kind is null";

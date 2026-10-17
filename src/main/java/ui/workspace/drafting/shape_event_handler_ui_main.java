@@ -27,8 +27,7 @@ public class shape_event_handler_ui_main {
 
     public shape_event_handler_ui_main(shape_editor_ui_main editor, Pane viewport, SubScene subScene,
                                        camera_controller_ui_main camCtrl, Function<MouseEvent, Point3D> raycaster,
-                                       Label hudLabel, BooleanSupplier isDrawingActive, axis_drag_controller_ui_main axisDrag,
-                                       PerspectiveCamera camera, Group container) {
+                                       Label hudLabel, BooleanSupplier isDrawingActive, axis_drag_controller_ui_main axisDrag, PerspectiveCamera camera, Group container) {
         this.editor = editor; this.viewport = viewport; this.subScene = subScene;
         this.cameraController = camCtrl; this.groundRaycaster = raycaster; this.hudLabel = hudLabel;
         this.isDrawingActive = isDrawingActive; this.axisDrag = axisDrag; this.camera = camera; this.container = container;
@@ -164,8 +163,11 @@ public class shape_event_handler_ui_main {
     private void handleReleased(MouseEvent e) {
         boolean wasBusy = (mode != EditMode.IDLE);
         if (mode == EditMode.AXIS_DRAG) axisDrag.onReleased();
-        if (wasBusy && hasMoved) { cascadeAndRegen(editor.getSelectedShape()); cameraController.setEnabled(true); }
-        else if (wasBusy) cameraController.setEnabled(true);
+        if (wasBusy && hasMoved) {
+            shape_item_ui_main sel = editor.getSelectedShape();
+            if (sel != null && editor.getShapes().size() > 1) ui.workspace.drafting.extrude.extrude_magnet_helper_ui_main.trySnapExistingShape(sel, editor.getShapes());
+            cascadeAndRegen(sel); cameraController.setEnabled(true);
+        } else if (wasBusy) cameraController.setEnabled(true);
         mode = EditMode.IDLE; activeHandleIdx = -1; startHit = null; hasMoved = false; hudLabel.setVisible(false); if (wasBusy) e.consume();
     }
     private void handleKeyPressed(KeyEvent e) {
@@ -174,12 +176,10 @@ public class shape_event_handler_ui_main {
         if (e.getCode() == KeyCode.ESCAPE) { if (editor.isEdgePickMode()) editor.exitEdgePickMode(); else if (editor.getActiveFace() != null) editor.setActiveFace(null); else editor.selectShape(null); e.consume(); return; }
         double s = (e.isControlDown() || e.isAltDown()) ? 0.2 : 2.0;
         boolean moved = switch (e.getCode()) {
-            case LEFT -> { sel.applyWorldDelta(-s, 0, 0); yield true; }
-            case RIGHT -> { sel.applyWorldDelta(s, 0, 0); yield true; }
+            case LEFT -> { sel.applyWorldDelta(-s, 0, 0); yield true; } case RIGHT -> { sel.applyWorldDelta(s, 0, 0); yield true; }
             case UP -> { sel.applyWorldDelta(0, e.isShiftDown() ? -s : 0, e.isShiftDown() ? 0 : -s); yield true; }
             case DOWN -> { sel.applyWorldDelta(0, e.isShiftDown() ? s : 0, e.isShiftDown() ? 0 : s); yield true; }
-            case PAGE_UP -> { sel.applyWorldDelta(0, -s, 0); yield true; }
-            case PAGE_DOWN -> { sel.applyWorldDelta(0, s, 0); yield true; }
+            case PAGE_UP -> { sel.applyWorldDelta(0, -s, 0); yield true; } case PAGE_DOWN -> { sel.applyWorldDelta(0, s, 0); yield true; }
             default -> false;
         };
         if (moved) {

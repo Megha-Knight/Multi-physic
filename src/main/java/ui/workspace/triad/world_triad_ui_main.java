@@ -74,14 +74,16 @@ public class world_triad_ui_main extends StackPane {
         Tooltip.install(this, new Tooltip("World Reference Frame\nX (Red): Right | Y (Green): Depth | Z (Blue): Up\nClick axis to align view"));
 
         subScene.setOnMouseClicked(e -> {
-            double clickX = e.getX() - sz / 2.0;
-            double clickY = e.getY() - sz / 2.0;
-            handleTriadClick(clickX, clickY);
+            if (!e.isConsumed()) snap(ui.framework_ui_main.ISO_PITCH, ui.framework_ui_main.ISO_YAW);
         });
     }
 
     public void setOnSnapView(BiConsumer<Double, Double> snapCb) {
         this.onSnapView = snapCb;
+    }
+
+    private void snap(double pitch, double yaw) {
+        if (onSnapView != null) onSnapView.accept(pitch, yaw);
     }
 
     public void setLocalActive(boolean active, String planeName) {
@@ -96,18 +98,6 @@ public class world_triad_ui_main extends StackPane {
         }
     }
 
-    private void handleTriadClick(double cx, double cy) {
-        if (onSnapView == null) return;
-        // Project click location into camera frame to check dominant axis
-        if (cx > 10 && Math.abs(cy) < 15) {
-            onSnapView.accept(0.0, 90.0); // Right (+X)
-        } else if (cy < -10 && Math.abs(cx) < 15) {
-            onSnapView.accept(90.0, 0.0); // Top (+Y)
-        } else if (Math.abs(cx) < 12 && Math.abs(cy) < 12) {
-            onSnapView.accept(0.0, 180.0); // Front (+Z)
-        }
-    }
-
     private Group buildAxes() {
         Group g = new Group();
         double offset = LEN / 2.0;
@@ -119,6 +109,8 @@ public class world_triad_ui_main extends StackPane {
         Sphere xTip = new Sphere(RAD * 1.8);
         xTip.setMaterial(new PhongMaterial(Color.web("#EF4444")));
         xTip.setTranslateX(LEN);
+        xLine.setOnMouseClicked(e -> { snap(0.0, -90.0); e.consume(); });
+        xTip.setOnMouseClicked(e -> { snap(0.0, -90.0); e.consume(); });
 
         // Y Axis (Green -> +Z Depth)
         Cylinder yLine = new Cylinder(RAD, LEN);
@@ -127,6 +119,8 @@ public class world_triad_ui_main extends StackPane {
         Sphere yTip = new Sphere(RAD * 1.8);
         yTip.setMaterial(new PhongMaterial(Color.web("#22C55E")));
         yTip.setTranslateZ(LEN);
+        yLine.setOnMouseClicked(e -> { snap(0.0, 180.0); e.consume(); });
+        yTip.setOnMouseClicked(e -> { snap(0.0, 180.0); e.consume(); });
 
         // Z Axis (Blue -> -Y Up)
         Cylinder zLine = new Cylinder(RAD, LEN);
@@ -135,6 +129,8 @@ public class world_triad_ui_main extends StackPane {
         Sphere zTip = new Sphere(RAD * 1.8);
         zTip.setMaterial(new PhongMaterial(Color.web("#3B82F6")));
         zTip.setTranslateY(-LEN);
+        zLine.setOnMouseClicked(e -> { snap(-89.9, 0.0); e.consume(); });
+        zTip.setOnMouseClicked(e -> { snap(-89.9, 0.0); e.consume(); });
 
         g.getChildren().addAll(xLine, xTip, yLine, yTip, zLine, zTip);
         return g;
@@ -143,6 +139,7 @@ public class world_triad_ui_main extends StackPane {
     private Sphere buildOrigin() {
         Sphere o = new Sphere(RAD * 1.5);
         o.setMaterial(new PhongMaterial(Color.web("#1E293B")));
+        o.setOnMouseClicked(e -> { snap(ui.framework_ui_main.ISO_PITCH, ui.framework_ui_main.ISO_YAW); e.consume(); });
         return o;
     }
 }

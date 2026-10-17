@@ -50,6 +50,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\camera\camera_controller_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\camera\coordinate_system_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\document\file_tab_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_drafting_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_editor_feature_selection_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_editor_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_editor_visual_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\shape_event_handler_ui_main.java
@@ -74,6 +75,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_feature_ui_m
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_hole_mesh_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_magnet_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_mesh_builder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\extrude\extrude_prism_mesh_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\edge_event_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\edge_overlay_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\faces\edge_picker_ui_main.java
@@ -115,6 +117,7 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\loft\loft_mesh_builder_ui_ma
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\loft\loft_mesh_quad_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\loft\loft_solid_evaluator_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\loft\shape_loft_holder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\box_machining_mesh_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\chamfer_feature_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\chamfer_mesh_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\circular_machining_mesh_helper_ui_main.java
@@ -122,7 +125,9 @@ E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\draft_feature_ui_m
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\draft_mesh_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\fillet_feature_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\fillet_mesh_builder_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\machining_cylinder_mesh_helper_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\machining_dialog_ui_main.java
+E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\machining_solid_mesh_builder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\machining\shape_machining_holder_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\profiles\profile_loop_ui_main.java
 E:\MultiPhysics\src\main\java\ui\workspace\drafting\profiles\profile_reference_ui_main.java

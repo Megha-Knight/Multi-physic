@@ -73,6 +73,11 @@ public class chamfer_feature_ui_main {
             diagnosticMessage = "Host body not found";
             return false;
         }
+        if (host.getType() == ui.workspace.shapes.basic_shapes_ui_main.SPHERE) {
+            state = feature_state_ui_main.INVALID;
+            diagnosticMessage = "Sphere has no topological edges for chamfer operations";
+            return false;
+        }
         if (distance <= 0.01) {
             state = feature_state_ui_main.INVALID;
             diagnosticMessage = "Chamfer distance must be > 0";

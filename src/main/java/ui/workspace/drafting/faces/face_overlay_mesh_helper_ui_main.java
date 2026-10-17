@@ -8,14 +8,11 @@ import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
 import ui.workspace.drafting.topology.topology_boundary_loop_ui_main;
 import ui.workspace.shapes.holes.hole_mesh_triangulator_ui_main;
+import ui.workspace.shapes.holes.hole_mesh_triangulator_ui_main.Frame;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * face_overlay_mesh_helper_ui_main.java
- * Generates 3D highlight surface meshes for planar, circular, and hole-cutout CAD faces.
- */
 public final class face_overlay_mesh_helper_ui_main {
 
     private face_overlay_mesh_helper_ui_main() {}
@@ -64,12 +61,7 @@ public final class face_overlay_mesh_helper_ui_main {
         if (innerLoops == null || innerLoops.isEmpty()) return createRectSurface(center, u, v, n, w, h, mat);
         double hw = w * 0.5, hh = h * 0.5;
         Point3D c = center.add(n.multiply(0.20));
-        Point3D[] oct = new Point3D[] {
-            c.add(u.multiply(hw)).add(v.multiply(hh)), c.add(u.multiply(0)).add(v.multiply(hh)),
-            c.add(u.multiply(-hw)).add(v.multiply(hh)), c.add(u.multiply(-hw)).add(v.multiply(0)),
-            c.add(u.multiply(-hw)).add(v.multiply(-hh)), c.add(u.multiply(0)).add(v.multiply(-hh)),
-            c.add(u.multiply(hw)).add(v.multiply(-hh)), c.add(u.multiply(hw)).add(v.multiply(0))
-        };
+        Point3D[] oct = hole_mesh_triangulator_ui_main.getOctagonalPerimeter(new Frame(c, n, u, v), -hw, hw, -hh, hh);
         var loop = innerLoops.get(0);
         Point3D hc = c.add(u.multiply(loop.getCenter().getX())).add(v.multiply(loop.getCenter().getY()));
         Point3D[] circ = hole_mesh_triangulator_ui_main.getCirclePoints(hc, u, v, loop.getRadius(), 32);
@@ -105,6 +97,58 @@ public final class face_overlay_mesh_helper_ui_main {
         for (int i = 0; i < segs; i++) {
             int next = (i + 1) % segs, o1 = i * 2, i1 = i * 2 + 1, o2 = next * 2, i2 = next * 2 + 1;
             mesh.getFaces().addAll(o1, 0, o2, 1, i1, 2, o2, 1, i2, 3, i1, 2);
+        }
+        return wrapMesh(mesh, mat);
+    }
+
+    public static Node createCylinderLateralSurface(Point3D c, double r, double h, PhongMaterial mat) {
+        int segs = 32; double cr = r + 0.20, yTop = c.getY() - h * 0.5, yBot = c.getY() + h * 0.5;
+        TriangleMesh mesh = new TriangleMesh();
+        mesh.getTexCoords().addAll(0, 0, 1, 0, 0, 1, 1, 1);
+        for (int i = 0; i < segs; i++) {
+            double ang = i * 2.0 * Math.PI / segs, x = c.getX() + cr * Math.cos(ang), z = c.getZ() + cr * Math.sin(ang);
+            mesh.getPoints().addAll((float) x, (float) yTop, (float) z, (float) x, (float) yBot, (float) z);
+        }
+        for (int i = 0; i < segs; i++) {
+            int next = (i + 1) % segs, t1 = i * 2, b1 = i * 2 + 1, t2 = next * 2, b2 = next * 2 + 1;
+            mesh.getFaces().addAll(t1, 0, t2, 1, b1, 2, t2, 1, b2, 3, b1, 2);
+        }
+        return wrapMesh(mesh, mat);
+    }
+
+    public static Node createConeLateralSurface(Point3D p1, double r, double h, PhongMaterial mat) {
+        int segs = 32; double cr = r + 0.20, yBase = p1.getY(), yApex = p1.getY() - h - 0.20;
+        TriangleMesh mesh = new TriangleMesh();
+        mesh.getPoints().addAll((float) p1.getX(), (float) yApex, (float) p1.getZ());
+        mesh.getTexCoords().addAll(0.5f, 0.5f, 0, 0, 1, 0, 0, 1);
+        for (int i = 0; i < segs; i++) {
+            double ang = i * 2.0 * Math.PI / segs, x = p1.getX() + cr * Math.cos(ang), z = p1.getZ() + cr * Math.sin(ang);
+            mesh.getPoints().addAll((float) x, (float) yBase, (float) z);
+        }
+        for (int i = 0; i < segs; i++) {
+            int next = (i + 1) % segs;
+            mesh.getFaces().addAll(0, 0, i + 1, 1, next + 1, 2);
+        }
+        return wrapMesh(mesh, mat);
+    }
+
+    public static Node createSphereSurface(Point3D c, double r, PhongMaterial mat) {
+        int rings = 16, segs = 24; double sr = r + 0.20;
+        TriangleMesh mesh = new TriangleMesh();
+        mesh.getTexCoords().addAll(0, 0, 1, 0, 0, 1, 1, 1);
+        for (int ring = 0; ring <= rings; ring++) {
+            double phi = Math.PI * ring / rings, y = c.getY() + sr * Math.cos(phi), rr = sr * Math.sin(phi);
+            for (int seg = 0; seg < segs; seg++) {
+                double theta = seg * 2.0 * Math.PI / segs;
+                mesh.getPoints().addAll((float) (c.getX() + rr * Math.sin(theta)), (float) y, (float) (c.getZ() + rr * Math.cos(theta)));
+            }
+        }
+        for (int ring = 0; ring < rings; ring++) {
+            for (int seg = 0; seg < segs; seg++) {
+                int nextSeg = (seg + 1) % segs, cur = ring * segs + seg, next = ring * segs + nextSeg;
+                int bCur = (ring + 1) * segs + seg, bNext = (ring + 1) * segs + nextSeg;
+                mesh.getFaces().addAll(cur, 0, next, 1, bCur, 2, next, 1, bNext, 3, bCur, 2);
+            }
         }
         return wrapMesh(mesh, mat);
     }

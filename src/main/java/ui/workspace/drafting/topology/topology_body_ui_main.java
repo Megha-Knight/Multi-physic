@@ -109,7 +109,9 @@ public class topology_body_ui_main implements topology_entity_ui_main {
             h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
             cx = (p1.getX() + p2.getX()) * 0.5; cz = (p1.getZ() + p2.getZ()) * 0.5;
         }
-        double x0 = cx - w * 0.5, x1 = cx + w * 0.5, y0 = 0.0, y1 = -h, z0 = cz - d * 0.5, z1 = cz + d * 0.5;
+        double y0 = (s.getType() == basic_shapes_ui_main.CUBE) ? 0.0 : p1.getY();
+        double y1 = (s.getType() == basic_shapes_ui_main.CUBE) ? -h : p1.getY() - h;
+        double x0 = cx - w * 0.5, x1 = cx + w * 0.5, z0 = cz - d * 0.5, z1 = cz + d * 0.5;
         // 8 Vertices
         addBoxV(b, "TOP_FRONT_LEFT", new Point3D(x0, y1, z1)); addBoxV(b, "TOP_FRONT_RIGHT", new Point3D(x1, y1, z1));
         addBoxV(b, "TOP_BACK_LEFT", new Point3D(x0, y1, z0));  addBoxV(b, "TOP_BACK_RIGHT", new Point3D(x1, y1, z0));

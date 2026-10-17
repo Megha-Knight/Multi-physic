@@ -31,48 +31,40 @@ public class shape_drafting_ui_main {
     private basic_shapes_ui_main activeShape = basic_shapes_ui_main.NONE;
     private Point3D startPt = null;
     private face_reference_ui_main draftingFace = null;
+    private boolean isExtrudeMode = false;
+    private double extrudeHeight = 25.0;
+    private ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape extrudeProfile = null;
 
     public shape_drafting_ui_main(Pane viewportPane, PerspectiveCamera camera,
                                   camera_controller_ui_main cameraController, Label hudLabel) {
-        this.viewportPane = viewportPane;
-        this.camera = camera;
-        this.cameraController = cameraController;
-        this.hudLabel = hudLabel;
+        this.viewportPane = viewportPane; this.camera = camera;
+        this.cameraController = cameraController; this.hudLabel = hudLabel;
         attachListeners();
     }
 
-    public void setEditor(shape_editor_ui_main editor) { this.editor = editor; }
-    public shape_editor_ui_main getEditor()            { return editor; }
-    public Group getShapesGroup()                      { return shapesGroup; }
-    public Group getPreviewGroup()                     { return previewGroup; }
+    public void setEditor(shape_editor_ui_main ed) { this.editor = ed; } public shape_editor_ui_main getEditor() { return editor; }
+    public Group getShapesGroup() { return shapesGroup; } public Group getPreviewGroup() { return previewGroup; }
     public void setStatusCallback(Consumer<String> cb) { this.statusCallback = cb; }
-    public basic_shapes_ui_main getActiveShape()       { return activeShape; }
-    public face_reference_ui_main getDraftingFace()    { return draftingFace; }
+    public basic_shapes_ui_main getActiveShape() { return activeShape; } public face_reference_ui_main getDraftingFace() { return draftingFace; }
+    public void setExtrudeMode(boolean active, ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape profile, double height) {
+        this.isExtrudeMode = active; this.extrudeProfile = profile; this.extrudeHeight = height;
+    }
 
     public void setShape(basic_shapes_ui_main shape) {
         this.activeShape = (shape != null) ? shape : basic_shapes_ui_main.NONE;
         this.startPt = null; previewGroup.getChildren().clear();
 
         if (activeShape.isDrawing()) {
-            if (activeShape.is3D()) {
-                draftingFace = null;
-                if (editor != null) editor.selectShape(null);
-            } else if (editor != null && editor.getActiveFace() != null && editor.getActiveFace().isPlanar()) {
-                draftingFace = editor.getActiveFace();
-            } else {
-                draftingFace = null;
-                if (editor != null) editor.selectShape(null);
-            }
+            if (activeShape.is3D() || editor == null || editor.getActiveFace() == null || !editor.getActiveFace().isPlanar()) {
+                draftingFace = null; if (editor != null && activeShape.is3D()) editor.selectShape(null);
+            } else draftingFace = editor.getActiveFace();
             cameraController.setEnabled(false);
             String tgt = (draftingFace != null) ? " on " + draftingFace.getFaceKind().getLabel() : " on ground grid";
-            if (statusCallback != null)
-                statusCallback.accept("Drafting " + activeShape.getLabel() + tgt + ": " + activeShape.getInstruction() + " [Esc to Cancel]");
+            if (statusCallback != null) statusCallback.accept("Drafting " + activeShape.getLabel() + tgt + ": " + activeShape.getInstruction() + " [Esc to Cancel]");
             hudLabel.setText(activeShape.getLabel() + ": Click" + tgt + " to place start point");
             hudLabel.setVisible(true);
         } else {
-            draftingFace = null;
-            cameraController.setEnabled(true);
-            hudLabel.setVisible(false);
+            draftingFace = null; cameraController.setEnabled(true); hudLabel.setVisible(false);
             if (statusCallback != null) statusCallback.accept("Ready");
         }
     }
@@ -88,37 +80,37 @@ public class shape_drafting_ui_main {
         viewportPane.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
             if (!activeShape.isDrawing()) return;
             if (e.getButton() == MouseButton.SECONDARY) { cancelDrafting(); e.consume(); return; }
-            if (e.getButton() == MouseButton.PRIMARY) {
-                Point3D hit = hitDrafting(e);
-                if (hit != null) { startPt = hit; e.consume(); }
-            }
+            if (e.getButton() == MouseButton.PRIMARY) { Point3D hit = hitDrafting(e); if (hit != null) { startPt = hit; e.consume(); } }
         });
-
         viewportPane.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (!activeShape.isDrawing() || startPt == null) return;
-            Point3D hit = hitDrafting(e);
-            if (hit != null) { updatePreview(startPt, hit); e.consume(); }
+            Point3D hit = hitDrafting(e); if (hit != null) { updatePreview(startPt, hit); e.consume(); }
         });
-
         viewportPane.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
             if (!activeShape.isDrawing() || startPt == null) return;
             Point3D hit = hitDrafting(e);
             if (hit != null && hit.distance(startPt) > 0.5) {
                 shape_item_ui_main item = new shape_item_ui_main(activeShape, startPt, hit);
-                if (activeShape.is3D() && editor != null) {
+                if (isExtrudeMode && extrudeProfile != null) {
+                    double w = Math.max(0.2, Math.abs(hit.getX() - startPt.getX())), d = Math.max(0.2, Math.abs(hit.getZ() - startPt.getZ()));
+                    double dia = (extrudeProfile == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE) ? startPt.distance(hit) * 2.0 : Math.max(w, d);
+                    var ext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(
+                        null, item.getId(), null, ui.workspace.drafting.faces.face_kind_ui_main.TOP,
+                        extrudeProfile, 0.0, 0.0, dia, Math.min(w, d), extrudeHeight
+                    );
+                    item.addExtrude(ext); item.setName(ext.getName());
+                }
+                if ((activeShape.is3D() || isExtrudeMode) && editor != null) {
                     ui.workspace.drafting.extrude.extrude_magnet_helper_ui_main.trySnapToNearestFace(item, activeShape, startPt, hit, editor);
                 } else if (draftingFace != null) {
                     item.setFacePlane(draftingFace.getUAxis(), draftingFace.getVAxis(), draftingFace.getWorldNormal(),
-                                      draftingFace.getOwnerShapeId(), draftingFace.getFaceKind(),
-                                      draftingFace.getLocalHitU(), draftingFace.getLocalHitV());
+                                      draftingFace.getOwnerShapeId(), draftingFace.getFaceKind(), draftingFace.getLocalHitU(), draftingFace.getLocalHitV());
                 }
                 if (editor != null) editor.addShape(item); else shapesGroup.getChildren().add(item.getRootGroup());
-                if (statusCallback != null)
-                    statusCallback.accept(activeShape.getLabel() + " created on " + (item.isOnFace() ? item.getFaceKind().getLabel() : "ground") + ".");
+                if (statusCallback != null) statusCallback.accept(item.getName() + " created on " + (item.isOnFace() ? item.getFaceKind().getLabel() : "ground") + ".");
             }
-            previewGroup.getChildren().clear(); startPt = null; hudLabel.setVisible(false); cancelDrafting(); e.consume();
+            isExtrudeMode = false; previewGroup.getChildren().clear(); startPt = null; hudLabel.setVisible(false); cancelDrafting(); e.consume();
         });
-
         viewportPane.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.ESCAPE && activeShape.isDrawing()) { cancelDrafting(); e.consume(); }
         });
@@ -135,13 +127,25 @@ public class shape_drafting_ui_main {
     }
 
     private Node createGeometry(basic_shapes_ui_main type, Point3D p1, Point3D p2, boolean isPreview) {
+        if (isExtrudeMode && extrudeProfile != null && (type == basic_shapes_ui_main.EQUILATERAL_TRIANGLE || type == basic_shapes_ui_main.RIGHT_TRIANGLE)) {
+            var f = new ui.workspace.shapes.holes.hole_mesh_triangulator_ui_main.Frame(
+                new Point3D((p1.getX() + p2.getX()) * 0.5, p1.getY(), (p1.getZ() + p2.getZ()) * 0.5),
+                new Point3D(0, -1, 0), new Point3D(1, 0, 0), new Point3D(0, 0, 1)
+            );
+            double w = Math.max(0.2, Math.abs(p2.getX() - p1.getX())), d = Math.max(0.2, Math.abs(p2.getZ() - p1.getZ()));
+            var ext = new ui.workspace.drafting.extrude.extrude_feature_ui_main(
+                null, null, null, ui.workspace.drafting.faces.face_kind_ui_main.TOP,
+                extrudeProfile, 0.0, 0.0, Math.max(w, d), Math.min(w, d), extrudeHeight
+            );
+            return ui.workspace.drafting.extrude.extrude_prism_mesh_helper_ui_main.buildPrismNode(f, ext, shape_geometry_3d_ui_main.createMaterial(isPreview, false));
+        }
         if (type.is3D()) {
             return switch (type) {
-                case CUBE      -> shape_geometry_3d_ui_main.createCube(p1, p2, isPreview);
-                case CUBOID    -> shape_geometry_3d_ui_main.createCuboid(p1, p2, isPreview);
-                case CYLINDER  -> shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview);
-                case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, isPreview);
-                case CONE      -> shape_geometry_3d_ui_main.createCone(p1, p2, isPreview);
+                case CUBE -> shape_geometry_3d_ui_main.createCube(p1, p2, isPreview);
+                case CUBOID -> shape_geometry_3d_ui_main.createCuboid(p1, p2, isPreview);
+                case CYLINDER -> shape_geometry_3d_ui_main.createCylinder(p1, p2, isPreview);
+                case SPHERE -> shape_geometry_3d_ui_main.createSphere(p1, p2, isPreview);
+                case CONE -> shape_geometry_3d_ui_main.createCone(p1, p2, isPreview);
                 default -> null;
             };
         }
@@ -157,23 +161,18 @@ public class shape_drafting_ui_main {
         Point3D delta = p2.subtract(p1);
         double du = Math.abs(delta.dotProduct(u)), dv = Math.abs(delta.dotProduct(v)), dist = p1.distance(p2);
         return switch (type) {
-            case CIRCLE    -> String.format("Circle | Radius: %.1f mm | Dia: %.1f mm", dist, dist * 2);
-            case SQUARE    -> String.format("Square | Side: %.1f mm", Math.max(du, dv));
-            case RECTANGLE -> String.format("Rectangle | W: %.1f mm | H: %.1f mm", du, dv);
+            case CIRCLE -> String.format("Circle | Radius: %.1f mm | Dia: %.1f mm", dist, dist * 2);
+            case SQUARE, CUBE -> String.format("%s | Side: %.1f mm", type.getLabel(), Math.max(du, dv));
+            case RECTANGLE, CUBOID -> String.format("%s | W: %.1f mm | D: %.1f mm", type.getLabel(), du, dv);
             case EQUILATERAL_TRIANGLE -> String.format("Equilateral Triangle | Side: %.1f mm", dist);
             case RIGHT_TRIANGLE -> String.format("Right Triangle | Base: %.1f mm | Height: %.1f mm", du, dv);
-            case CUBE      -> String.format("Cube (3D) | Side: %.1f mm", Math.max(du, dv));
-            case CUBOID    -> String.format("Cuboid (3D) | W: %.1f mm | D: %.1f mm", du, dv);
-            case CYLINDER  -> String.format("Cylinder (3D) | Radius: %.1f mm | Height: %.1f mm", dist, dist * 2);
-            case SPHERE    -> String.format("Sphere (3D) | Radius: %.1f mm | Dia: %.1f mm", dist, dist * 2);
-            case CONE      -> String.format("Cone (3D) | Radius: %.1f mm | Height: %.1f mm", dist, dist * 2);
+            case CYLINDER, CONE, SPHERE -> String.format("%s | Radius: %.1f mm | Size: %.1f mm", type.getLabel(), dist, dist * 2);
             default -> "";
         };
     }
 
     public Point3D screenToDraftingPlane(double sx, double sy) {
-        if (draftingFace != null) return screenToPlane(draftingFace.getFaceOrigin(), draftingFace.getWorldNormal(), sx, sy);
-        return screenToGround(sx, sy);
+        return (draftingFace != null) ? screenToPlane(draftingFace.getFaceOrigin(), draftingFace.getWorldNormal(), sx, sy) : screenToGround(sx, sy);
     }
 
     public Point3D screenToPlane(Point3D pOrigin, Point3D pNorm, double sx, double sy) {

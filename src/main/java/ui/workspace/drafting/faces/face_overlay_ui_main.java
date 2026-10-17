@@ -91,6 +91,12 @@ public class face_overlay_ui_main extends Group {
             target.getChildren().add(face_overlay_mesh_helper_ui_main.createDiskSurface(localOrigin, u, v, n, w * 0.5, yMat));
         } else if (face.isPlanar()) {
             target.getChildren().add(face_overlay_mesh_helper_ui_main.createRectSurface(localOrigin, u, v, n, w, h, yMat));
+        } else if (shape != null && shape.getType() == ui.workspace.shapes.basic_shapes_ui_main.CYLINDER) {
+            target.getChildren().add(face_overlay_mesh_helper_ui_main.createCylinderLateralSurface(localOrigin, w / (2 * Math.PI), h, yMat));
+        } else if (shape != null && shape.getType() == ui.workspace.shapes.basic_shapes_ui_main.CONE) {
+            target.getChildren().add(face_overlay_mesh_helper_ui_main.createConeLateralSurface(shape.getP1(), w / (2 * Math.PI), h, yMat));
+        } else if (shape != null && shape.getType() == ui.workspace.shapes.basic_shapes_ui_main.SPHERE) {
+            target.getChildren().add(face_overlay_mesh_helper_ui_main.createSphereSurface(shape.getP1(), Math.max(0.1, shape.getP1().distance(shape.getP2())), yMat));
         } else {
             buildCurvedMarker(target, localOrigin, n);
         }

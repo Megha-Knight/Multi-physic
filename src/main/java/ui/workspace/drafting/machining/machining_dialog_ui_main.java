@@ -94,7 +94,10 @@ public class machining_dialog_ui_main extends Stage {
         errorLabel.setVisible(false); errorLabel.setWrapText(true); errorLabel.setMaxWidth(320);
         root.getChildren().add(errorLabel);
 
-        Button cancel = new Button("Cancel"); cancel.setOnAction(e -> close());
+        Button cancel = new Button("Cancel"); cancel.setOnAction(e -> {
+            shape.getFaceOverlay().highlightFace(null); shape.getEdgeOverlay().clearHighlight();
+            if (editor != null) editor.setActiveFace(null); close();
+        });
         Button apply = new Button(editing ? "Apply" : "Create"); apply.setDefaultButton(true);
         apply.setStyle("-fx-background-color: " + framework_ui_main.OBJECT_SELECTED_COLOR + "; -fx-text-fill: white; -fx-font-weight: bold;");
         apply.setOnAction(e -> applyFeature());
@@ -145,7 +148,9 @@ public class machining_dialog_ui_main extends Stage {
                 if (ok && editDraft == null) shape.addDraft(d); else if (ok) shape.rebuild();
                 if (!ok) { showError(d.getDiagnosticMessage()); return; }
             }
-            if (editor != null) editor.notifyShapesChanged();
+            shape.getFaceOverlay().highlightFace(null);
+            shape.getEdgeOverlay().clearHighlight();
+            if (editor != null) { editor.setActiveFace(null); editor.notifyShapesChanged(); }
             close();
         } catch (NumberFormatException ex) {
             showError("Enter a valid number.");

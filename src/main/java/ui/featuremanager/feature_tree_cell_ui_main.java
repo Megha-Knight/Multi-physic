@@ -42,6 +42,9 @@ public class feature_tree_cell_ui_main extends TreeCell<feature_tree_node_ui_mai
                 if (val.isHole()) editor.openHoleEditor(val.getParentShape(), val.getHole());
                 else if (val.isPattern()) editor.openPatternEditor(val.getParentShape(), val.getPattern());
                 else if (val.isExtrude()) editor.openExtrudeEditor(val.getParentShape(), val.getExtrude());
+                else if (val.isChamfer()) ui.workspace.drafting.machining.machining_dialog_ui_main.openEdit(val.getParentShape(), val.getChamfer(), editor, getScene() != null ? getScene().getWindow() : null);
+                else if (val.isFillet()) ui.workspace.drafting.machining.machining_dialog_ui_main.openEdit(val.getParentShape(), val.getFillet(), editor, getScene() != null ? getScene().getWindow() : null);
+                else if (val.isDraft()) ui.workspace.drafting.machining.machining_dialog_ui_main.openEdit(val.getParentShape(), val.getDraft(), editor, getScene() != null ? getScene().getWindow() : null);
                 else if (val.isSketch() && sketchCallbackSupplier != null && sketchCallbackSupplier.get() != null) {
                     sketchCallbackSupplier.get().accept(val.getSketch());
                 } else if (val.isShape()) editor.openDimensionEditor(val.getShape());

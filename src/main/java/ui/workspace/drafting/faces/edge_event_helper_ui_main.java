@@ -42,7 +42,7 @@ public final class edge_event_helper_ui_main {
             return true;
         }
 
-        editor.exitEdgePickMode();
+        editor.postStatus("Edge not detected near click. Click directly on an edge or press Esc to cancel.");
         e.consume();
         return true;
     }

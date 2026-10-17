@@ -119,7 +119,10 @@ public class feature_tree_node_ui_main {
     }
 
     public Image getIcon() {
-        if (isShape()) return loadIcon(getShapePath(shape.getType()));
+        if (isShape()) {
+            if (shape.hasExtrusions()) return loadIcon(getExtrudePath(shape.getExtrusions().get(0)));
+            return loadIcon(getShapePath(shape.getType()));
+        }
         if (isHole() || isDerivedFace()) return loadIcon(getHolePath(hole));
         if (isPattern() || isSketch() || isChamfer() || isFillet() || isDraft() || isBoolean() || isShell() || isLoft() || isSweep() || isRevolve()) return loadIcon("/icons/basic_shapes.png");
         if (isExtrude()) return loadIcon(getExtrudePath(extrude));
@@ -150,6 +153,8 @@ public class feature_tree_node_ui_main {
         if (e != null && e.getProfileShape() != null) {
             return switch (e.getProfileShape()) {
                 case SQUARE -> "/icons/cube_3d.png"; case RECTANGLE -> "/icons/cuboid_3d.png";
+                case EQUILATERAL_TRIANGLE -> "/icons/triangle_equilateral.png";
+                case RIGHT_TRIANGLE -> "/icons/triangle_right.png";
                 default -> "/icons/cylinder_3d.png";
             };
         }
