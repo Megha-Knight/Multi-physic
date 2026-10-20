@@ -9,3 +9,4 @@ Thumbs.db
 *.zip
 *.mp4
 scratch/
+native/build/
