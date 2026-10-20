@@ -24,6 +24,7 @@ extern "C" {
 #define ASTRA_ERR_INVALID_RAY     -2
 #define ASTRA_ERR_DEGENERATE_TRI  -3
 #define ASTRA_ERR_BUFFER_TOO_SMALL -4
+#define ASTRA_ERR_INVALID_STRIDE   -5
 
 /* Version Information */
 #define ASTRA_VERSION_MAJOR 0

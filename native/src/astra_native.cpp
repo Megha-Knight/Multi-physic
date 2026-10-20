@@ -46,6 +46,25 @@ ASTRA_API int32_t astra_ray_triangle_intersect(
     if (out_u) *out_u = 0.0;
     if (out_v) *out_v = 0.0;
 
+    if (!std::isfinite(ray_orig[0]) || !std::isfinite(ray_orig[1]) || !std::isfinite(ray_orig[2]) ||
+        !std::isfinite(ray_dir[0]) || !std::isfinite(ray_dir[1]) || !std::isfinite(ray_dir[2])) {
+        set_error("astra_ray_triangle_intersect: ray parameters must be finite");
+        return ASTRA_ERR_INVALID_RAY;
+    }
+
+    if (!std::isfinite(v0[0]) || !std::isfinite(v0[1]) || !std::isfinite(v0[2]) ||
+        !std::isfinite(v1[0]) || !std::isfinite(v1[1]) || !std::isfinite(v1[2]) ||
+        !std::isfinite(v2[0]) || !std::isfinite(v2[1]) || !std::isfinite(v2[2])) {
+        set_error("astra_ray_triangle_intersect: vertex parameters must be finite");
+        return ASTRA_ERR_INVALID_RAY;
+    }
+
+    double dir_len_sq = ray_dir[0] * ray_dir[0] + ray_dir[1] * ray_dir[1] + ray_dir[2] * ray_dir[2];
+    if (dir_len_sq < ASTRA_EPSILON * ASTRA_EPSILON) {
+        set_error("astra_ray_triangle_intersect: ray direction magnitude is zero");
+        return ASTRA_ERR_INVALID_RAY;
+    }
+
     // Edge vectors
     double e1_x = v1[0] - v0[0];
     double e1_y = v1[1] - v0[1];
@@ -64,7 +83,7 @@ ASTRA_API int32_t astra_ray_triangle_intersect(
     double det = e1_x * pvec_x + e1_y * pvec_y + e1_z * pvec_z;
 
     if (std::abs(det) < ASTRA_EPSILON) {
-        // Ray is parallel to triangle plane
+        // Ray is parallel to triangle plane or triangle is degenerate
         return ASTRA_OK;
     }
 
@@ -95,7 +114,7 @@ ASTRA_API int32_t astra_ray_triangle_intersect(
     // t = (edge2 . qvec) * inv_det
     double t = (e2_x * qvec_x + e2_y * qvec_y + e2_z * qvec_z) * inv_det;
     if (t < ASTRA_EPSILON) {
-        return ASTRA_OK; // Hit is behind ray origin
+        return ASTRA_OK; // Hit is behind or exactly on ray origin
     }
 
     *out_t = t;
@@ -149,8 +168,35 @@ ASTRA_API int32_t astra_ray_mesh_intersect_nearest_f32(
     if (out_hit_u) *out_hit_u = 0.0;
     if (out_hit_v) *out_hit_v = 0.0;
 
-    if (stride < 3 || point_coord_count < 3 || face_index_count < stride) {
-        return ASTRA_OK; // Empty or invalid mesh
+    if (!std::isfinite(ray_orig[0]) || !std::isfinite(ray_orig[1]) || !std::isfinite(ray_orig[2]) ||
+        !std::isfinite(ray_dir[0]) || !std::isfinite(ray_dir[1]) || !std::isfinite(ray_dir[2])) {
+        set_error("astra_ray_mesh_intersect_nearest_f32: ray coordinates must be finite");
+        return ASTRA_ERR_INVALID_RAY;
+    }
+
+    double dir_len_sq = ray_dir[0] * ray_dir[0] + ray_dir[1] * ray_dir[1] + ray_dir[2] * ray_dir[2];
+    if (dir_len_sq < ASTRA_EPSILON * ASTRA_EPSILON) {
+        set_error("astra_ray_mesh_intersect_nearest_f32: ray direction magnitude is zero");
+        return ASTRA_ERR_INVALID_RAY;
+    }
+
+    if (stride != 3 && stride != 6) {
+        set_error("astra_ray_mesh_intersect_nearest_f32: stride must be 3 or 6");
+        return ASTRA_ERR_INVALID_STRIDE;
+    }
+
+    if (point_coord_count < 0 || face_index_count < 0) {
+        set_error("astra_ray_mesh_intersect_nearest_f32: counts cannot be negative");
+        return ASTRA_ERR_BUFFER_TOO_SMALL;
+    }
+
+    if (point_coord_count % 3 != 0) {
+        set_error("astra_ray_mesh_intersect_nearest_f32: point_coord_count must be a multiple of 3 (XYZ)");
+        return ASTRA_ERR_BUFFER_TOO_SMALL;
+    }
+
+    if (point_coord_count == 0 || face_index_count < stride) {
+        return ASTRA_OK; // Clean empty mesh handling: valid miss
     }
 
     double min_t = 1e30;
@@ -164,9 +210,19 @@ ASTRA_API int32_t astra_ray_mesh_intersect_nearest_f32(
         int32_t idx1 = faces[base + (stride == 6 ? 2 : 1)];
         int32_t idx2 = faces[base + (stride == 6 ? 4 : 2)];
 
-        int32_t c0 = idx0 * 3, c1 = idx1 * 3, c2 = idx2 * 3;
+        if (idx0 < 0 || idx1 < 0 || idx2 < 0) {
+            continue; // Skip invalid face index safely
+        }
+
+        int64_t c0 = (int64_t)idx0 * 3, c1 = (int64_t)idx1 * 3, c2 = (int64_t)idx2 * 3;
         if (c0 + 2 >= point_coord_count || c1 + 2 >= point_coord_count || c2 + 2 >= point_coord_count) {
-            continue;
+            continue; // Skip out-of-bounds vertex index safely
+        }
+
+        if (!std::isfinite(points[c0]) || !std::isfinite(points[c0 + 1]) || !std::isfinite(points[c0 + 2]) ||
+            !std::isfinite(points[c1]) || !std::isfinite(points[c1 + 1]) || !std::isfinite(points[c1 + 2]) ||
+            !std::isfinite(points[c2]) || !std::isfinite(points[c2 + 1]) || !std::isfinite(points[c2 + 2])) {
+            continue; // Skip non-finite vertices safely
         }
 
         double v0[3] = { (double)points[c0], (double)points[c0 + 1], (double)points[c0 + 2] };

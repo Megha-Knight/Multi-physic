@@ -45,7 +45,8 @@ public final class astra_native_bridge_ui_main {
                         ValueLayout.ADDRESS, ValueLayout.JAVA_INT,
                         ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
                         ValueLayout.ADDRESS, ValueLayout.ADDRESS,
-                        ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                        ValueLayout.ADDRESS, ValueLayout.ADDRESS),
+                    Linker.Option.critical(true));
             });
             mhXform = linker.downcallHandle(lookup.find("astra_transform_point_4x4").orElseThrow(),
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
@@ -143,13 +144,24 @@ public final class astra_native_bridge_ui_main {
     public int rayMeshIntersectNearestF32(double[] orig, double[] dir, float[] points, int[] faces, int stride, double[] outHitInfo) {
         ensureLoaded();
         if (orig == null || dir == null || points == null || faces == null || mhRayMeshNearest == null) {
-            throw new IllegalArgumentException("Invalid arguments for rayMeshIntersectNearestF32");
+            throw new IllegalArgumentException("Invalid null arguments for rayMeshIntersectNearestF32");
+        }
+        if (orig.length < 3 || dir.length < 3) throw new IllegalArgumentException("Ray must have at least 3 elements");
+        if (!Double.isFinite(orig[0]) || !Double.isFinite(orig[1]) || !Double.isFinite(orig[2]) ||
+            !Double.isFinite(dir[0]) || !Double.isFinite(dir[1]) || !Double.isFinite(dir[2])) {
+            throw new IllegalArgumentException("Ray elements must be finite");
+        }
+        if (stride != 3 && stride != 6) throw new IllegalArgumentException("Unsupported stride: " + stride);
+        if (points.length % 3 != 0) throw new IllegalArgumentException("Point coordinates must be multiples of 3");
+        if (points.length == 0 || faces.length < stride) {
+            if (outHitInfo != null && outHitInfo.length > 0) outHitInfo[0] = -1.0;
+            return -1;
         }
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment mOrig = arena.allocateFrom(ValueLayout.JAVA_DOUBLE, orig);
             MemorySegment mDir = arena.allocateFrom(ValueLayout.JAVA_DOUBLE, dir);
-            MemorySegment mPts = arena.allocateFrom(ValueLayout.JAVA_FLOAT, points);
-            MemorySegment mFaces = arena.allocateFrom(ValueLayout.JAVA_INT, faces);
+            MemorySegment mPts = MemorySegment.ofArray(points);
+            MemorySegment mFaces = MemorySegment.ofArray(faces);
             MemorySegment mOutIdx = arena.allocate(ValueLayout.JAVA_INT);
             MemorySegment mOutT = arena.allocate(ValueLayout.JAVA_DOUBLE);
             MemorySegment mOutU = arena.allocate(ValueLayout.JAVA_DOUBLE);
@@ -158,8 +170,8 @@ public final class astra_native_bridge_ui_main {
             int rc = (int) mhRayMeshNearest.invokeExact(mOrig, mDir, mPts, points.length, mFaces, faces.length, stride, mOutIdx, mOutT, mOutU, mOutV);
             if (rc != 0) throw new RuntimeException("astra_ray_mesh_intersect_nearest_f32 failed: " + getLastError());
             int hitIdx = mOutIdx.get(ValueLayout.JAVA_INT, 0);
-            if (hitIdx >= 0 && outHitInfo != null) {
-                if (outHitInfo.length > 0) outHitInfo[0] = mOutT.get(ValueLayout.JAVA_DOUBLE, 0);
+            if (outHitInfo != null && outHitInfo.length > 0) {
+                outHitInfo[0] = mOutT.get(ValueLayout.JAVA_DOUBLE, 0);
                 if (outHitInfo.length > 1) outHitInfo[1] = mOutU.get(ValueLayout.JAVA_DOUBLE, 0);
                 if (outHitInfo.length > 2) outHitInfo[2] = mOutV.get(ValueLayout.JAVA_DOUBLE, 0);
             }
