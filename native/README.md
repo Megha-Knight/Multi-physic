@@ -34,13 +34,16 @@ native/
 
 ## 3. Toolchain & Environment Requirements
 
-- **LLVM / Clang**: Version 21.1.6 at `E:\LLVM\bin\clang++.exe`
+- **Primary Compiler**: Project-local LLVM/Clang at `src/main/cpp/bin/clang++.exe`
+  - Version: **21.1.6**
+  - Toolchain Location: `src/main/cpp/` (385 files, 657.36 MB, see [TOOLCHAIN_MANIFEST.md](file:///e:/MultiPhysics/src/main/cpp/TOOLCHAIN_MANIFEST.md))
 - **C++ Standard**: C++17
-- **Target Architecture**: `x86_64-w64-windows-gnu` / Windows UCRT
+- **Target Architecture**: `x86_64-w64-windows-gnu` / Windows Universal C Runtime (UCRT)
+- **External Fallback**: `E:\LLVM\bin\clang++.exe` (100% untouched and preserved)
 - **Java Runtime**: JDK 25 LTS (`C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot`)
 - **Interop Mechanism**: Java Foreign Function & Memory (FFM) API (`java.lang.foreign`)
 
-The LLVM directory structure (`bin`, `include`, `lib`, `libexec`, `share`) remains completely untouched.
+The build script `native/build_native.ps1` prioritizes `src/main/cpp/bin/clang++.exe` by default.
 
 ---
 

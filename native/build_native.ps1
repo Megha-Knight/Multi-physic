@@ -3,17 +3,28 @@
 $ErrorActionPreference = "Stop"
 
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
-$LLVM_BIN = "E:\LLVM\bin"
-$CLANG_CXX = Join-Path $LLVM_BIN "clang++.exe"
+$PROJECT_ROOT = Split-Path -Parent $SCRIPT_DIR
+$LOCAL_LLVM_BIN = Join-Path $PROJECT_ROOT "src\main\cpp\bin"
+$FALLBACK_LLVM_BIN = "E:\LLVM\bin"
 
-if (-not (Test-Path $CLANG_CXX)) {
-    Write-Error "Clang++ not found at $CLANG_CXX. Please verify LLVM installation."
+if (Test-Path (Join-Path $LOCAL_LLVM_BIN "clang++.exe")) {
+    $LLVM_BIN = $LOCAL_LLVM_BIN
+    $TOOLCHAIN_TYPE = "Project-Local Toolchain (src/main/cpp/bin)"
+} elseif (Test-Path (Join-Path $FALLBACK_LLVM_BIN "clang++.exe")) {
+    $LLVM_BIN = $FALLBACK_LLVM_BIN
+    $TOOLCHAIN_TYPE = "External Fallback Toolchain (E:\LLVM\bin)"
+    Write-Warning "Project-local toolchain missing; falling back to external installation: $FALLBACK_LLVM_BIN"
+} else {
+    Write-Error "Clang++ not found at project-local ($LOCAL_LLVM_BIN) or fallback ($FALLBACK_LLVM_BIN)."
     exit 1
 }
 
+$CLANG_CXX = Join-Path $LLVM_BIN "clang++.exe"
+
 Write-Host "=========================================================="
 Write-Host "Astra Native Backend Build System"
-Write-Host "Using Compiler: $CLANG_CXX"
+Write-Host "Toolchain Source: $TOOLCHAIN_TYPE"
+Write-Host "Using Compiler:   $CLANG_CXX"
 & $CLANG_CXX --version
 Write-Host "=========================================================="
 
