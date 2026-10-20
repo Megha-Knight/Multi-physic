@@ -94,4 +94,68 @@ public final class world_raycaster_ui_main {
         double dx = pt.getX() - px, dy = pt.getY() - py, dz = pt.getZ() - pz;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
+
+    public static double intersectTriangle(double[] ray, Point3D v0, Point3D v1, Point3D v2) {
+        return intersectTriangle(ray, v0, v1, v2, null);
+    }
+
+    public static double intersectTriangle(double[] ray, Point3D v0, Point3D v1, Point3D v2, double[] outBary) {
+        if (ray == null || ray.length < 6 || v0 == null || v1 == null || v2 == null) return -1.0;
+        try {
+            var bridge = backend.native_bridge.astra_native_bridge_ui_main.getInstance();
+            if (bridge.isAvailable()) {
+                double[] orig = new double[]{ ray[0], ray[1], ray[2] };
+                double[] dir  = new double[]{ ray[3], ray[4], ray[5] };
+                double[] p0   = new double[]{ v0.getX(), v0.getY(), v0.getZ() };
+                double[] p1   = new double[]{ v1.getX(), v1.getY(), v1.getZ() };
+                double[] p2   = new double[]{ v2.getX(), v2.getY(), v2.getZ() };
+                return bridge.rayTriangleIntersect(orig, dir, p0, p1, p2, outBary);
+            }
+        } catch (Throwable ignored) {}
+        return intersectTriangleJava(ray, v0, v1, v2, outBary);
+    }
+
+    public static double intersectTriangleJava(double[] ray, Point3D v0, Point3D v1, Point3D v2, double[] outBary) {
+        if (ray == null || ray.length < 6 || v0 == null || v1 == null || v2 == null) return -1.0;
+        double e1x = v1.getX() - v0.getX(), e1y = v1.getY() - v0.getY(), e1z = v1.getZ() - v0.getZ();
+        double e2x = v2.getX() - v0.getX(), e2y = v2.getY() - v0.getY(), e2z = v2.getZ() - v0.getZ();
+        double dx = ray[3], dy = ray[4], dz = ray[5];
+        double pvx = dy * e2z - dz * e2y, pvy = dz * e2x - dx * e2z, pvz = dx * e2y - dy * e2x;
+        double det = e1x * pvx + e1y * pvy + e1z * pvz;
+        if (Math.abs(det) < 1e-7) return -1.0;
+        double invDet = 1.0 / det;
+        double tvx = ray[0] - v0.getX(), tvy = ray[1] - v0.getY(), tvz = ray[2] - v0.getZ();
+        double u = (tvx * pvx + tvy * pvy + tvz * pvz) * invDet;
+        if (u < 0.0 || u > 1.0) return -1.0;
+        double qvx = tvy * e1z - tvz * e1y, qvy = tvz * e1x - tvx * e1z, qvz = tvx * e1y - tvy * e1x;
+        double v = (dx * qvx + dy * qvy + dz * qvz) * invDet;
+        if (v < 0.0 || u + v > 1.0) return -1.0;
+        double t = (e2x * qvx + e2y * qvy + e2z * qvz) * invDet;
+        if (t < 1e-7) return -1.0;
+        if (outBary != null && outBary.length >= 2) {
+            outBary[0] = u;
+            outBary[1] = v;
+        }
+        return t;
+    }
+
+    public static int findNearestTriangleHit(double[] ray, float[] points, int[] faces, double[] outNearestT) {
+        if (ray == null || points == null || faces == null) return -1;
+        double minT = Double.MAX_VALUE;
+        int hitIndex = -1;
+        for (int i = 0; i < faces.length; i += 6) {
+            int i0 = faces[i] * 3, i1 = faces[i + 2] * 3, i2 = faces[i + 4] * 3;
+            if (i0 + 2 >= points.length || i1 + 2 >= points.length || i2 + 2 >= points.length) continue;
+            Point3D v0 = new Point3D(points[i0], points[i0 + 1], points[i0 + 2]);
+            Point3D v1 = new Point3D(points[i1], points[i1 + 1], points[i1 + 2]);
+            Point3D v2 = new Point3D(points[i2], points[i2 + 1], points[i2 + 2]);
+            double t = intersectTriangle(ray, v0, v1, v2);
+            if (t > 1e-6 && t < minT) {
+                minT = t;
+                hitIndex = i / 6;
+            }
+        }
+        if (hitIndex >= 0 && outNearestT != null && outNearestT.length > 0) outNearestT[0] = minT;
+        return hitIndex;
+    }
 }
