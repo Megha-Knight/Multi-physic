@@ -104,12 +104,11 @@ public final class world_raycaster_ui_main {
         try {
             var bridge = backend.native_bridge.astra_native_bridge_ui_main.getInstance();
             if (bridge.isAvailable()) {
-                double[] orig = new double[]{ ray[0], ray[1], ray[2] };
-                double[] dir  = new double[]{ ray[3], ray[4], ray[5] };
-                double[] p0   = new double[]{ v0.getX(), v0.getY(), v0.getZ() };
-                double[] p1   = new double[]{ v1.getX(), v1.getY(), v1.getZ() };
-                double[] p2   = new double[]{ v2.getX(), v2.getY(), v2.getZ() };
-                return bridge.rayTriangleIntersect(orig, dir, p0, p1, p2, outBary);
+                return bridge.rayTriangleIntersect(
+                    new double[]{ ray[0], ray[1], ray[2] }, new double[]{ ray[3], ray[4], ray[5] },
+                    new double[]{ v0.getX(), v0.getY(), v0.getZ() },
+                    new double[]{ v1.getX(), v1.getY(), v1.getZ() },
+                    new double[]{ v2.getX(), v2.getY(), v2.getZ() }, outBary);
             }
         } catch (Throwable ignored) {}
         return intersectTriangleJava(ray, v0, v1, v2, outBary);
@@ -140,7 +139,7 @@ public final class world_raycaster_ui_main {
     }
 
     public static final double RAY_EPSILON = 1e-7;
-    public static final int NATIVE_THRESHOLD_TRIANGLES = 64;
+    public static final int NATIVE_THRESHOLD_TRIANGLES = 160;
 
     public static int findNearestTriangleHit(double[] ray, float[] points, int[] faces, double[] outNearestT) {
         return findNearestTriangleHit(ray, points, faces, 6, outNearestT);
@@ -149,8 +148,7 @@ public final class world_raycaster_ui_main {
     public static int findNearestTriangleHit(double[] ray, float[] points, int[] faces, int stride, double[] outNearestT) {
         if (ray == null || ray.length < 6 || points == null || faces == null || stride < 3) return -1;
         if (points.length < 3 || faces.length < stride) return -1;
-        int triCount = faces.length / stride;
-        if (triCount < NATIVE_THRESHOLD_TRIANGLES) {
+        if (faces.length / stride < NATIVE_THRESHOLD_TRIANGLES) {
             return findNearestTriangleHitJava(ray, points, faces, stride, outNearestT);
         }
         try {
