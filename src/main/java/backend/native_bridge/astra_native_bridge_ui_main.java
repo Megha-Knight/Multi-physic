@@ -12,7 +12,7 @@ public final class astra_native_bridge_ui_main {
     private static final astra_native_bridge_ui_main INSTANCE = new astra_native_bridge_ui_main();
     private boolean available = false;
     private String loadError = null;
-    private MethodHandle mhGetVer, mhGetVerStr, mhMag, mhRayTri, mhXform, mhLastErr;
+    private MethodHandle mhGetVer, mhGetVerStr, mhMag, mhRayTri, mhRayMeshNearest, mhXform, mhLastErr;
 
     private astra_native_bridge_ui_main() { init(); }
 
@@ -38,6 +38,15 @@ public final class astra_native_bridge_ui_main {
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_DOUBLE, ValueLayout.JAVA_DOUBLE, ValueLayout.JAVA_DOUBLE, ValueLayout.ADDRESS));
             mhRayTri = linker.downcallHandle(lookup.find("astra_ray_triangle_intersect").orElseThrow(),
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            lookup.find("astra_ray_mesh_intersect_nearest_f32").ifPresent(sym -> {
+                mhRayMeshNearest = linker.downcallHandle(sym,
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+                        ValueLayout.ADDRESS, ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+                        ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+            });
             mhXform = linker.downcallHandle(lookup.find("astra_transform_point_4x4").orElseThrow(),
                 FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
             mhLastErr = linker.downcallHandle(lookup.find("astra_get_last_error").orElseThrow(),
@@ -128,6 +137,33 @@ public final class astra_native_bridge_ui_main {
             int rc = (int) mhXform.invokeExact(mPt, mMat, mOut);
             if (rc != 0) throw new RuntimeException("astra_transform_point_4x4 failed: " + getLastError());
             return new double[]{ mOut.getAtIndex(ValueLayout.JAVA_DOUBLE, 0), mOut.getAtIndex(ValueLayout.JAVA_DOUBLE, 1), mOut.getAtIndex(ValueLayout.JAVA_DOUBLE, 2) };
+        } catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    public int rayMeshIntersectNearestF32(double[] orig, double[] dir, float[] points, int[] faces, int stride, double[] outHitInfo) {
+        ensureLoaded();
+        if (orig == null || dir == null || points == null || faces == null || mhRayMeshNearest == null) {
+            throw new IllegalArgumentException("Invalid arguments for rayMeshIntersectNearestF32");
+        }
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment mOrig = arena.allocateFrom(ValueLayout.JAVA_DOUBLE, orig);
+            MemorySegment mDir = arena.allocateFrom(ValueLayout.JAVA_DOUBLE, dir);
+            MemorySegment mPts = arena.allocateFrom(ValueLayout.JAVA_FLOAT, points);
+            MemorySegment mFaces = arena.allocateFrom(ValueLayout.JAVA_INT, faces);
+            MemorySegment mOutIdx = arena.allocate(ValueLayout.JAVA_INT);
+            MemorySegment mOutT = arena.allocate(ValueLayout.JAVA_DOUBLE);
+            MemorySegment mOutU = arena.allocate(ValueLayout.JAVA_DOUBLE);
+            MemorySegment mOutV = arena.allocate(ValueLayout.JAVA_DOUBLE);
+
+            int rc = (int) mhRayMeshNearest.invokeExact(mOrig, mDir, mPts, points.length, mFaces, faces.length, stride, mOutIdx, mOutT, mOutU, mOutV);
+            if (rc != 0) throw new RuntimeException("astra_ray_mesh_intersect_nearest_f32 failed: " + getLastError());
+            int hitIdx = mOutIdx.get(ValueLayout.JAVA_INT, 0);
+            if (hitIdx >= 0 && outHitInfo != null) {
+                if (outHitInfo.length > 0) outHitInfo[0] = mOutT.get(ValueLayout.JAVA_DOUBLE, 0);
+                if (outHitInfo.length > 1) outHitInfo[1] = mOutU.get(ValueLayout.JAVA_DOUBLE, 0);
+                if (outHitInfo.length > 2) outHitInfo[2] = mOutV.get(ValueLayout.JAVA_DOUBLE, 0);
+            }
+            return hitIdx;
         } catch (Throwable t) { throw new RuntimeException(t); }
     }
 

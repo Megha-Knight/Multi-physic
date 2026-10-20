@@ -70,6 +70,17 @@ ASTRA_API int32_t astra_transform_point_4x4(
     const double* in_pt, const double* matrix_4x4, double* out_pt);
 
 /**
+ * Computes nearest ray-triangle intersection across an indexed triangle mesh (float coordinates).
+ * Specifically optimized for JavaFX TriangleMesh buffers (stride = 6) and standard index buffers (stride = 3).
+ */
+ASTRA_API int32_t astra_ray_mesh_intersect_nearest_f32(
+    const double* ray_orig, const double* ray_dir,
+    const float* points, int32_t point_coord_count,
+    const int32_t* faces, int32_t face_index_count, int32_t stride,
+    int32_t* out_hit_index, double* out_hit_t,
+    double* out_hit_u, double* out_hit_v);
+
+/**
  * Retrieves the last error message for the calling thread.
  */
 ASTRA_API int32_t astra_get_last_error(char* buffer, int32_t buffer_len);

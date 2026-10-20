@@ -141,6 +141,25 @@ public final class world_raycaster_ui_main {
 
     public static int findNearestTriangleHit(double[] ray, float[] points, int[] faces, double[] outNearestT) {
         if (ray == null || points == null || faces == null) return -1;
+        try {
+            var bridge = backend.native_bridge.astra_native_bridge_ui_main.getInstance();
+            if (bridge.isAvailable()) {
+                double[] orig = new double[]{ ray[0], ray[1], ray[2] };
+                double[] dir  = new double[]{ ray[3], ray[4], ray[5] };
+                double[] hitInfo = new double[3];
+                int hitIdx = bridge.rayMeshIntersectNearestF32(orig, dir, points, faces, 6, hitInfo);
+                if (hitIdx >= 0) {
+                    if (outNearestT != null && outNearestT.length > 0) outNearestT[0] = hitInfo[0];
+                    return hitIdx;
+                }
+                return -1;
+            }
+        } catch (Throwable ignored) {}
+        return findNearestTriangleHitJava(ray, points, faces, outNearestT);
+    }
+
+    public static int findNearestTriangleHitJava(double[] ray, float[] points, int[] faces, double[] outNearestT) {
+        if (ray == null || points == null || faces == null) return -1;
         double minT = Double.MAX_VALUE;
         int hitIndex = -1;
         for (int i = 0; i < faces.length; i += 6) {
@@ -149,7 +168,7 @@ public final class world_raycaster_ui_main {
             Point3D v0 = new Point3D(points[i0], points[i0 + 1], points[i0 + 2]);
             Point3D v1 = new Point3D(points[i1], points[i1 + 1], points[i1 + 2]);
             Point3D v2 = new Point3D(points[i2], points[i2 + 1], points[i2 + 2]);
-            double t = intersectTriangle(ray, v0, v1, v2);
+            double t = intersectTriangleJava(ray, v0, v1, v2, null);
             if (t > 1e-6 && t < minT) {
                 minT = t;
                 hitIndex = i / 6;

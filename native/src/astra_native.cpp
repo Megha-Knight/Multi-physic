@@ -6,6 +6,7 @@
 
 namespace {
     thread_local std::string g_last_error = "";
+    constexpr double ASTRA_EPSILON = 1e-8;
 
     void set_error(const std::string& msg) {
         g_last_error = msg;
@@ -45,8 +46,6 @@ ASTRA_API int32_t astra_ray_triangle_intersect(
     if (out_u) *out_u = 0.0;
     if (out_v) *out_v = 0.0;
 
-    const double EPSILON = 1e-8;
-
     // Edge vectors
     double e1_x = v1[0] - v0[0];
     double e1_y = v1[1] - v0[1];
@@ -64,7 +63,7 @@ ASTRA_API int32_t astra_ray_triangle_intersect(
     // det = edge1 . pvec
     double det = e1_x * pvec_x + e1_y * pvec_y + e1_z * pvec_z;
 
-    if (std::abs(det) < EPSILON) {
+    if (std::abs(det) < ASTRA_EPSILON) {
         // Ray is parallel to triangle plane
         return ASTRA_OK;
     }
@@ -95,7 +94,7 @@ ASTRA_API int32_t astra_ray_triangle_intersect(
 
     // t = (edge2 . qvec) * inv_det
     double t = (e2_x * qvec_x + e2_y * qvec_y + e2_z * qvec_z) * inv_det;
-    if (t < EPSILON) {
+    if (t < ASTRA_EPSILON) {
         return ASTRA_OK; // Hit is behind ray origin
     }
 
@@ -130,6 +129,67 @@ ASTRA_API int32_t astra_transform_point_4x4(
     out_pt[0] = rx;
     out_pt[1] = ry;
     out_pt[2] = rz;
+    return ASTRA_OK;
+}
+
+ASTRA_API int32_t astra_ray_mesh_intersect_nearest_f32(
+    const double* ray_orig, const double* ray_dir,
+    const float* points, int32_t point_coord_count,
+    const int32_t* faces, int32_t face_index_count, int32_t stride,
+    int32_t* out_hit_index, double* out_hit_t,
+    double* out_hit_u, double* out_hit_v) {
+
+    if (!ray_orig || !ray_dir || !points || !faces || !out_hit_index || !out_hit_t) {
+        set_error("astra_ray_mesh_intersect_nearest_f32: required pointer is null");
+        return ASTRA_ERR_NULL_POINTER;
+    }
+
+    *out_hit_index = -1;
+    *out_hit_t = -1.0;
+    if (out_hit_u) *out_hit_u = 0.0;
+    if (out_hit_v) *out_hit_v = 0.0;
+
+    if (stride < 3 || point_coord_count < 3 || face_index_count < stride) {
+        return ASTRA_OK; // Empty or invalid mesh
+    }
+
+    double min_t = 1e30;
+    int32_t best_index = -1;
+    double best_u = 0.0, best_v = 0.0;
+
+    int32_t tri_count = face_index_count / stride;
+    for (int32_t k = 0; k < tri_count; ++k) {
+        int32_t base = k * stride;
+        int32_t idx0 = faces[base];
+        int32_t idx1 = faces[base + (stride == 6 ? 2 : 1)];
+        int32_t idx2 = faces[base + (stride == 6 ? 4 : 2)];
+
+        int32_t c0 = idx0 * 3, c1 = idx1 * 3, c2 = idx2 * 3;
+        if (c0 + 2 >= point_coord_count || c1 + 2 >= point_coord_count || c2 + 2 >= point_coord_count) {
+            continue;
+        }
+
+        double v0[3] = { (double)points[c0], (double)points[c0 + 1], (double)points[c0 + 2] };
+        double v1[3] = { (double)points[c1], (double)points[c1 + 1], (double)points[c1 + 2] };
+        double v2[3] = { (double)points[c2], (double)points[c2 + 1], (double)points[c2 + 2] };
+
+        double t = -1.0, u = 0.0, v = 0.0;
+        int32_t rc = astra_ray_triangle_intersect(ray_orig, ray_dir, v0, v1, v2, &t, &u, &v);
+        if (rc == ASTRA_OK && t > ASTRA_EPSILON && t < min_t) {
+            min_t = t;
+            best_index = k;
+            best_u = u;
+            best_v = v;
+        }
+    }
+
+    if (best_index >= 0) {
+        *out_hit_index = best_index;
+        *out_hit_t = min_t;
+        if (out_hit_u) *out_hit_u = best_u;
+        if (out_hit_v) *out_hit_v = best_v;
+    }
+
     return ASTRA_OK;
 }
 
