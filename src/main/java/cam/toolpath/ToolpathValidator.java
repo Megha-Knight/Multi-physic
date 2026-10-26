@@ -59,4 +59,42 @@ public final class ToolpathValidator {
 
         return new ValidationResult(errors.isEmpty(), errors);
     }
+
+    public static ValidationResult validatePocketRoughing(Toolpath toolpath, cam.geometry.CamPolygon2D boundary,
+                                                          double cutterRadius, double allowance,
+                                                          double targetDepth, ManufacturingSetup setup) {
+        var baseRes = validate(toolpath, setup);
+        List<String> errors = new java.util.ArrayList<>(baseRes.errors());
+        if (boundary == null || toolpath == null) {
+            errors.add("Boundary or toolpath cannot be null for pocket validation.");
+            return new ValidationResult(false, errors);
+        }
+
+        double requiredClearance = cutterRadius + allowance;
+        double minAllowedZ = -targetDepth - 1e-4;
+
+        for (int i = 0; i < toolpath.getSegments().size(); i++) {
+            var s = toolpath.getSegments().get(i);
+            if (s.motionType().isCutting()) {
+                // Depth check
+                if (s.start().z() < minAllowedZ || s.end().z() < minAllowedZ) {
+                    errors.add(String.format("Cutting segment %d exceeds maximum depth: minZ = %.4f mm < %.4f mm",
+                            i, Math.min(s.start().z(), s.end().z()), minAllowedZ));
+                }
+
+                // Footprint boundary containment check
+                cam.geometry.CamPoint2D pt = new cam.geometry.CamPoint2D(s.end().x(), s.end().y());
+                if (!boundary.contains(pt)) {
+                    errors.add(String.format("Cutter center at segment %d (%.3f, %.3f) is outside pocket boundary.", i, pt.x(), pt.y()));
+                } else {
+                    double dist = boundary.distanceToBoundary(pt);
+                    if (dist < requiredClearance - 1e-4) {
+                        errors.add(String.format("Cutter footprint at segment %d violates wall margin: dist=%.4f mm < required %.4f mm",
+                                i, dist, requiredClearance));
+                    }
+                }
+            }
+        }
+        return new ValidationResult(errors.isEmpty(), errors);
+    }
 }
