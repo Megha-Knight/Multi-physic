@@ -82,15 +82,27 @@ public final class ToolpathValidator {
                             i, Math.min(s.start().z(), s.end().z()), minAllowedZ));
                 }
 
-                // Footprint boundary containment check
-                cam.geometry.CamPoint2D pt = new cam.geometry.CamPoint2D(s.end().x(), s.end().y());
-                if (!boundary.contains(pt)) {
-                    errors.add(String.format("Cutter center at segment %d (%.3f, %.3f) is outside pocket boundary.", i, pt.x(), pt.y()));
-                } else {
+                // Swept cutter footprint boundary containment check across complete segment
+                cam.geometry.CamPoint2D p0 = new cam.geometry.CamPoint2D(s.start().x(), s.start().y());
+                cam.geometry.CamPoint2D p1 = new cam.geometry.CamPoint2D(s.end().x(), s.end().y());
+                double segLen = p0.distanceTo(p1);
+                int samples = Math.max(2, (int) Math.ceil(segLen / Math.max(1.0, cutterRadius * 0.5)) + 1);
+
+                for (int k = 0; k < samples; k++) {
+                    double t = (double) k / (samples - 1);
+                    cam.geometry.CamPoint2D pt = new cam.geometry.CamPoint2D(
+                        p0.x() + t * (p1.x() - p0.x()),
+                        p0.y() + t * (p1.y() - p0.y())
+                    );
+                    if (!boundary.contains(pt)) {
+                        errors.add(String.format("Swept cutter path at segment %d (t=%.2f) crosses outside pocket boundary.", i, t));
+                        break;
+                    }
                     double dist = boundary.distanceToBoundary(pt);
                     if (dist < requiredClearance - 1e-4) {
-                        errors.add(String.format("Cutter footprint at segment %d violates wall margin: dist=%.4f mm < required %.4f mm",
-                                i, dist, requiredClearance));
+                        errors.add(String.format("Swept cutter footprint at segment %d (t=%.2f) violates wall margin: dist=%.4f mm < required %.4f mm",
+                                i, t, dist, requiredClearance));
+                        break;
                     }
                 }
             }
