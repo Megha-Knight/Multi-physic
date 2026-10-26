@@ -122,26 +122,39 @@ public final class hole_pattern_mesh_helper_ui_main {
     public static void buildCylinderCapMultiHoles(double cx, double cz, double y, double rCyl,
                                                   boolean faceUp, List<hole_feature_ui_main> capHoles,
                                                   boolean isExit, List<Float> pts, List<Integer> fcs) {
+        buildCylinderCapMultiHoles(cx, cz, y, rCyl, faceUp, null, capHoles, isExit, pts, fcs);
+    }
+
+    public static void buildCylinderCapMultiHoles(double cx, double cz, double y, double rCyl,
+                                                  boolean faceUp, int[] outerRing, List<hole_feature_ui_main> capHoles,
+                                                  boolean isExit, List<Float> pts, List<Integer> fcs) {
         List<Pt2D> points = new ArrayList<>();
+        Map<Pt2D, Integer> vMap = new HashMap<>();
         for (int i = 0; i < SEGS; i++) {
             double a = i * 2.0 * Math.PI / SEGS;
-            points.add(new Pt2D(cx + rCyl * Math.cos(a), cz + rCyl * Math.sin(a)));
+            Pt2D p = new Pt2D(cx + rCyl * Math.cos(a), cz + rCyl * Math.sin(a));
+            points.add(p);
+            int idx = (outerRing != null && i < outerRing.length) ? outerRing[i] : hole_mesh_triangulator_ui_main.addVertex(new Point3D(p.x, y, p.z), pts);
+            vMap.put(p, idx);
         }
         for (hole_feature_ui_main h : capHoles) {
             double hr = isExit ? h.getRadius() : h.getOuterRadius();
             double hx = cx + h.getU(), hz = cz + (faceUp ? h.getV() : -h.getV());
             for (int i = 0; i < SEGS; i++) {
                 double a = i * 2.0 * Math.PI / SEGS;
-                points.add(new Pt2D(hx + hr * Math.cos(a), hz + hr * Math.sin(a)));
+                Pt2D p = new Pt2D(hx + hr * Math.cos(a), hz + hr * Math.sin(a));
+                points.add(p);
+                vMap.put(p, hole_mesh_triangulator_ui_main.addVertex(new Point3D(p.x, y, p.z), pts));
             }
         }
 
         List<Tri2D> tris = triangulateDelaunay(points, cx, cz, rCyl, capHoles, faceUp, isExit);
         for (Tri2D t : tris) {
-            Point3D pA = new Point3D(t.a.x, y, t.a.z), pB = new Point3D(t.b.x, y, t.b.z), pC = new Point3D(t.c.x, y, t.c.z);
+            Integer iA = vMap.get(t.a), iB = vMap.get(t.b), iC = vMap.get(t.c);
+            if (iA == null || iB == null || iC == null) continue;
             double cr = (t.b.x - t.a.x) * (t.c.z - t.a.z) - (t.b.z - t.a.z) * (t.c.x - t.a.x);
-            boolean ccw = cr > 0;
-            hole_mesh_triangulator_ui_main.addTri(pA, pB, pC, pts, fcs, faceUp ? ccw : !ccw);
+            boolean rev = faceUp ? (cr < 0) : (cr > 0);
+            hole_mesh_triangulator_ui_main.addTriIdx(iA, iB, iC, fcs, rev);
         }
     }
 

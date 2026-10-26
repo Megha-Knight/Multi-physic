@@ -114,8 +114,8 @@ public final class framework_ui_main {
     public static double DRAFT_HANDLE_RADIUS      = 2.4;
 
     // CAD Object Selection & Edge Styling (Color grading between gray and white)
-    public static String OBJECT_UNSELECTED_COLOR       = "#8C9DAE";
-    public static String OBJECT_UNSELECTED_EDGE_COLOR  = "#475569";
+    public static String OBJECT_UNSELECTED_COLOR       = "#B8B8B8";
+    public static String OBJECT_UNSELECTED_EDGE_COLOR  = "#4A4A4A";
     public static String OBJECT_SELECTED_COLOR         = "#0284C7";
     public static String OBJECT_SELECTED_EDGE_COLOR    = "#005A85";
     public static double OBJECT_SELECTION_STROKE_WIDTH = 1.2;

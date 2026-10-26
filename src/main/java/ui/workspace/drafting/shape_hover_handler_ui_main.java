@@ -6,6 +6,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.Group;
 import ui.workspace.drafting.faces.face_picker_ui_main;
+import ui.ui_feature_action_helper_ui_main;
 import ui.workspace.drafting.faces.face_reference_ui_main;
 import ui.workspace.drafting.gizmo.world_raycaster_ui_main;
 import ui.workspace.drafting.topology.topology_derived_face_ui_main;
@@ -25,7 +26,7 @@ public final class shape_hover_handler_ui_main {
         if (editor.isEdgePickMode()) {
             shape_item_ui_main sel = editor.getSelectedShape();
             if (sel == null) sel = editor.findShapeByNode(hitNode);
-            if (sel != null && sel.getType().is3D() && camera != null && viewport != null && container != null) {
+            if (ui_feature_action_helper_ui_main.isMachinableSolid(sel) && camera != null && viewport != null && container != null) {
                 double[] ray = world_raycaster_ui_main.buildRay(e, viewport, camera, container);
                 editor.setHoveredEdge(ui.workspace.drafting.faces.edge_picker_ui_main.pickEdge(ray, sel));
             } else {
@@ -45,7 +46,7 @@ public final class shape_hover_handler_ui_main {
 
         // 2. Check if hovering a 3D base primitive shape
         shape_item_ui_main hitShape = editor.findShapeByNode(hitNode);
-        if (hitShape != null && hitShape.getType().is3D() && camera != null && viewport != null && container != null) {
+        if (ui_feature_action_helper_ui_main.isMachinableSolid(hitShape) && camera != null && viewport != null && container != null) {
             double[] ray = world_raycaster_ui_main.buildRay(e, viewport, camera, container);
             face_reference_ui_main face = face_picker_ui_main.pickFace(ray, hitShape);
             if (face != null) {

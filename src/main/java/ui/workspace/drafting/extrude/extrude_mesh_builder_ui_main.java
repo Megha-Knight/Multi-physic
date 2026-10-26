@@ -38,6 +38,9 @@ public final class extrude_mesh_builder_ui_main {
             var sk = shape.getSketch(ext.getSketchId());
             if (sk != null && sk.isValid()) {
                 geoNode = ui.workspace.drafting.sketch.sketch_extrude_bridge_ui_main.buildExtrusion(shape, sk, ext.getHeight(), isSelected || isFocused);
+                if (geoNode instanceof javafx.scene.Group grp && grp.getChildren().isEmpty()) {
+                    geoNode = null;
+                }
             }
         }
         if (geoNode == null) {
@@ -45,6 +48,9 @@ public final class extrude_mesh_builder_ui_main {
             if (effHoles != null && !effHoles.isEmpty()) {
                 geoNode = extrude_hole_mesh_helper_ui_main.buildExtrudeWithHoles(f, ext, effHoles, mat);
             }
+        }
+        if (geoNode == null) {
+            geoNode = ui.workspace.drafting.machining.extrude_machining_mesh_helper_ui_main.buildMachinedExtrusionNode(shape, ext, mat);
         }
         if (geoNode == null) {
             CutoutShape ps = ext.getProfileShape();
@@ -63,7 +69,14 @@ public final class extrude_mesh_builder_ui_main {
             }
         }
 
-        if (geoNode != null) geoNode.setUserData(ext);
+        if (geoNode != null) {
+            geoNode.setUserData(ext);
+            if (geoNode instanceof javafx.scene.Group grp) {
+                for (Node child : grp.getChildren()) {
+                    child.setUserData(ext);
+                }
+            }
+        }
         return geoNode != null ? geoNode : new Group();
     }
 

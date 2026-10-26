@@ -72,27 +72,88 @@ public final class derived_edge_helper_ui_main {
         var info = face_geometry_helper_ui_main.getFaceInfo(shape, ext.getFaceKind());
         Point3D baseCenter = info.origin().add(info.uAxis().multiply(ext.getU())).add(info.vAxis().multiply(ext.getV()));
         Point3D capCenter = baseCenter.add(info.normal().multiply(ext.getHeight()));
+        double len = ext.getHeight(), w = ext.getDiameter(), d = (ext.getWidth2() > 0.1) ? ext.getWidth2() : w;
+        String hostF = body.getId() + ":F:" + ext.getFaceKind().name();
+        String latF = body.getId() + ":F:EXTRUDE_LATERAL:" + ext.getId();
+        String capF = body.getId() + ":F:EXTRUDE_CAP:" + ext.getId();
 
-        String baseName = "EXTRUDE_BASE_RIM_" + ext.getId();
-        topology_edge_ui_main baseRim = new topology_edge_ui_main(
-            body.getId(), baseName, null, null,
-            baseCenter, baseCenter, false, ext.getDiameter(), ext.getId()
-        );
-        String hostFaceId = body.getId() + ":F:" + ext.getFaceKind().name();
-        String latFaceId = body.getId() + ":F:EXTRUDE_LATERAL:" + ext.getId();
-        String capFaceId = body.getId() + ":F:EXTRUDE_CAP:" + ext.getId();
+        var ps = ext.getProfileShape();
+        if (ps == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE) {
+            linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_RIM_" + ext.getId(), null, null, baseCenter, baseCenter, false, ext.getDiameter(), ext.getId()), hostF, latF);
+            linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_RIM_" + ext.getId(), null, null, capCenter, capCenter, false, ext.getDiameter(), ext.getId()), capF, latF);
+        } else if (ps == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RECTANGLE || ps == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.SQUARE) {
+            registerRectangularEdges(body, ext, info, baseCenter, len, w, d, hostF, capF);
+        } else if (ps == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.EQUILATERAL_TRIANGLE || ps == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RIGHT_TRIANGLE) {
+            registerTriangularEdges(body, ext, info, baseCenter, len, w, d, hostF, capF);
+        }
+    }
 
-        baseRim.addAdjacentFace(hostFaceId);
-        baseRim.addAdjacentFace(latFaceId);
-        body.addEdge(baseRim);
+    private static void registerRectangularEdges(topology_body_ui_main body, extrude_feature_ui_main ext,
+                                                face_geometry_helper_ui_main.FaceInfo info, Point3D baseCenter,
+                                                double len, double w, double d, String hostF, String capF) {
+        double hw = w * 0.5, hd = d * 0.5;
+        Point3D u = info.uAxis(), v = info.vAxis(), n = info.normal();
+        Point3D bNN = baseCenter.add(u.multiply(-hw)).add(v.multiply(-hd)), bPN = baseCenter.add(u.multiply(hw)).add(v.multiply(-hd));
+        Point3D bPP = baseCenter.add(u.multiply(hw)).add(v.multiply(hd)), bNP = baseCenter.add(u.multiply(-hw)).add(v.multiply(hd));
+        Point3D tNN = bNN.add(n.multiply(len)), tPN = bPN.add(n.multiply(len)), tPP = bPP.add(n.multiply(len)), tNP = bNP.add(n.multiply(len));
 
-        String capName = "EXTRUDE_CAP_RIM_" + ext.getId();
-        topology_edge_ui_main capRim = new topology_edge_ui_main(
-            body.getId(), capName, null, null,
-            capCenter, capCenter, false, ext.getDiameter(), ext.getId()
-        );
-        capRim.addAdjacentFace(capFaceId);
-        capRim.addAdjacentFace(latFaceId);
-        body.addEdge(capRim);
+        String sPosU = body.getId() + ":F:EXTRUDE_SIDE_POS_U:" + ext.getId(), sNegU = body.getId() + ":F:EXTRUDE_SIDE_NEG_U:" + ext.getId();
+        String sPosV = body.getId() + ":F:EXTRUDE_SIDE_POS_V:" + ext.getId(), sNegV = body.getId() + ":F:EXTRUDE_SIDE_NEG_V:" + ext.getId();
+
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_NEG_V_" + ext.getId(), null, null, bNN, bPN, true, w, ext.getId()), hostF, sNegV);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_POS_V_" + ext.getId(), null, null, bNP, bPP, true, w, ext.getId()), hostF, sPosV);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_NEG_U_" + ext.getId(), null, null, bNN, bNP, true, d, ext.getId()), hostF, sNegU);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_POS_U_" + ext.getId(), null, null, bPN, bPP, true, d, ext.getId()), hostF, sPosU);
+
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_NEG_V_" + ext.getId(), null, null, tNN, tPN, true, w, ext.getId()), capF, sNegV);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_POS_V_" + ext.getId(), null, null, tNP, tPP, true, w, ext.getId()), capF, sPosV);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_NEG_U_" + ext.getId(), null, null, tNN, tNP, true, d, ext.getId()), capF, sNegU);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_POS_U_" + ext.getId(), null, null, tPN, tPP, true, d, ext.getId()), capF, sPosU);
+
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_LATERAL_NEG_U_NEG_V_" + ext.getId(), null, null, bNN, tNN, true, len, ext.getId()), sNegU, sNegV);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_LATERAL_POS_U_NEG_V_" + ext.getId(), null, null, bPN, tPN, true, len, ext.getId()), sPosU, sNegV);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_LATERAL_POS_U_POS_V_" + ext.getId(), null, null, bPP, tPP, true, len, ext.getId()), sPosU, sPosV);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_LATERAL_NEG_U_POS_V_" + ext.getId(), null, null, bNP, tNP, true, len, ext.getId()), sNegU, sPosV);
+    }
+
+    private static void registerTriangularEdges(topology_body_ui_main body, extrude_feature_ui_main ext,
+                                               face_geometry_helper_ui_main.FaceInfo info, Point3D baseCenter,
+                                               double len, double w, double d, String hostF, String capF) {
+        javafx.geometry.Point2D[] p2 = new javafx.geometry.Point2D[3];
+        if (ext.getProfileShape() == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RIGHT_TRIANGLE) {
+            p2[0] = new javafx.geometry.Point2D(-w * 0.5, -d * 0.5); p2[1] = new javafx.geometry.Point2D(w * 0.5, -d * 0.5); p2[2] = new javafx.geometry.Point2D(-w * 0.5, d * 0.5);
+        } else {
+            double ht = w * Math.sqrt(3.0) * 0.5;
+            p2[0] = new javafx.geometry.Point2D(-w * 0.5, -ht / 3.0); p2[1] = new javafx.geometry.Point2D(w * 0.5, -ht / 3.0); p2[2] = new javafx.geometry.Point2D(0.0, 2.0 * ht / 3.0);
+        }
+        Point3D u = info.uAxis(), v = info.vAxis(), n = info.normal();
+        Point3D[] b = new Point3D[3], t = new Point3D[3];
+        for (int i = 0; i < 3; i++) {
+            b[i] = baseCenter.add(u.multiply(p2[i].getX())).add(v.multiply(p2[i].getY()));
+            t[i] = b[i].add(n.multiply(len));
+        }
+        String sE01 = body.getId() + ":F:EXTRUDE_SIDE_E01:" + ext.getId();
+        String sE12 = body.getId() + ":F:EXTRUDE_SIDE_E12:" + ext.getId();
+        String sE20 = body.getId() + ":F:EXTRUDE_SIDE_E20:" + ext.getId();
+
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_E01_" + ext.getId(), null, null, b[0], b[1], true, b[0].distance(b[1]), ext.getId()), hostF, sE01);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_E12_" + ext.getId(), null, null, b[1], b[2], true, b[1].distance(b[2]), ext.getId()), hostF, sE12);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_BASE_E20_" + ext.getId(), null, null, b[2], b[0], true, b[2].distance(b[0]), ext.getId()), hostF, sE20);
+
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_E01_" + ext.getId(), null, null, t[0], t[1], true, t[0].distance(t[1]), ext.getId()), capF, sE01);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_E12_" + ext.getId(), null, null, t[1], t[2], true, t[1].distance(t[2]), ext.getId()), capF, sE12);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_CAP_E20_" + ext.getId(), null, null, t[2], t[0], true, t[2].distance(t[0]), ext.getId()), capF, sE20);
+
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_LATERAL_V0_" + ext.getId(), null, null, b[0], t[0], true, len, ext.getId()), sE20, sE01);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_LATERAL_V1_" + ext.getId(), null, null, b[1], t[1], true, len, ext.getId()), sE01, sE12);
+        linkEdge(body, new topology_edge_ui_main(body.getId(), "EXTRUDE_LATERAL_V2_" + ext.getId(), null, null, b[2], t[2], true, len, ext.getId()), sE12, sE20);
+    }
+
+    private static void linkEdge(topology_body_ui_main body, topology_edge_ui_main edge, String f1Id, String f2Id) {
+        edge.addAdjacentFace(f1Id);
+        edge.addAdjacentFace(f2Id);
+        body.addEdge(edge);
+        var f1 = body.getFaceById(f1Id); if (f1 != null) f1.addEdge(edge.getId());
+        var f2 = body.getFaceById(f2Id); if (f2 != null) f2.addEdge(edge.getId());
     }
 }

@@ -38,7 +38,7 @@ public final class shape_rotation_helper_ui_main {
             case RIGHT_TRIANGLE -> new Point3D((2.0 * p1.getX() + p2.getX()) / 3.0, 0, (2.0 * p1.getZ() + p2.getZ()) / 3.0);
             case CYLINDER, CONE -> {
                 double h = Math.abs(p2.getY()) > 0.1 ? Math.abs(p2.getY()) : Math.max(6.0, p1.distance(new Point3D(p2.getX(), 0, p2.getZ())) * 2.0);
-                yield new Point3D(p1.getX(), -h * 0.5, p1.getZ());
+                yield new Point3D(p1.getX(), p1.getY() - h * 0.5, p1.getZ());
             }
             case SPHERE -> new Point3D(p1.getX(), -p1.distance(new Point3D(p2.getX(), 0, p2.getZ())), p1.getZ());
             default -> p1;

@@ -51,6 +51,27 @@ public final class feature_graph_builder_ui_main {
                 pNode.addDependency(s.getId(), dependency_type_ui_main.HOST_BODY);
                 if (p.getSeedHoleId() != null) pNode.addDependency(p.getSeedHoleId(), dependency_type_ui_main.SEED_FEATURE);
             }
+            for (ui.workspace.drafting.machining.fillet_feature_ui_main f : s.getFillets()) {
+                feature_node_ui_main fNode = new feature_node_ui_main(f.getId(), f.getName(), feature_type_ui_main.FILLET, s.getId());
+                fNode.setState(f.getState());
+                if (f.getState() == feature_state_ui_main.INVALID) fNode.setInvalid(f.getDiagnosticMessage());
+                graph.registerFeature(fNode);
+                fNode.addDependency(s.getId(), dependency_type_ui_main.HOST_BODY);
+            }
+            for (ui.workspace.drafting.machining.chamfer_feature_ui_main c : s.getChamfers()) {
+                feature_node_ui_main cNode = new feature_node_ui_main(c.getId(), c.getName(), feature_type_ui_main.CHAMFER, s.getId());
+                cNode.setState(c.getState());
+                if (c.getState() == feature_state_ui_main.INVALID) cNode.setInvalid(c.getDiagnosticMessage());
+                graph.registerFeature(cNode);
+                cNode.addDependency(s.getId(), dependency_type_ui_main.HOST_BODY);
+            }
+            for (ui.workspace.drafting.machining.draft_feature_ui_main d : s.getDrafts()) {
+                feature_node_ui_main dNode = new feature_node_ui_main(d.getId(), d.getName(), feature_type_ui_main.DRAFT, s.getId());
+                dNode.setState(d.getState());
+                if (d.getState() == feature_state_ui_main.INVALID) dNode.setInvalid(d.getDiagnosticMessage());
+                graph.registerFeature(dNode);
+                dNode.addDependency(s.getId(), dependency_type_ui_main.HOST_BODY);
+            }
         }
         for (feature_node_ui_main n : graph.getAllFeatures()) {
             for (feature_dependency_ui_main dep : n.getDependencies()) {
@@ -87,6 +108,24 @@ public final class feature_graph_builder_ui_main {
                 feature_node_ui_main pn = graph.getFeature(p.getId());
                 if (pn != null && pn.getState() == feature_state_ui_main.INVALID) {
                     p.setState(pn.getState()); p.setDiagnosticMessage(pn.getDiagnosticMessage());
+                }
+            }
+            for (ui.workspace.drafting.machining.fillet_feature_ui_main f : s.getFillets()) {
+                feature_node_ui_main fn = graph.getFeature(f.getId());
+                if (fn != null && fn.getState() == feature_state_ui_main.INVALID) {
+                    f.setState(fn.getState()); f.setDiagnosticMessage(fn.getDiagnosticMessage());
+                }
+            }
+            for (ui.workspace.drafting.machining.chamfer_feature_ui_main c : s.getChamfers()) {
+                feature_node_ui_main cn = graph.getFeature(c.getId());
+                if (cn != null && cn.getState() == feature_state_ui_main.INVALID) {
+                    c.setState(cn.getState()); c.setDiagnosticMessage(cn.getDiagnosticMessage());
+                }
+            }
+            for (ui.workspace.drafting.machining.draft_feature_ui_main d : s.getDrafts()) {
+                feature_node_ui_main dn = graph.getFeature(d.getId());
+                if (dn != null && dn.getState() == feature_state_ui_main.INVALID) {
+                    d.setState(dn.getState()); d.setDiagnosticMessage(dn.getDiagnosticMessage());
                 }
             }
         }

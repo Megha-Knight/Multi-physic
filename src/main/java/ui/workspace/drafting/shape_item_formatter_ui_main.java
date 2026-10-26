@@ -14,12 +14,14 @@ public final class shape_item_formatter_ui_main {
         double py = item.getWorldZ() + (p1 != null ? p1.getZ() : 0.0);
         double pz = -(item.getWorldY() + (p1 != null ? p1.getY() : 0.0));
         String posStr = String.format(" | Pos: X=%.1f mm Y=%.1f mm Z=%.1f mm", px, py, pz);
+        double extH = item.hasValidExtrusions() ? item.getExtrusions().get(0).getHeight() : 0.0;
+        String extHStr = extH > 0.1 ? String.format(" | Extrude H: %.1f mm", extH) : "";
         return switch (item.getType()) {
-            case CIRCLE    -> String.format("%s | Radius: %.1f mm%s%s", item.getName(), dist, posStr, rotStr);
-            case SQUARE    -> String.format("%s | Side: %.1f mm%s%s", item.getName(), Math.max(dx, dz), posStr, rotStr);
-            case RECTANGLE -> String.format("%s | W: %.1f H: %.1f mm%s%s", item.getName(), dx, dz, posStr, rotStr);
-            case EQUILATERAL_TRIANGLE -> String.format("%s | Side: %.1f mm%s%s", item.getName(), dist, posStr, rotStr);
-            case RIGHT_TRIANGLE -> String.format("%s | Base: %.1f H: %.1f mm%s%s", item.getName(), dx, dz, posStr, rotStr);
+            case CIRCLE    -> String.format("%s | Radius: %.1f mm%s%s%s", item.getName(), dist, extHStr, posStr, rotStr);
+            case SQUARE    -> String.format("%s | Side: %.1f mm%s%s%s", item.getName(), Math.max(dx, dz), extHStr, posStr, rotStr);
+            case RECTANGLE -> String.format("%s | W: %.1f H: %.1f mm%s%s%s", item.getName(), dx, dz, extHStr, posStr, rotStr);
+            case EQUILATERAL_TRIANGLE -> String.format("%s | Side: %.1f mm%s%s%s", item.getName(), dist, extHStr, posStr, rotStr);
+            case RIGHT_TRIANGLE -> String.format("%s | Base: %.1f H: %.1f mm%s%s%s", item.getName(), dx, dz, extHStr, posStr, rotStr);
             case CUBE      -> String.format("%s | Side: %.1f mm%s%s", item.getName(), Math.max(dx, dz), posStr, rotStr);
             case CUBOID    -> String.format("%s | W: %.1f D: %.1f H: %.1f mm%s%s", item.getName(), dx, dz, (p2 != null && Math.abs(p2.getY() - p1.getY()) > 0.1) ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(dx, dz) * 0.5), posStr, rotStr);
             case CYLINDER  -> String.format("%s | R: %.1f H: %.1f mm%s%s", item.getName(), dist, Math.max(6.0, dist*2), posStr, rotStr);

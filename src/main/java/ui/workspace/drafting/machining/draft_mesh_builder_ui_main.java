@@ -28,54 +28,53 @@ public final class draft_mesh_builder_ui_main {
         if (face == null) return null;
 
         Point3D p1 = shape.getP1(), p2 = shape.getP2();
-        double w = Math.abs(p2.getX() - p1.getX()), d = Math.abs(p2.getZ() - p1.getZ());
-        double h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
-        double cx = (p1.getX() + p2.getX()) * 0.5, cz = (p1.getZ() + p2.getZ()) * 0.5;
+        double w, h, d, cx, cz;
+        if (shape.getType() == ui.workspace.shapes.basic_shapes_ui_main.CUBE) {
+            double dx = p2.getX() - p1.getX(), dz = p2.getZ() - p1.getZ(), s = Math.max(Math.abs(dx), Math.abs(dz));
+            w = s; h = s; d = s;
+            cx = p1.getX() + (dx >= 0 ? s * 0.5 : -s * 0.5); cz = p1.getZ() + (dz >= 0 ? s * 0.5 : -s * 0.5);
+        } else {
+            w = Math.max(0.1, Math.abs(p2.getX() - p1.getX())); d = Math.max(0.1, Math.abs(p2.getZ() - p1.getZ()));
+            h = Math.abs(p2.getY() - p1.getY()) > 0.1 ? Math.abs(p2.getY() - p1.getY()) : Math.max(6.0, Math.min(w, d) * 0.5);
+            cx = (p1.getX() + p2.getX()) * 0.5; cz = (p1.getZ() + p2.getZ()) * 0.5;
+        }
+        double y0 = p1.getY(), y1 = y0 - h;
         double hw = w * 0.5, hd = d * 0.5;
 
-        double angleRad = Math.toRadians(dr.getDraftAngle());
-        double taperOffset = h * Math.tan(angleRad);
+        Point3D nFace = draft_feature_ui_main.getFaceNormal(dr.getFaceKind());
+        Point3D nNeutral = draft_feature_ui_main.getFaceNormal(dr.getNeutralKind());
+        if (nFace == null || nNeutral == null) return null;
 
-        // Quad coordinates for the drafted face
-        Point3D v1, v2, v3, v4;
-        face_kind_ui_main fk = dr.getFaceKind();
-        if (fk == face_kind_ui_main.FRONT) {
-            v1 = new Point3D(cx - hw, 0, cz + hd);
-            v2 = new Point3D(cx + hw, 0, cz + hd);
-            v3 = new Point3D(cx + hw - taperOffset, -h, cz + hd);
-            v4 = new Point3D(cx - hw + taperOffset, -h, cz + hd);
-        } else if (fk == face_kind_ui_main.BACK) {
-            v1 = new Point3D(cx + hw, 0, cz - hd);
-            v2 = new Point3D(cx - hw, 0, cz - hd);
-            v3 = new Point3D(cx - hw + taperOffset, -h, cz - hd);
-            v4 = new Point3D(cx + hw - taperOffset, -h, cz - hd);
-        } else if (fk == face_kind_ui_main.LEFT) {
-            v1 = new Point3D(cx - hw, 0, cz - hd);
-            v2 = new Point3D(cx - hw, 0, cz + hd);
-            v3 = new Point3D(cx - hw, -h, cz + hd - taperOffset);
-            v4 = new Point3D(cx - hw, -h, cz - hd + taperOffset);
-        } else { // RIGHT
-            v1 = new Point3D(cx + hw, 0, cz + hd);
-            v2 = new Point3D(cx + hw, 0, cz - hd);
-            v3 = new Point3D(cx + hw, -h, cz - hd + taperOffset);
-            v4 = new Point3D(cx + hw, -h, cz + hd - taperOffset);
+        Point3D pNeutral = getNeutralPoint(cx, cz, y0, y1, hw, hd, dr.getNeutralKind());
+        Point3D dPull = dr.getPullDirection() != null ? dr.getPullDirection().normalize() : nNeutral.multiply(-1.0);
+        double denom = dPull.dotProduct(nNeutral);
+        if (Math.abs(denom) < 1e-6) return null;
+        double tanTheta = Math.tan(Math.toRadians(dr.getDraftAngle()));
+
+        Point3D[] baseQuad = getBaseFaceQuad(cx, cz, y0, y1, hw, hd, dr.getFaceKind());
+        if (baseQuad == null) return null;
+
+        Point3D[] drafted = new Point3D[4];
+        for (int i = 0; i < 4; i++) {
+            Point3D v = baseQuad[i];
+            double num = v.subtract(pNeutral).dotProduct(nNeutral);
+            double sDist = num / denom;
+            double delta = sDist * tanTheta;
+            drafted[i] = v.subtract(nFace.multiply(delta));
         }
 
         TriangleMesh mesh = new TriangleMesh();
         mesh.getTexCoords().setAll(0, 0, 1, 0, 0, 1, 1, 1);
         float[] pts = new float[]{
-            (float) v1.getX(), (float) v1.getY(), (float) v1.getZ(),
-            (float) v2.getX(), (float) v2.getY(), (float) v2.getZ(),
-            (float) v3.getX(), (float) v3.getY(), (float) v3.getZ(),
-            (float) v4.getX(), (float) v4.getY(), (float) v4.getZ()
+            (float) drafted[0].getX(), (float) drafted[0].getY(), (float) drafted[0].getZ(),
+            (float) drafted[1].getX(), (float) drafted[1].getY(), (float) drafted[1].getZ(),
+            (float) drafted[2].getX(), (float) drafted[2].getY(), (float) drafted[2].getZ(),
+            (float) drafted[3].getX(), (float) drafted[3].getY(), (float) drafted[3].getZ()
         };
         mesh.getPoints().setAll(pts);
-        int[] fcs = new int[]{
-            0, 0, 1, 1, 2, 2,  0, 0, 2, 2, 3, 3,
-            0, 0, 2, 2, 1, 1,  0, 0, 3, 3, 2, 2
-        };
+        int[] fcs = new int[]{ 0, 0, 3, 3, 2, 2,  0, 0, 2, 2, 1, 1 };
         mesh.getFaces().setAll(fcs);
-        int[] sg = new int[]{1, 1, 1, 1};
+        int[] sg = new int[]{1, 1};
         mesh.getFaceSmoothingGroups().setAll(sg);
 
         MeshView mv = new MeshView(mesh);
@@ -86,5 +85,47 @@ public final class draft_mesh_builder_ui_main {
         mv.setMaterial(mat);
         mv.setId(dr.getId());
         return mv;
+    }
+
+    public static Point3D getNeutralPoint(double cx, double cz, double y0, double y1, double hw, double hd, face_kind_ui_main kind) {
+        return switch (kind) {
+            case TOP, TOP_CAP -> new Point3D(cx, y1, cz);
+            case BOTTOM, BOTTOM_CAP, BASE_CAP -> new Point3D(cx, y0, cz);
+            case FRONT -> new Point3D(cx, (y0 + y1) * 0.5, cz + hd);
+            case BACK -> new Point3D(cx, (y0 + y1) * 0.5, cz - hd);
+            case LEFT -> new Point3D(cx - hw, (y0 + y1) * 0.5, cz);
+            case RIGHT -> new Point3D(cx + hw, (y0 + y1) * 0.5, cz);
+            default -> new Point3D(cx, y0, cz);
+        };
+    }
+
+    private static Point3D[] getBaseFaceQuad(double cx, double cz, double y0, double y1, double hw, double hd, face_kind_ui_main kind) {
+        return switch (kind) {
+            case FRONT -> new Point3D[]{
+                new Point3D(cx - hw, y0, cz + hd), new Point3D(cx + hw, y0, cz + hd),
+                new Point3D(cx + hw, y1, cz + hd), new Point3D(cx - hw, y1, cz + hd)
+            };
+            case BACK -> new Point3D[]{
+                new Point3D(cx + hw, y0, cz - hd), new Point3D(cx - hw, y0, cz - hd),
+                new Point3D(cx - hw, y1, cz - hd), new Point3D(cx + hw, y1, cz - hd)
+            };
+            case LEFT -> new Point3D[]{
+                new Point3D(cx - hw, y0, cz - hd), new Point3D(cx - hw, y0, cz + hd),
+                new Point3D(cx - hw, y1, cz + hd), new Point3D(cx - hw, y1, cz - hd)
+            };
+            case RIGHT -> new Point3D[]{
+                new Point3D(cx + hw, y0, cz + hd), new Point3D(cx + hw, y0, cz - hd),
+                new Point3D(cx + hw, y1, cz - hd), new Point3D(cx + hw, y1, cz + hd)
+            };
+            case TOP -> new Point3D[]{
+                new Point3D(cx - hw, y1, cz - hd), new Point3D(cx + hw, y1, cz - hd),
+                new Point3D(cx + hw, y1, cz + hd), new Point3D(cx - hw, y1, cz + hd)
+            };
+            case BOTTOM -> new Point3D[]{
+                new Point3D(cx - hw, y0, cz + hd), new Point3D(cx + hw, y0, cz + hd),
+                new Point3D(cx + hw, y0, cz - hd), new Point3D(cx - hw, y0, cz - hd)
+            };
+            default -> null;
+        };
     }
 }

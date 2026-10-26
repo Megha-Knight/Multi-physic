@@ -47,17 +47,17 @@ public final class hole_cylinder_builder_ui_main {
         int[] topIdx = new int[SEGS], botIdx = new int[SEGS];
         for (int i = 0; i < SEGS; i++) {
             double a = i * 2.0 * Math.PI / SEGS;
-            topIdx[i] = hole_mesh_triangulator_ui_main.addVertex(new Point3D(cx + r * Math.cos(a), -h, cz + r * Math.sin(a)), pts);
-            botIdx[i] = hole_mesh_triangulator_ui_main.addVertex(new Point3D(cx + r * Math.cos(a), 0, cz + r * Math.sin(a)), pts);
+            topIdx[i] = addPt(pts, cx + r * Math.cos(a), -h, cz + r * Math.sin(a));
+            botIdx[i] = addPt(pts, cx + r * Math.cos(a), 0, cz + r * Math.sin(a));
         }
         for (int i = 0; i < SEGS; i++) {
             int next = (i + 1) % SEGS;
-            hole_mesh_triangulator_ui_main.addTriIdx(topIdx[i], topIdx[next], botIdx[next], fcs, false);
-            hole_mesh_triangulator_ui_main.addTriIdx(topIdx[i], botIdx[next], botIdx[i], fcs, false);
+            addTri(fcs, botIdx[i], botIdx[next], topIdx[next]);
+            addTri(fcs, botIdx[i], topIdx[next], topIdx[i]);
         }
 
-        buildCap(cx, cz, -h, r, true, topHoles, botHoles, holes, h, pts, fcs);
-        buildCap(cx, cz, 0.0, r, false, botHoles, topHoles, holes, h, pts, fcs);
+        buildCapWithOuterRing(cx, cz, -h, r, true, topIdx, topHoles, botHoles, holes, h, pts, fcs);
+        buildCapWithOuterRing(cx, cz, 0.0, r, false, botIdx, botHoles, topHoles, holes, h, pts, fcs);
 
         float[] pa = new float[pts.size()];
         for (int i = 0; i < pts.size(); i++) pa[i] = pts.get(i);
@@ -75,9 +75,18 @@ public final class hole_cylinder_builder_ui_main {
         return mv;
     }
 
-    private static void buildCap(double cx, double cz, double y, double r, boolean isTop,
-                                 List<hole_feature_ui_main> capHoles, List<hole_feature_ui_main> oppHoles,
-                                 List<hole_feature_ui_main> allHoles, double h, List<Float> pts, List<Integer> fcs) {
+    public static void buildCapWithOuterRing(double cx, double cz, double y, double r, boolean isTop,
+                                             int[] outerRing, List<hole_feature_ui_main> capHoles,
+                                             List<hole_feature_ui_main> oppHoles,
+                                             List<hole_feature_ui_main> allHoles, double h,
+                                             List<Float> pts, List<Integer> fcs) {
+        if (outerRing == null) {
+            outerRing = new int[SEGS];
+            for (int i = 0; i < SEGS; i++) {
+                double a = i * 2.0 * Math.PI / SEGS;
+                outerRing[i] = addPt(pts, cx + r * Math.cos(a), y, cz + r * Math.sin(a));
+            }
+        }
         List<hole_feature_ui_main> throughExits = new ArrayList<>();
         for (hole_feature_ui_main oh : oppHoles) if (oh.isThroughAll()) throughExits.add(oh);
         Point3D u = new Point3D(1, 0, 0), v = isTop ? new Point3D(0, 0, 1) : new Point3D(0, 0, -1);
@@ -96,52 +105,61 @@ public final class hole_cylinder_builder_ui_main {
                 }
                 match.holes.add(hf);
             }
-            if (clusters.size() == 1) {
+            if (clusters.size() == 1 && Math.hypot(clusters.get(0).u, clusters.get(0).v) < 1e-4) {
                 hole_stepped_helper_ui_main.HoleCluster cl = clusters.get(0);
                 Point3D[] innerProf = hole_profile_helper_ui_main.getProfilePoints(cl.center, u, v, cl.getPrimaryHole(), cl.getMaxOuterRadius(), SEGS);
-                buildAnnulus(cx, cz, innerProf, y, r, isTop, pts, fcs);
+                buildAnnulusWithRing(outerRing, innerProf, isTop, pts, fcs);
                 if (cl.holes.size() == 1) {
                     hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, cl.center.getX(), cl.center.getZ(), y, h, isTop, cl.holes.get(0), allHoles, r, pts, fcs);
                 } else {
                     hole_stepped_helper_ui_main.buildCylinderSteppedCavity(cx, cz, cl.center.getX(), cl.center.getZ(), y, h, isTop, cl.holes, pts, fcs);
                 }
             } else {
-                hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, y, r, isTop, capHoles, false, pts, fcs);
+                hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, y, r, isTop, outerRing, capHoles, false, pts, fcs);
                 for (hole_feature_ui_main hole : capHoles) {
                     double hx = cx + hole.getU(), hz = cz + (isTop ? hole.getV() : -hole.getV());
                     hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, y, h, isTop, hole, allHoles, r, pts, fcs);
                 }
             }
         } else if (!throughExits.isEmpty()) {
-            if (throughExits.size() == 1) {
+            if (throughExits.size() == 1 && Math.hypot(throughExits.get(0).getU(), throughExits.get(0).getV()) < 1e-4) {
                 hole_feature_ui_main oh = throughExits.get(0);
                 double hx = cx + oh.getU(), hz = cz + (!isTop ? oh.getV() : -oh.getV());
                 Point3D[] innerProf = hole_profile_helper_ui_main.getProfilePoints(new Point3D(hx, y, hz), u, v, oh, oh.getRadius(), SEGS);
-                buildAnnulus(cx, cz, innerProf, y, r, isTop, pts, fcs);
+                buildAnnulusWithRing(outerRing, innerProf, isTop, pts, fcs);
             } else {
-                hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, y, r, isTop, throughExits, true, pts, fcs);
+                hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, y, r, isTop, outerRing, throughExits, true, pts, fcs);
             }
         } else {
-            Point3D center = new Point3D(cx, y, cz);
+            int center = addPt(pts, cx, y, cz);
             for (int i = 0; i < SEGS; i++) {
-                double a1 = i * 2.0 * Math.PI / SEGS, a2 = (i + 1) * 2.0 * Math.PI / SEGS;
-                Point3D c1 = new Point3D(cx + r * Math.cos(a1), y, cz + r * Math.sin(a1));
-                Point3D c2 = new Point3D(cx + r * Math.cos(a2), y, cz + r * Math.sin(a2));
-                hole_mesh_triangulator_ui_main.addTri(center, isTop ? c1 : c2, isTop ? c2 : c1, pts, fcs, false);
+                int next = (i + 1) % SEGS;
+                if (isTop) addTri(fcs, center, outerRing[i], outerRing[next]);
+                else addTri(fcs, center, outerRing[next], outerRing[i]);
             }
         }
     }
 
-    private static void buildAnnulus(double cx, double cz, Point3D[] innerProf, double y, double rOut,
-                                     boolean faceUp, List<Float> pts, List<Integer> fcs) {
-        double zSign = faceUp ? 1.0 : -1.0;
+    private static void buildAnnulusWithRing(int[] outerRing, Point3D[] innerProf, boolean isTop, List<Float> pts, List<Integer> fcs) {
+        int[] innerRing = new int[SEGS];
+        for (int i = 0; i < SEGS; i++) innerRing[i] = addPt(pts, innerProf[i].getX(), innerProf[i].getY(), innerProf[i].getZ());
         for (int i = 0; i < SEGS; i++) {
-            double a1 = i * 2.0 * Math.PI / SEGS, a2 = (i + 1) * 2.0 * Math.PI / SEGS;
-            Point3D o1 = new Point3D(cx + rOut * Math.cos(a1), y, cz + zSign * rOut * Math.sin(a1));
-            Point3D o2 = new Point3D(cx + rOut * Math.cos(a2), y, cz + zSign * rOut * Math.sin(a2));
-            Point3D i1 = innerProf[i], i2 = innerProf[(i + 1) % SEGS];
-            if (faceUp) hole_mesh_triangulator_ui_main.addQuad(o1, i1, i2, o2, pts, fcs);
-            else hole_mesh_triangulator_ui_main.addQuad(o1, o2, i2, i1, pts, fcs);
+            int n = (i + 1) % SEGS;
+            if (isTop) {
+                addTri(fcs, outerRing[i], outerRing[n], innerRing[n]);
+                addTri(fcs, outerRing[i], innerRing[n], innerRing[i]);
+            } else {
+                addTri(fcs, outerRing[n], outerRing[i], innerRing[i]);
+                addTri(fcs, outerRing[n], innerRing[i], innerRing[n]);
+            }
         }
+    }
+
+    private static int addPt(List<Float> pts, double x, double y, double z) {
+        int idx = pts.size() / 3; pts.add((float) x); pts.add((float) y); pts.add((float) z); return idx;
+    }
+
+    private static void addTri(List<Integer> fcs, int a, int b, int c) {
+        fcs.add(a); fcs.add(0); fcs.add(b); fcs.add(0); fcs.add(c); fcs.add(0);
     }
 }

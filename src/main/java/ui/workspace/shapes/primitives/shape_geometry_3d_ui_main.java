@@ -28,13 +28,12 @@ public final class shape_geometry_3d_ui_main {
             mat.setSpecularPower(48.0);
             return mat;
         }
-        boolean focused = ui.workspace.drafting.faces.viewport_color_state_ui_main.isViewportFocused();
-        Color c = focused
+        Color c = isSelected
                 ? Color.web(framework_ui_main.OBJECT_SELECTED_COLOR)
                 : Color.web(framework_ui_main.OBJECT_UNSELECTED_COLOR);
         PhongMaterial mat = new PhongMaterial(c);
-        mat.setSpecularColor(Color.web(focused ? "#BAE6FD" : "#5A6B7C"));
-        mat.setSpecularPower(48.0);
+        mat.setSpecularColor(Color.web(isSelected ? "#BAE6FD" : "#64748B"));
+        mat.setSpecularPower(32.0);
         return mat;
     }
 

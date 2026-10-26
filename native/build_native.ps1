@@ -78,7 +78,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 4. Copy to target classes for Java runtime convenience
-$TARGET_NATIVE = "E:\MultiPhysics\target\classes\native"
+$TARGET_NATIVE = Join-Path $PROJECT_ROOT "target\classes\native"
 if (-not (Test-Path $TARGET_NATIVE)) { New-Item -ItemType Directory -Path $TARGET_NATIVE -Force | Out-Null }
 Copy-Item -Path $DLL_OUT -Destination (Join-Path $TARGET_NATIVE "astra_native.dll") -Force
 Write-Host "Deployed astra_native.dll to $TARGET_NATIVE"

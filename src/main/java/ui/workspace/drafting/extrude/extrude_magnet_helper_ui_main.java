@@ -95,6 +95,26 @@ public final class extrude_magnet_helper_ui_main {
                     best = new SnapResult(s, ref, dist);
                 }
             }
+            if (s.getType() == basic_shapes_ui_main.CYLINDER) {
+                Point3D sp1 = s.getP1(), sp2 = s.getP2();
+                double cr = Math.max(0.2, sp1.distance(new Point3D(sp2.getX(), 0, sp2.getZ())));
+                double ch = Math.abs(sp2.getY()) > 0.1 ? Math.abs(sp2.getY()) : Math.max(6.0, cr * 2.0);
+                double cwx = s.getWorldX() + sp1.getX(), cwz = s.getWorldZ() + sp1.getZ(), cwy = s.getWorldY() + sp1.getY();
+                double dx = center.getX() - cwx, dz = center.getZ() - cwz, len = Math.hypot(dx, dz);
+                if (len > 1e-4) {
+                    double nx = dx / len, nz = dz / len, clampedY = Math.max(cwy - ch, Math.min(cwy, center.getY()));
+                    Point3D ptOnCyl = new Point3D(cwx + cr * nx, clampedY, cwz + cr * nz);
+                    double dist = center.distance(ptOnCyl);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        face_reference_ui_main ref = new face_reference_ui_main(
+                            s.getId(), face_kind_ui_main.CYLINDER_LATERAL, ptOnCyl, new Point3D(nx, 0, nz), ptOnCyl,
+                            new Point3D(-nz, 0, nx), new Point3D(0, -1, 0), 0, 0, 2 * Math.PI * cr, ch
+                        );
+                        best = new SnapResult(s, ref, dist);
+                    }
+                }
+            }
         }
         return best;
     }

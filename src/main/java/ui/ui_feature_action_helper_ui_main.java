@@ -7,6 +7,10 @@ import ui.workspace.drafting.holes.circular_pattern_dialog_ui_main;
 public final class ui_feature_action_helper_ui_main {
     private ui_feature_action_helper_ui_main() {}
 
+    public static boolean isMachinableSolid(ui.workspace.drafting.shape_item_ui_main shape) {
+        return shape != null && (shape.getType().is3D() || shape.hasValidExtrusions());
+    }
+
     public static void handleHole(UI_Main app) {
         handleCutout(app, ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE);
     }
@@ -140,7 +144,7 @@ public final class ui_feature_action_helper_ui_main {
     private static void enterEdgePick(UI_Main app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind kind) {
         var ed = app.getWorkspace3D().getShapeEditor();
         var s = ed.getSelectedShape();
-        if (s == null || !s.getType().is3D()) {
+        if (!isMachinableSolid(s)) {
             app.getFooterBar().setStatusText("Select a 3D solid (cube/cuboid/cylinder/cone) first, then click " + (kind == ui.workspace.drafting.machining.machining_dialog_ui_main.Kind.FILLET ? "Fillet" : "Chamfer") + ".");
             return;
         }
@@ -151,7 +155,7 @@ public final class ui_feature_action_helper_ui_main {
     private static void openMachining(UI_Main app, ui.workspace.drafting.machining.machining_dialog_ui_main.Kind kind) {
         var ed = app.getWorkspace3D().getShapeEditor();
         var s = ed.getSelectedShape();
-        if (s == null || !s.getType().is3D()) {
+        if (!isMachinableSolid(s)) {
             app.getFooterBar().setStatusText("Select a 3D solid (cube/cuboid/cylinder/cone) first, then use Fillet, Chamfer, or Draft.");
             return;
         }

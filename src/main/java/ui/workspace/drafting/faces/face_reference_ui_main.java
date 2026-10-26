@@ -1,6 +1,7 @@
 package ui.workspace.drafting.faces;
 
 import javafx.geometry.Point3D;
+import java.util.List;
 import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.drafting.topology.topology_geometry_helper_ui_main;
 
@@ -24,12 +25,23 @@ public class face_reference_ui_main {
     private final double faceWidth;
     private final double faceHeight;
     private final String targetFeatureId;
+    private final String targetFacePart;
+    private final List<Point3D> facePolygon;
 
     public face_reference_ui_main(String ownerShapeId, String targetFeatureId, face_kind_ui_main faceKind,
                                  Point3D worldHitPoint, Point3D worldNormal,
                                  Point3D faceOrigin, Point3D uAxis, Point3D vAxis,
                                  double localHitU, double localHitV,
                                  double faceWidth, double faceHeight) {
+        this(ownerShapeId, targetFeatureId, faceKind, worldHitPoint, worldNormal, faceOrigin, uAxis, vAxis,
+            localHitU, localHitV, faceWidth, faceHeight, null, List.of());
+    }
+
+    public face_reference_ui_main(String ownerShapeId, String targetFeatureId, face_kind_ui_main faceKind,
+                                 Point3D worldHitPoint, Point3D worldNormal,
+                                 Point3D faceOrigin, Point3D uAxis, Point3D vAxis,
+                                 double localHitU, double localHitV, double faceWidth, double faceHeight,
+                                 String targetFacePart, List<Point3D> facePolygon) {
         this.ownerShapeId    = ownerShapeId;
         this.targetFeatureId = targetFeatureId;
         this.faceKind        = faceKind;
@@ -42,6 +54,8 @@ public class face_reference_ui_main {
         this.localHitV       = localHitV;
         this.faceWidth       = faceWidth;
         this.faceHeight      = faceHeight;
+        this.targetFacePart  = targetFacePart;
+        this.facePolygon     = facePolygon == null ? List.of() : List.copyOf(facePolygon);
     }
 
     public face_reference_ui_main(String ownerShapeId, face_kind_ui_main faceKind,
@@ -54,9 +68,12 @@ public class face_reference_ui_main {
 
     public String getOwnerShapeId()        { return ownerShapeId; }
     public String getTargetFeatureId()     { return targetFeatureId; }
+    public String getTargetFacePart()      { return targetFacePart; }
+    public List<Point3D> getFacePolygon()  { return facePolygon; }
     public boolean isFeatureFace()         { return targetFeatureId != null && !targetFeatureId.isBlank(); }
     public face_kind_ui_main getFaceKind() { return faceKind; }
-    public String getFaceId()              { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":" + faceKind.name() + (targetFeatureId != null ? ":" + targetFeatureId : "") : ""; }
+    public String getFaceId()              { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":" + faceKind.name()
+        + (targetFeatureId != null ? ":" + targetFeatureId : "") + (targetFacePart != null ? ":" + targetFacePart : "") : ""; }
     public String getTopologyFaceId()      { return (ownerShapeId != null && faceKind != null) ? ownerShapeId + ":F:" + faceKind.name() + (targetFeatureId != null ? ":" + targetFeatureId : "") : ""; }
     public Point3D getWorldHitPoint()      { return worldHitPoint; }
     public Point3D getWorldNormal()        { return worldNormal; }
@@ -80,7 +97,12 @@ public class face_reference_ui_main {
 
     public face_reference_ui_main refresh(shape_item_ui_main shape) {
         if (shape == null || faceKind == null) return this;
-        return topology_geometry_helper_ui_main.reconstructFaceReference(shape, faceKind, localHitU, localHitV, targetFeatureId);
+        face_reference_ui_main ref = topology_geometry_helper_ui_main.reconstructFaceReference(
+            shape, faceKind, localHitU, localHitV, targetFeatureId);
+        if (ref == null || targetFacePart == null) return ref;
+        return new face_reference_ui_main(ref.getOwnerShapeId(), ref.getTargetFeatureId(), ref.getFaceKind(),
+            ref.getWorldHitPoint(), ref.getWorldNormal(), ref.getFaceOrigin(), ref.getUAxis(), ref.getVAxis(),
+            ref.getLocalHitU(), ref.getLocalHitV(), ref.getFaceWidth(), ref.getFaceHeight(), targetFacePart, facePolygon);
     }
 
     @Override

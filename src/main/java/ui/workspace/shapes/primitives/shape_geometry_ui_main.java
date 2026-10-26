@@ -36,12 +36,11 @@ public final class shape_geometry_ui_main {
             mat.setSpecularColor(Color.web("#E0F2FE"));
             return mat;
         }
-        boolean focused = ui.workspace.drafting.faces.viewport_color_state_ui_main.isViewportFocused();
-        Color c = focused
+        Color c = isSelected
                 ? Color.web(framework_ui_main.OBJECT_SELECTED_COLOR)
                 : Color.web(framework_ui_main.OBJECT_UNSELECTED_EDGE_COLOR);
         PhongMaterial mat = new PhongMaterial(c);
-        mat.setSpecularColor(Color.web(focused ? "#E0F2FE" : framework_ui_main.OBJECT_UNSELECTED_COLOR));
+        mat.setSpecularColor(Color.web(isSelected ? "#E0F2FE" : "#64748B"));
         return mat;
     }
 

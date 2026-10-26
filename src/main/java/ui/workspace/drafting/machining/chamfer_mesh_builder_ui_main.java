@@ -11,6 +11,7 @@ import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.drafting.topology.topology_body_ui_main;
 import ui.workspace.drafting.topology.topology_edge_ui_main;
 import ui.workspace.drafting.topology.topology_face_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,20 +64,16 @@ public final class chamfer_mesh_builder_ui_main {
             };
             mesh.getPoints().setAll(pts);
             int[] fcs = new int[]{
-                0, 0, 1, 1, 2, 2,  0, 0, 2, 2, 3, 3,
-                0, 0, 2, 2, 1, 1,  0, 0, 3, 3, 2, 2
+                0, 0, 1, 1, 2, 2,  0, 0, 2, 2, 3, 3
             };
             mesh.getFaces().setAll(fcs);
-            int[] sg = new int[]{1, 1, 1, 1};
+            int[] sg = new int[]{1, 1};
             mesh.getFaceSmoothingGroups().setAll(sg);
         }
 
         MeshView mv = new MeshView(mesh);
         mv.setCullFace(CullFace.NONE);
-        Color c = isSelected ? Color.web("#38BDF8") : Color.web("#F59E0B");
-        PhongMaterial mat = new PhongMaterial(c);
-        mat.setSpecularColor(Color.color(1, 1, 1, 0.5));
-        mv.setMaterial(mat);
+        mv.setMaterial(shape_geometry_3d_ui_main.createMaterial(false, isSelected));
         mv.setId(ch.getId());
         return mv;
     }

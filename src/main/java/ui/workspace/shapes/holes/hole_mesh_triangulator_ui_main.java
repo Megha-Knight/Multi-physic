@@ -141,15 +141,19 @@ public final class hole_mesh_triangulator_ui_main {
 
     public static void buildCircleCap(Point3D center, Point3D[] circ, List<Float> pts, List<Integer> fcs, boolean facingEntry) {
         int segs = circ.length;
+        int cIdx = addVertex(center, pts);
+        int[] circIdx = new int[segs];
+        for (int i = 0; i < segs; i++) circIdx[i] = addVertex(circ[i], pts);
         for (int i = 0; i < segs; i++) {
             int next = (i + 1) % segs;
-            addTri(center, circ[next], circ[i], pts, fcs, !facingEntry);
+            addTriIdx(cIdx, circIdx[next], circIdx[i], fcs, !facingEntry);
         }
     }
 
     public static void addQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3, List<Float> pts, List<Integer> fcs) {
-        addTri(p0, p1, p2, pts, fcs, false);
-        addTri(p0, p2, p3, pts, fcs, false);
+        int i0 = addVertex(p0, pts), i1 = addVertex(p1, pts), i2 = addVertex(p2, pts), i3 = addVertex(p3, pts);
+        addTriIdx(i0, i1, i2, fcs, false);
+        addTriIdx(i0, i2, i3, fcs, false);
     }
 
     public static void addTri(Point3D a, Point3D b, Point3D c, List<Float> pts, List<Integer> fcs, boolean rev) {

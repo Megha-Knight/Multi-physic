@@ -22,11 +22,16 @@ public final class sketch_extrude_bridge_ui_main {
     public static Group buildExtrusion(shape_item_ui_main shape, sketch_feature_ui_main sketch, double height, boolean selected) {
         Group grp = new Group();
         if (sketch == null || !sketch.isValid() || height <= 1e-4) return grp;
-
-        sketch_profile_loop_ui_main outer = sketch.getProfileResult().outerLoop();
-        if (outer == null || outer.size() < 3) return grp;
+        if (sketch.getProfileResult() == null) sketch.regenerate();
+        var profRes = sketch.getProfileResult();
+        if (profRes == null) return grp;
+        sketch_profile_loop_ui_main outer = profRes.outerLoop();
+        if (outer == null || outer.size() < 3 || outer.getAbsArea() < 1e-4) return grp;
 
         List<sketch_point_2d_ui_main> pts2d = outer.getVertices();
+        if (outer.getSignedArea() < 0) {
+            java.util.Collections.reverse(pts2d);
+        }
         int n = pts2d.size();
 
         Point3D origin, normal, uAxis, vAxis;

@@ -55,9 +55,7 @@ public final class world_raycaster_ui_main {
         };
     }
 
-    public static Point3D hitGround(double[] ray) {
-        return hitPlaneY(ray, 0);
-    }
+    public static Point3D hitGround(double[] ray) { return hitPlaneY(ray, 0); }
 
     public static Point3D hitPlaneY(double[] ray, double yPlane) {
         if (ray == null || Math.abs(ray[4]) < 1e-4) return null;
@@ -68,19 +66,11 @@ public final class world_raycaster_ui_main {
 
     public static double projectOnAxis(double[] ray, Point3D axisPoint, Point3D axis) {
         if (ray == null) return Double.NaN;
-
-        double ox = ray[0], oy = ray[1], oz = ray[2];
-        double dx = ray[3], dy = ray[4], dz = ray[5];
-        double ax = axis.getX(), ay = axis.getY(), az = axis.getZ();
-        double px = axisPoint.getX(), py = axisPoint.getY(), pz = axisPoint.getZ();
-
+        double ox = ray[0], oy = ray[1], oz = ray[2], dx = ray[3], dy = ray[4], dz = ray[5];
+        double ax = axis.getX(), ay = axis.getY(), az = axis.getZ(), px = axisPoint.getX(), py = axisPoint.getY(), pz = axisPoint.getZ();
         double wx = ox - px, wy = oy - py, wz = oz - pz;
-        double d_dot_d = dx*dx + dy*dy + dz*dz;
-        double d_dot_a = dx*ax + dy*ay + dz*az;
-        double a_dot_a = ax*ax + ay*ay + az*az;
-        double w_dot_d = wx*dx + wy*dy + wz*dz;
-        double w_dot_a = wx*ax + wy*ay + wz*az;
-
+        double d_dot_d = dx*dx + dy*dy + dz*dz, d_dot_a = dx*ax + dy*ay + dz*az, a_dot_a = ax*ax + ay*ay + az*az;
+        double w_dot_d = wx*dx + wy*dy + wz*dz, w_dot_a = wx*ax + wy*ay + wz*az;
         double denom = d_dot_d * a_dot_a - d_dot_a * d_dot_a;
         if (Math.abs(denom) < 1e-5) return Double.NaN;
         return (d_dot_d * w_dot_a - d_dot_a * w_dot_d) / denom;
@@ -90,8 +80,7 @@ public final class world_raycaster_ui_main {
         if (ray == null || pt == null) return Double.MAX_VALUE;
         double vx = pt.getX() - ray[0], vy = pt.getY() - ray[1], vz = pt.getZ() - ray[2];
         double t = vx * ray[3] + vy * ray[4] + vz * ray[5];
-        double px = ray[0] + ray[3] * t, py = ray[1] + ray[4] * t, pz = ray[2] + ray[5] * t;
-        double dx = pt.getX() - px, dy = pt.getY() - py, dz = pt.getZ() - pz;
+        double dx = pt.getX() - (ray[0] + ray[3] * t), dy = pt.getY() - (ray[1] + ray[4] * t), dz = pt.getZ() - (ray[2] + ray[5] * t);
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
@@ -146,8 +135,11 @@ public final class world_raycaster_ui_main {
     }
 
     public static int findNearestTriangleHit(double[] ray, float[] points, int[] faces, int stride, double[] outNearestT) {
-        if (ray == null || ray.length < 6 || points == null || faces == null || stride < 3) return -1;
-        if (points.length < 3 || faces.length < stride) return -1;
+        if (stride != 3 && stride != 6) return -1;
+        if (ray == null || ray.length < 6 || points == null || faces == null) return -1;
+        if (points.length < 3 || points.length % 3 != 0 || faces.length < stride) return -1;
+        if (!Double.isFinite(ray[0]) || !Double.isFinite(ray[1]) || !Double.isFinite(ray[2]) ||
+            !Double.isFinite(ray[3]) || !Double.isFinite(ray[4]) || !Double.isFinite(ray[5])) return -1;
         if (faces.length / stride < NATIVE_THRESHOLD_TRIANGLES) {
             return findNearestTriangleHitJava(ray, points, faces, stride, outNearestT);
         }
@@ -173,27 +165,23 @@ public final class world_raycaster_ui_main {
     }
 
     public static int findNearestTriangleHitJava(double[] ray, float[] points, int[] faces, int stride, double[] outNearestT) {
-        if (ray == null || ray.length < 6 || points == null || faces == null || stride < 3) return -1;
-        if (points.length < 3 || faces.length < stride) return -1;
+        if (stride != 3 && stride != 6) return -1;
+        if (ray == null || ray.length < 6 || points == null || faces == null) return -1;
+        if (points.length < 3 || points.length % 3 != 0 || faces.length < stride) return -1;
+        if (!Double.isFinite(ray[0]) || !Double.isFinite(ray[1]) || !Double.isFinite(ray[2]) ||
+            !Double.isFinite(ray[3]) || !Double.isFinite(ray[4]) || !Double.isFinite(ray[5])) return -1;
         double minT = Double.MAX_VALUE;
-        int hitIndex = -1;
-        int triCount = faces.length / stride;
+        int hitIndex = -1, triCount = faces.length / stride, maxV = points.length / 3;
         for (int k = 0; k < triCount; k++) {
             int base = k * stride;
-            int idx0 = faces[base];
-            int idx1 = faces[base + (stride == 6 ? 2 : 1)];
-            int idx2 = faces[base + (stride == 6 ? 4 : 2)];
-            if (idx0 < 0 || idx1 < 0 || idx2 < 0) continue;
+            int idx0 = faces[base], idx1 = faces[base + (stride == 6 ? 2 : 1)], idx2 = faces[base + (stride == 6 ? 4 : 2)];
+            if (idx0 < 0 || idx0 >= maxV || idx1 < 0 || idx1 >= maxV || idx2 < 0 || idx2 >= maxV) continue;
             int c0 = idx0 * 3, c1 = idx1 * 3, c2 = idx2 * 3;
-            if (c0 + 2 >= points.length || c1 + 2 >= points.length || c2 + 2 >= points.length) continue;
-            Point3D v0 = new Point3D(points[c0], points[c0 + 1], points[c0 + 2]);
-            Point3D v1 = new Point3D(points[c1], points[c1 + 1], points[c1 + 2]);
-            Point3D v2 = new Point3D(points[c2], points[c2 + 1], points[c2 + 2]);
+            Point3D v0 = new Point3D(points[c0], points[c0 + 1], points[c0 + 2]),
+                    v1 = new Point3D(points[c1], points[c1 + 1], points[c1 + 2]),
+                    v2 = new Point3D(points[c2], points[c2 + 1], points[c2 + 2]);
             double t = intersectTriangleJava(ray, v0, v1, v2, null);
-            if (t > RAY_EPSILON && t < minT) {
-                minT = t;
-                hitIndex = k;
-            }
+            if (t > RAY_EPSILON && t < minT) { minT = t; hitIndex = k; }
         }
         if (hitIndex >= 0 && outNearestT != null && outNearestT.length > 0) outNearestT[0] = minT;
         return hitIndex;

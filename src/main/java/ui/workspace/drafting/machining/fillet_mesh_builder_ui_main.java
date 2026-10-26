@@ -11,6 +11,7 @@ import ui.workspace.drafting.shape_item_ui_main;
 import ui.workspace.drafting.topology.topology_body_ui_main;
 import ui.workspace.drafting.topology.topology_edge_ui_main;
 import ui.workspace.drafting.topology.topology_face_ui_main;
+import ui.workspace.shapes.primitives.shape_geometry_3d_ui_main;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,8 +73,6 @@ public final class fillet_mesh_builder_ui_main {
                 int p2_idx = (i + 1) * 2 + 1, p3_idx = (i + 1) * 2;
                 fcs.add(p0); fcs.add(0); fcs.add(p1_idx); fcs.add(1); fcs.add(p2_idx); fcs.add(2);
                 fcs.add(p0); fcs.add(0); fcs.add(p2_idx); fcs.add(2); fcs.add(p3_idx); fcs.add(3);
-                fcs.add(p0); fcs.add(0); fcs.add(p2_idx); fcs.add(2); fcs.add(p1_idx); fcs.add(1);
-                fcs.add(p0); fcs.add(0); fcs.add(p3_idx); fcs.add(3); fcs.add(p2_idx); fcs.add(2);
             }
 
             mesh = new TriangleMesh();
@@ -86,10 +85,7 @@ public final class fillet_mesh_builder_ui_main {
 
         MeshView mv = new MeshView(mesh);
         mv.setCullFace(CullFace.NONE);
-        Color c = isSelected ? Color.web("#38BDF8") : Color.web("#10B981");
-        PhongMaterial mat = new PhongMaterial(c);
-        mat.setSpecularColor(Color.color(1, 1, 1, 0.5));
-        mv.setMaterial(mat);
+        mv.setMaterial(shape_geometry_3d_ui_main.createMaterial(false, isSelected));
         mv.setId(fl.getId());
         return mv;
     }

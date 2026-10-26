@@ -39,7 +39,7 @@ public final class extrude_topology_builder_ui_main {
             );
             body.addDerivedFace(lat);
 
-            if (ext.getProfileShape() != ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.CIRCLE) {
+            if (ext.getProfileShape() == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RECTANGLE || ext.getProfileShape() == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.SQUARE) {
                 ui.workspace.drafting.faces.face_kind_ui_main[] sKinds = new ui.workspace.drafting.faces.face_kind_ui_main[]{
                     ui.workspace.drafting.faces.face_kind_ui_main.EXTRUDE_SIDE_POS_U, ui.workspace.drafting.faces.face_kind_ui_main.EXTRUDE_SIDE_NEG_U,
                     ui.workspace.drafting.faces.face_kind_ui_main.EXTRUDE_SIDE_POS_V, ui.workspace.drafting.faces.face_kind_ui_main.EXTRUDE_SIDE_NEG_V
@@ -51,6 +51,16 @@ public final class extrude_topology_builder_ui_main {
                         body.getId(), sId, "Extrude Side (" + sk.getLabel() + ")",
                         sk, ext.getId(), hole_region_kind_ui_main.HOLE_WALL,
                         sInfo.width(), sInfo.height(), ext.getHeight(), 0.0, sInfo.origin()
+                    ));
+                }
+            } else if (ext.getProfileShape() == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.EQUILATERAL_TRIANGLE || ext.getProfileShape() == ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape.RIGHT_TRIANGLE) {
+                String[] tNames = new String[]{"EXTRUDE_SIDE_E01", "EXTRUDE_SIDE_E12", "EXTRUDE_SIDE_E20"};
+                for (String tName : tNames) {
+                    String sId = body.getId() + ":F:" + tName + ":" + ext.getId();
+                    body.addDerivedFace(new topology_derived_face_ui_main(
+                        body.getId(), sId, "Extrude Side (" + tName + ")",
+                        ui.workspace.drafting.faces.face_kind_ui_main.EXTRUDE_LATERAL, ext.getId(), hole_region_kind_ui_main.HOLE_WALL,
+                        w, ext.getHeight(), ext.getHeight(), 0.0, latCenter
                     ));
                 }
             }

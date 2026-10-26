@@ -2,6 +2,7 @@ package ui.workspace.drafting.extrude;
 
 import java.util.Locale;
 import java.util.UUID;
+import ui.workspace.drafting.faces.face_geometry_helper_ui_main;
 import ui.workspace.drafting.faces.face_kind_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main.CutoutShape;
 
@@ -87,15 +88,19 @@ public class extrude_feature_ui_main {
                 return false;
             }
         }
-        if (!ui.workspace.drafting.topology.topology_geometry_helper_ui_main.fitsWithinFace(host, faceKind, u, v, getRadius())) {
-            state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
-            diagnosticMessage = "Extrusion exceeds face boundary";
-            return false;
+        if (host.getType().is3D() && faceKind != null) {
+            double hw = getRadius(), hd = (width2 > 0.1 ? width2 * 0.5 : hw);
+            boolean fits = (profileShape == CutoutShape.CIRCLE)
+                ? ui.workspace.drafting.topology.topology_geometry_helper_ui_main.fitsWithinFace(host, faceKind, u, v, hw)
+                : face_geometry_helper_ui_main.fitsProfileWithinFace(face_geometry_helper_ui_main.getFaceInfo(host, faceKind), u, v, hw, hd);
+            if (!fits) {
+                state = ui.workspace.drafting.features.feature_state_ui_main.INVALID;
+                diagnosticMessage = "Extrusion exceeds face boundary";
+                return false;
+            }
         }
-        if (state == ui.workspace.drafting.features.feature_state_ui_main.INVALID && ("Extrusion exceeds face boundary".equals(diagnosticMessage) || "Sketch is invalid or missing".equals(diagnosticMessage))) {
-            state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
-            diagnosticMessage = null;
-        }
+        state = ui.workspace.drafting.features.feature_state_ui_main.CLEAN;
+        diagnosticMessage = null;
         return true;
     }
 

@@ -33,25 +33,16 @@ public class sketch_controller_ui_main {
     }
     public sketch_controller_ui_main(sketch_mode_ui_main mode, Runnable onClose) { this(mode, onClose, onClose); }
 
-    public Group getView() { return view; }
-    public Group getPreview() { return preview; }
-    public sketch_hud_overlay_ui_main getHud() { return hud; }
-    public State getState() { return state; }
+    public Group getView() { return view; } public Group getPreview() { return preview; }
+    public sketch_hud_overlay_ui_main getHud() { return hud; } public State getState() { return state; }
     public sketch_tool_type_ui_main getActiveTool() { return activeTool; }
     public void setTool(sketch_tool_type_ui_main t) { this.activeTool = t; cancelActiveDrawing(); }
     public sketch_entity_ui_main getSelectedEntity() { return selectedEntity; }
     public void cancelActiveDrawing() { state = State.IDLE; startPt = null; arcCenter = null; preview.clearAll(); }
 
     private void onModeUpdated() {
-        if (mode.isActive()) {
-            view.render(mode.getActiveSketch());
-            hud.update(mode.getActiveSketch());
-        } else {
-            view.getChildren().clear();
-            preview.clearAll();
-            hud.setVisible(false);
-            selectedEntity = null;
-        }
+        if (mode.isActive()) { view.render(mode.getActiveSketch()); hud.update(mode.getActiveSketch()); }
+        else { view.getChildren().clear(); preview.clearAll(); hud.setVisible(false); selectedEntity = null; }
     }
 
     public sketch_point_2d_ui_main getSnappedPoint(MouseEvent e, Pane viewport, PerspectiveCamera camera, Group group) {
@@ -59,12 +50,8 @@ public class sketch_controller_ui_main {
         sketch_point_2d_ui_main raw = sketch_canvas_mapper_ui_main.screenToSketch(e, viewport, camera, group, mode.getActiveCoordSystem());
         if (raw == null) return null;
         var snap = sketch_snap_system_ui_main.findBestSnap(raw, mode.getActiveSketch().getEntities(), 0.5);
-        if (snap != null) {
-            preview.showSnapIndicator(mode.getActiveCoordSystem().toWorldPoint(snap.snapPoint()), snap.type());
-            return snap.snapPoint();
-        }
-        preview.clearSnap();
-        return raw;
+        if (snap != null) { preview.showSnapIndicator(mode.getActiveCoordSystem().toWorldPoint(snap.snapPoint()), snap.type()); return snap.snapPoint(); }
+        preview.clearSnap(); return raw;
     }
 
     public void handleMouseMoved(MouseEvent e, Pane viewport, PerspectiveCamera camera, Group group) {
@@ -86,8 +73,20 @@ public class sketch_controller_ui_main {
     }
 
     public boolean handleMousePressed(MouseEvent e, Pane viewport, PerspectiveCamera camera, Group group, shape_editor_ui_main editor) {
-        if (!mode.isActive() || e.getButton() != MouseButton.PRIMARY) return false;
+        if (!mode.isActive()) return false;
+        if (e.getButton() == MouseButton.SECONDARY) { cancelActiveDrawing(); return true; }
+        if (e.getButton() != MouseButton.PRIMARY) return false;
         sketch_point_2d_ui_main p = getSnappedPoint(e, viewport, camera, group);
+        if (e.getClickCount() >= 2) {
+            sketch_feature_ui_main sk = mode.getActiveSketch();
+            if (state == State.LINE_END && startPt != null && p != null && startPt.distance(p) > 0.05 && sk != null) {
+                if (editor != null) editor.recordSnapshot();
+                sk.addEntity(new sketch_line_ui_main("L-" + System.currentTimeMillis(), startPt.x(), startPt.y(), p.x(), p.y()));
+                view.render(sk);
+            }
+            cancelActiveDrawing(); if (sk != null) hud.update(sk);
+            return true;
+        }
         if (p == null) return false;
         sketch_feature_ui_main sk = mode.getActiveSketch();
         switch (activeTool) {
@@ -123,9 +122,8 @@ public class sketch_controller_ui_main {
     }
 
     private void handleCircleClick(sketch_point_2d_ui_main p, sketch_feature_ui_main sk, shape_editor_ui_main editor) {
-        if (state == State.IDLE) {
-            startPt = p; state = State.CIRCLE_RADIUS;
-        } else if (state == State.CIRCLE_RADIUS) {
+        if (state == State.IDLE) { startPt = p; state = State.CIRCLE_RADIUS; }
+        else if (state == State.CIRCLE_RADIUS) {
             double r = startPt.distance(p);
             if (r > 0.05) {
                 if (editor != null) editor.recordSnapshot();
@@ -159,9 +157,8 @@ public class sketch_controller_ui_main {
     }
 
     private void handleArcClick(sketch_point_2d_ui_main p, sketch_feature_ui_main sk, shape_editor_ui_main editor) {
-        if (state == State.IDLE) {
-            arcCenter = p; state = State.ARC_START;
-        } else if (state == State.ARC_START) {
+        if (state == State.IDLE) { arcCenter = p; state = State.ARC_START; }
+        else if (state == State.ARC_START) {
             arcRadius = arcCenter.distance(p);
             if (arcRadius > 0.05) {
                 arcStartAngle = Math.toDegrees(Math.atan2(p.y() - arcCenter.y(), p.x() - arcCenter.x()));

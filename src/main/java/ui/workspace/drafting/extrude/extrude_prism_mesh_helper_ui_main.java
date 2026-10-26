@@ -18,6 +18,7 @@ public final class extrude_prism_mesh_helper_ui_main {
         if (f == null || ext == null) return null;
         double w = ext.getDiameter(), len = ext.getHeight();
         double d = (ext.getWidth2() > 0.1) ? ext.getWidth2() : w;
+        if (w <= 1e-4 || d <= 1e-4 || len <= 1e-4) return null;
         Point3D baseCenter = f.origin().add(f.u().multiply(ext.getU())).add(f.v().multiply(ext.getV()));
 
         Point2D[] pts2d = new Point2D[3];

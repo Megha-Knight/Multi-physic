@@ -2,6 +2,7 @@ package ui.workspace.drafting.faces;
 
 import javafx.geometry.Point3D;
 import ui.workspace.drafting.shape_item_ui_main;
+import ui.ui_feature_action_helper_ui_main;
 import ui.workspace.drafting.holes.hole_feature_ui_main;
 import ui.workspace.drafting.extrude.extrude_feature_ui_main;
 import ui.workspace.drafting.topology.topology_body_ui_main;
@@ -19,7 +20,7 @@ public final class edge_picker_ui_main {
     }
 
     public static topology_edge_ui_main pickEdge(double[] worldRay, shape_item_ui_main shape, double tolerance) {
-        if (worldRay == null || worldRay.length < 6 || shape == null || !shape.getType().is3D()) return null;
+        if (worldRay == null || worldRay.length < 6 || !ui_feature_action_helper_ui_main.isMachinableSolid(shape)) return null;
         double dx = worldRay[3], dy = worldRay[4], dz = worldRay[5], lenSq = dx * dx + dy * dy + dz * dz;
         if (lenSq < 1e-12 || Double.isNaN(lenSq)) return null;
 
@@ -84,33 +85,7 @@ public final class edge_picker_ui_main {
     }
 
     public static Point3D resolveEdgeNormal(shape_item_ui_main shape, topology_edge_ui_main edge) {
-        if (edge == null || shape == null) return new Point3D(0, 1, 0);
-        String featId = edge.getCreatingFeatureId();
-        if (featId != null) {
-            for (hole_feature_ui_main h : shape.getHoles()) {
-                if (featId.equals(h.getId())) {
-                    face_kind_ui_main fk = edge.getName().startsWith("HOLE_EXIT_RIM")
-                        ? opposite(h.getFaceKind()) : h.getFaceKind();
-                    return face_geometry_helper_ui_main.getFaceInfo(shape, fk).normal();
-                }
-            }
-            for (extrude_feature_ui_main ext : shape.getExtrusions()) {
-                if (featId.equals(ext.getId())) {
-                    return face_geometry_helper_ui_main.getFaceInfo(shape, ext.getFaceKind()).normal();
-                }
-            }
-        }
-        if (edge.getName().contains("TOP") || edge.getName().contains("BOT") || edge.getName().contains("BASE")) {
-            return new Point3D(0, 1, 0);
-        }
-        for (String fid : edge.getAdjacentFaceIds()) {
-            for (face_kind_ui_main fk : face_kind_ui_main.values()) {
-                if (fid.contains(":F:" + fk.name())) {
-                    return face_geometry_helper_ui_main.getFaceInfo(shape, fk).normal();
-                }
-            }
-        }
-        return new Point3D(0, 1, 0);
+        return ui.workspace.drafting.topology.edge_normal_resolver_ui_main.resolveEdgeNormal(shape, edge);
     }
 
     private static face_kind_ui_main opposite(face_kind_ui_main k) {

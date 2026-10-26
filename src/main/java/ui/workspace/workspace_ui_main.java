@@ -62,25 +62,21 @@ public class workspace_ui_main extends StackPane {
         coordSystem.setMouseTransparent(true);
         root3D.getChildren().add(coordSystem);
 
-        AmbientLight ambientLight = new AmbientLight(Color.web("#8494A5"));
-        PointLight pointLight = new PointLight(Color.web("#FFFFFF"));
-        pointLight.setTranslateX(180);
-        pointLight.setTranslateY(-320);
-        pointLight.setTranslateZ(-260);
-        root3D.getChildren().addAll(ambientLight, pointLight);
+        AmbientLight ambientLight = new AmbientLight(Color.web("#505050"));
+        PointLight keyLight = new PointLight(Color.web("#B8B8B8"));
+        keyLight.setTranslateX(180); keyLight.setTranslateY(-320); keyLight.setTranslateZ(-260);
+        PointLight fillLight = new PointLight(Color.web("#808080"));
+        fillLight.setTranslateX(-200); fillLight.setTranslateY(-260); fillLight.setTranslateZ(200);
+        root3D.getChildren().addAll(ambientLight, keyLight, fillLight);
 
         camera = new PerspectiveCamera(true);
-        camera.setNearClip(1.0);
-        camera.setFarClip(10000.0);
-        camera.setFieldOfView(45.0);
+        camera.setNearClip(1.0); camera.setFarClip(10000.0); camera.setFieldOfView(45.0);
+        PointLight headLamp = new PointLight(Color.web("#404040"));
+        headLamp.setTranslateX(0); headLamp.setTranslateY(-30); headLamp.setTranslateZ(-350);
 
-        Group cameraXGroup = new Group();
-        Group cameraYGroup = new Group();
-        cameraYGroup.getTransforms().add(ry);
-        cameraXGroup.getTransforms().add(rx);
-        camera.getTransforms().add(t);
-        cameraXGroup.getChildren().add(camera);
-        cameraYGroup.getChildren().add(cameraXGroup);
+        Group cameraXGroup = new Group(); Group cameraYGroup = new Group();
+        cameraYGroup.getTransforms().add(ry); cameraXGroup.getTransforms().add(rx); camera.getTransforms().add(t);
+        cameraXGroup.getChildren().addAll(camera, headLamp); cameraYGroup.getChildren().add(cameraXGroup);
         root3D.getChildren().add(cameraYGroup);
 
         subScene = new SubScene(root3D, 800, 600, true, SceneAntialiasing.BALANCED);
@@ -130,6 +126,7 @@ public class workspace_ui_main extends StackPane {
             sketchController.handleMouseMoved(e, this, camera, root3D);
         });
         addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> { if (sketchController.handleMousePressed(e, this, camera, root3D, shapeEditor)) e.consume(); });
+        addEventFilter(javafx.scene.input.MouseEvent.MOUSE_DRAGGED, e -> { if (sketchMode.isActive() && !e.isMiddleButtonDown()) e.consume(); });
         addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> { if (sketchController.handleKeyPressed(e, shapeEditor)) e.consume(); });
 
         widthProperty().addListener((obs, o, n) -> updateLabels());

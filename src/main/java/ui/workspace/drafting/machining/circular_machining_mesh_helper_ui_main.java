@@ -124,9 +124,6 @@ public final class circular_machining_mesh_helper_ui_main {
         int i1 = addVertex(p1, pts), i2 = addVertex(p2, pts), i3 = addVertex(p3, pts), i4 = addVertex(p4, pts);
         fcs.add(i1); fcs.add(0); fcs.add(i2); fcs.add(0); fcs.add(i3); fcs.add(0);
         fcs.add(i1); fcs.add(0); fcs.add(i3); fcs.add(0); fcs.add(i4); fcs.add(0);
-        // Both-side winding for complete viewport coverage
-        fcs.add(i1); fcs.add(0); fcs.add(i3); fcs.add(0); fcs.add(i2); fcs.add(0);
-        fcs.add(i1); fcs.add(0); fcs.add(i4); fcs.add(0); fcs.add(i3); fcs.add(0);
     }
 
     private static int addVertex(Point3D p, List<Float> pts) {

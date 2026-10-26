@@ -36,6 +36,12 @@ public class shape_machining_holder_ui_main {
     public draft_feature_ui_main getDraft(String id) { for (var d : drafts) if (d.getId().equals(id)) return d; return null; }
 
     public boolean isEmpty() { return chamfers.isEmpty() && fillets.isEmpty() && drafts.isEmpty(); }
+    public boolean hasVisibleValidFeatures() {
+        for (var c : chamfers) if (c.isVisible() && c.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) return true;
+        for (var f : fillets) if (f.isVisible() && f.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) return true;
+        for (var d : drafts) if (d.isVisible() && d.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) return true;
+        return false;
+    }
 
     public void revalidate(shape_item_ui_main host) {
         for (var c : chamfers) c.revalidate(host);

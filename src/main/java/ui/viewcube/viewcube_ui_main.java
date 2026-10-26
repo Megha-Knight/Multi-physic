@@ -1,15 +1,17 @@
 package ui.viewcube;
 
-import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Point3D;
 import javafx.geometry.Pos;
+import javafx.geometry.VPos;
 import javafx.scene.AmbientLight;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.PointLight;
 import javafx.scene.SceneAntialiasing;
 import javafx.scene.SubScene;
-import javafx.scene.image.Image;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
@@ -17,14 +19,11 @@ import javafx.scene.shape.CullFace;
 import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
-
-import java.awt.BasicStroke;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.util.function.BiConsumer;
 
 /**
@@ -134,24 +133,21 @@ public class viewcube_ui_main extends StackPane {
     }
 
     private PhongMaterial createFaceMaterial(String text) {
-        BufferedImage bi = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = bi.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g.setColor(new java.awt.Color(255, 255, 255));
-        g.fillRect(0, 0, 128, 128);
-        g.setColor(new java.awt.Color(203, 213, 225));
-        g.setStroke(new BasicStroke(6));
-        g.drawRect(3, 3, 122, 122);
-        g.setColor(new java.awt.Color(30, 41, 59));
-        g.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 24));
-        FontMetrics fm = g.getFontMetrics();
-        int x = (128 - fm.stringWidth(text)) / 2;
-        int y = ((128 - fm.getHeight()) / 2) + fm.getAscent();
-        g.drawString(text, x, y);
-        g.dispose();
+        Canvas cv = new Canvas(128, 128);
+        GraphicsContext gc = cv.getGraphicsContext2D();
+        gc.setFill(Color.WHITE);
+        gc.fillRect(0, 0, 128, 128);
+        gc.setStroke(Color.web("#CBD5E1"));
+        gc.setLineWidth(6);
+        gc.strokeRect(3, 3, 122, 122);
+        gc.setFill(Color.web("#1E293B"));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.setTextBaseline(VPos.CENTER);
+        gc.fillText(text, 64, 64);
 
-        Image fxImage = SwingFXUtils.toFXImage(bi, null);
+        WritableImage fxImage = new WritableImage(128, 128);
+        cv.snapshot(null, fxImage);
         PhongMaterial mat = new PhongMaterial();
         mat.setDiffuseMap(fxImage);
         return mat;

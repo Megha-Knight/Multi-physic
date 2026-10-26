@@ -65,19 +65,7 @@ public final class hole_cone_builder_ui_main {
             hole_mesh_triangulator_ui_main.addTriIdx(apexIdx, botIdx[next], botIdx[i], fcs, false);
         }
 
-        if (baseHoles.isEmpty()) {
-            int baseCenterIdx = hole_mesh_triangulator_ui_main.addVertex(new Point3D(cx, 0, cz), pts);
-            for (int i = 0; i < SEGS; i++) {
-                int next = (i + 1) % SEGS;
-                hole_mesh_triangulator_ui_main.addTriIdx(baseCenterIdx, botIdx[i], botIdx[next], fcs, false);
-            }
-        } else {
-            hole_pattern_mesh_helper_ui_main.buildCylinderCapMultiHoles(cx, cz, 0.0, r, false, baseHoles, false, pts, fcs);
-            for (hole_feature_ui_main hole : baseHoles) {
-                double hx = cx + hole.getU(), hz = cz - hole.getV();
-                hole_advanced_mesh_helper_ui_main.buildCylinderHoleCavity(cx, cz, hx, hz, 0.0, height, false, hole, holes, r, pts, fcs);
-            }
-        }
+        hole_cylinder_builder_ui_main.buildCapWithOuterRing(cx, cz, 0.0, r, false, botIdx, baseHoles, List.of(), holes, height, pts, fcs);
 
         float[] pa = new float[pts.size()];
         for (int i = 0; i < pts.size(); i++) pa[i] = pts.get(i);
