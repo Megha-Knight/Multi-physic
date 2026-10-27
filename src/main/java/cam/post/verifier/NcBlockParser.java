@@ -13,6 +13,9 @@ public class NcBlockParser {
 
     private static final Pattern WORD_PATTERN = Pattern.compile("([A-Za-z])([+-]?(?:[0-9]+\\.?[0-9]*|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("\\((.*?)\\)");
+    private static final Set<Character> SUPPORTED_LETTERS = Set.of('N', 'G', 'M', 'X', 'Y', 'Z', 'F', 'S', 'T', 'H', 'R', 'Q', 'P', 'O');
+    private static final Set<String> SUPPORTED_G = Set.of("G00", "G01", "G02", "G03", "G04", "G17", "G18", "G19", "G20", "G21", "G28", "G30", "G43", "G44", "G49", "G53", "G54", "G55", "G56", "G57", "G58", "G59", "G73", "G80", "G81", "G82", "G83", "G90", "G91", "G98", "G99");
+    private static final Set<String> SUPPORTED_M = Set.of("M00", "M01", "M02", "M03", "M04", "M05", "M06", "M08", "M09", "M30");
 
     private final String rawText;
     private final String strippedText;
@@ -21,13 +24,15 @@ public class NcBlockParser {
     private final Set<String> gCodes = new LinkedHashSet<>();
     private final Set<String> mCodes = new LinkedHashSet<>();
     private final Map<Character, Double> words = new HashMap<>();
+    private final Set<Character> duplicateWords = new LinkedHashSet<>();
+    private final Set<String> unsupportedCommands = new LinkedHashSet<>();
+    private boolean conflictingModalCommands = false;
     private boolean malformed = false;
 
     public NcBlockParser(String line) {
         this.rawText = (line != null) ? line : "";
         String text = rawText.trim();
 
-        // Extract comment
         Matcher commentMatcher = COMMENT_PATTERN.matcher(text);
         if (commentMatcher.find()) {
             this.comment = commentMatcher.group(1);
@@ -38,36 +43,37 @@ public class NcBlockParser {
 
         this.strippedText = text;
         parseWords(text);
-
-        // Line number
-        if (words.containsKey('N')) {
-            this.lineNumber = words.get('N').intValue();
-        } else {
-            this.lineNumber = null;
-        }
+        this.lineNumber = words.containsKey('N') ? words.get('N').intValue() : null;
+        checkConflictingModalCommands();
     }
 
     private void parseWords(String text) {
         if (text.isEmpty() || text.equals("%")) return;
 
-        // Split by whitespace
         String[] tokens = text.split("\\s+");
         for (String token : tokens) {
             if (token.isEmpty()) continue;
 
-            // Handle combined G/M codes like G90, G21, M06, M30
             Matcher m = WORD_PATTERN.matcher(token);
             if (m.matches()) {
                 char letter = Character.toUpperCase(m.group(1).charAt(0));
                 String numStr = m.group(2);
+                if (!SUPPORTED_LETTERS.contains(letter)) unsupportedCommands.add(token);
+                if (words.containsKey(letter) && letter != 'G' && letter != 'M') duplicateWords.add(letter);
+
                 try {
                     double val = Double.parseDouble(numStr);
                     words.put(letter, val);
-
                     if (letter == 'G') {
-                        gCodes.add(normalizeCode('G', (int) Math.round(val)));
+                        String g = normalizeCode('G', (int) Math.round(val));
+                        if (!SUPPORTED_G.contains(g)) unsupportedCommands.add(g);
+                        if (gCodes.contains(g)) duplicateWords.add('G');
+                        gCodes.add(g);
                     } else if (letter == 'M') {
-                        mCodes.add(normalizeCode('M', (int) Math.round(val)));
+                        String mc = normalizeCode('M', (int) Math.round(val));
+                        if (!SUPPORTED_M.contains(mc)) unsupportedCommands.add(mc);
+                        if (mCodes.contains(mc)) duplicateWords.add('M');
+                        mCodes.add(mc);
                     }
                 } catch (NumberFormatException e) {
                     malformed = true;
@@ -75,6 +81,13 @@ public class NcBlockParser {
             } else if (!token.equals("%") && !token.startsWith("O")) {
                 malformed = true;
             }
+        }
+    }
+
+    private void checkConflictingModalCommands() {
+        if ((hasG("G00") && hasG("G01")) || (hasG("G90") && hasG("G91"))
+                || (hasG("G17") && (hasG("G18") || hasG("G19")))) {
+            conflictingModalCommands = true;
         }
     }
 
@@ -92,6 +105,9 @@ public class NcBlockParser {
     public Set<String> getMCodes()                   { return Collections.unmodifiableSet(mCodes); }
     public boolean hasWord(char c)                   { return words.containsKey(Character.toUpperCase(c)); }
     public Double getWord(char c)                    { return words.get(Character.toUpperCase(c)); }
+    public Set<Character> getDuplicateWords()        { return Collections.unmodifiableSet(duplicateWords); }
+    public Set<String> getUnsupportedCommands()      { return Collections.unmodifiableSet(unsupportedCommands); }
+    public boolean hasConflictingModalCommands()     { return conflictingModalCommands; }
     public boolean isCommentOnly()                   { return strippedText.isEmpty() && comment != null; }
     public boolean isTapeHeaderOrRewind()            { return strippedText.equals("%"); }
     public boolean isProgramNumber()                 { return strippedText.startsWith("O") || words.containsKey('O'); }

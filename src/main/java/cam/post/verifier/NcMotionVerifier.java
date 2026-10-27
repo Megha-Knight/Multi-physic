@@ -55,7 +55,21 @@ public final class NcMotionVerifier {
             findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_INVALID_PARAMS,
                 NcFindingSeverity.ERROR, idx, line, "Peck drilling cycle missing positive Q increment."));
         }
+
+        double holeX = p.hasWord('X') ? p.getWord('X') : state.getCurrentX();
+        double holeY = p.hasWord('Y') ? p.getWord('Y') : state.getCurrentY();
+        if (setup != null && setup.getStock() != null) {
+            if (Double.isFinite(holeX) && (holeX < setup.getStock().getMin().x() - 1e-4 || holeX > setup.getStock().getMax().x() + 1e-4)) {
+                findings.add(new NcVerificationFinding(NcFindingCode.STOCK_BOUNDARY_VIOLATION,
+                    NcFindingSeverity.ERROR, idx, line, String.format("Canned cycle hole X%.3f exceeds stock boundary.", holeX)));
+            }
+            if (Double.isFinite(holeY) && (holeY < setup.getStock().getMin().y() - 1e-4 || holeY > setup.getStock().getMax().y() + 1e-4)) {
+                findings.add(new NcVerificationFinding(NcFindingCode.STOCK_BOUNDARY_VIOLATION,
+                    NcFindingSeverity.ERROR, idx, line, String.format("Canned cycle hole Y%.3f exceeds stock boundary.", holeY)));
+            }
+        }
         state.recordMotion(true);
+        state.updatePosition(holeX, holeY, targetZ);
     }
 
     public static void verifyLinearMotion(NcBlockParser p, int idx, String line, NcInterpreterState state,
@@ -69,19 +83,47 @@ public final class NcMotionVerifier {
             return;
         }
 
-        double newX = p.hasWord('X') ? p.getWord('X') : state.getCurrentX();
-        double newY = p.hasWord('Y') ? p.getWord('Y') : state.getCurrentY();
-        double newZ = p.hasWord('Z') ? p.getWord('Z') : state.getCurrentZ();
+        boolean isIncremental = "G91".equals(state.getActiveDistanceMode());
+        double newX = p.hasWord('X')
+            ? (isIncremental && Double.isFinite(state.getCurrentX()) ? state.getCurrentX() + p.getWord('X') : p.getWord('X'))
+            : state.getCurrentX();
+        double newY = p.hasWord('Y')
+            ? (isIncremental && Double.isFinite(state.getCurrentY()) ? state.getCurrentY() + p.getWord('Y') : p.getWord('Y'))
+            : state.getCurrentY();
+        double newZ = p.hasWord('Z')
+            ? (isIncremental && Double.isFinite(state.getCurrentZ()) ? state.getCurrentZ() + p.getWord('Z') : p.getWord('Z'))
+            : state.getCurrentZ();
 
         boolean isCutting = "G01".equals(state.getActiveMotionGroup());
         if (isCutting) {
             verifyCuttingPreconditions(idx, line, state, profile, findings);
-            if (setup != null && setup.getStock() != null && Double.isFinite(newZ)
-                    && newZ < setup.getStock().getBottomZ() - 1e-4) {
-                findings.add(new NcVerificationFinding(NcFindingCode.STOCK_DEPTH_VIOLATION,
-                    NcFindingSeverity.ERROR, idx, line, String.format("Cutting depth Z%.3f penetrates below stock bottom Z%.3f.", newZ, setup.getStock().getBottomZ())));
+            if (isIncremental && profile.getCoordinateMode() == ControllerProfile.CoordinateMode.ABSOLUTE_G90) {
+                findings.add(new NcVerificationFinding(NcFindingCode.UNEXPECTED_INCREMENTAL_MODE,
+                    NcFindingSeverity.ERROR, idx, line, "Cutting motion executed in incremental distance mode (G91) when profile expects absolute (G90)."));
+            }
+            if (setup != null && setup.getStock() != null) {
+                if (Double.isFinite(newX) && (newX < setup.getStock().getMin().x() - 1e-4 || newX > setup.getStock().getMax().x() + 1e-4)) {
+                    findings.add(new NcVerificationFinding(NcFindingCode.STOCK_BOUNDARY_VIOLATION,
+                        NcFindingSeverity.ERROR, idx, line, String.format("Cutting coordinate X%.3f exceeds stock boundary.", newX)));
+                }
+                if (Double.isFinite(newY) && (newY < setup.getStock().getMin().y() - 1e-4 || newY > setup.getStock().getMax().y() + 1e-4)) {
+                    findings.add(new NcVerificationFinding(NcFindingCode.STOCK_BOUNDARY_VIOLATION,
+                        NcFindingSeverity.ERROR, idx, line, String.format("Cutting coordinate Y%.3f exceeds stock boundary.", newY)));
+                }
+                if (Double.isFinite(newZ) && newZ < setup.getStock().getBottomZ() - 1e-4) {
+                    findings.add(new NcVerificationFinding(NcFindingCode.STOCK_DEPTH_VIOLATION,
+                        NcFindingSeverity.ERROR, idx, line, String.format("Cutting depth Z%.3f penetrates below stock bottom Z%.3f.", newZ, setup.getStock().getBottomZ())));
+                }
+            }
+        } else if ("G00".equals(state.getActiveMotionGroup()) && setup != null && setup.getStock() != null
+                && Double.isFinite(newZ) && !p.hasG("G53") && !p.hasG("G28")) {
+            if (newZ < setup.getStock().getBottomZ() - 1e-4) {
+                findings.add(new NcVerificationFinding(NcFindingCode.SAFETY_CLEARANCE_VIOLATION,
+                    NcFindingSeverity.ERROR, idx, line, String.format("Rapid traverse Z%.3f penetrates below stock bottom Z%.3f.",
+                    newZ, setup.getStock().getBottomZ())));
             }
         }
+
         if (state.getActiveMotionGroup() != null) {
             state.recordMotion(isCutting);
         }

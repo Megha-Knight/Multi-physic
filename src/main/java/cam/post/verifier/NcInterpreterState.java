@@ -90,7 +90,12 @@ public class NcInterpreterState {
     public void setActiveFeedRate(double feed)      { this.activeFeedRate = feed; }
 
     public Integer getActiveTool()                  { return activeTool; }
-    public void setActiveTool(Integer tool)         { this.activeTool = tool; toolChangeCount++; }
+    public void setActiveTool(Integer tool) {
+        this.activeTool = tool;
+        this.activeHRegister = null;
+        this.toolLengthCompActive = false;
+        this.toolChangeCount++;
+    }
 
     public Integer getActiveHRegister()             { return activeHRegister; }
     public void setActiveHRegister(Integer h)       { this.activeHRegister = h; }
