@@ -24,6 +24,19 @@ public class CamPlanExecutor {
         ManufacturingSetup setup = plan.getSetup();
         if (setup == null) return CamPlanValidationResult.invalid("Manufacturing setup cannot be null.");
         if (setup.getStock() == null) return CamPlanValidationResult.invalid("Setup stock dimensions cannot be null.");
+        if (setup.getStock().getBottomZ() >= setup.getStock().getTopZ()) {
+            return CamPlanValidationResult.invalid("Inconsistent stock dimensions: bottom Z >= top Z.");
+        }
+        if (setup.getSafetyPlane() == null) return CamPlanValidationResult.invalid("Setup safety plane cannot be null.");
+        double stockTopZ = setup.getStock().getTopZ();
+        if (setup.getSafetyPlane().getClearanceZ() < stockTopZ + 1.0) {
+            return CamPlanValidationResult.invalid(String.format("Safety clearance plane Z%.3f is below stock top surface Z%.3f.",
+                setup.getSafetyPlane().getClearanceZ(), stockTopZ));
+        }
+        if (setup.getSafetyPlane().getRetractZ() < stockTopZ - 1e-4) {
+            return CamPlanValidationResult.invalid(String.format("Safety retract plane Z%.3f is below stock top surface Z%.3f.",
+                setup.getSafetyPlane().getRetractZ(), stockTopZ));
+        }
         if (setup.getMcs() == null) return CamPlanValidationResult.invalid("Setup machine coordinate system cannot be null.");
         if (plan.getProfile() == null) return CamPlanValidationResult.invalid("Controller profile cannot be null.");
 
