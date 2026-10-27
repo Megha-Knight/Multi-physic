@@ -104,8 +104,8 @@ public class ContourFinishingOperation implements CamOperation {
         var stock = setup.getStock();
         if (stock != null) {
             for (CamPoint2D pt : leadRes.getCombinedPath().getVertices()) {
-                if (pt.x() < stock.getMin().x() - tool.getRadius() || pt.x() > stock.getMax().x() + tool.getRadius()
-                    || pt.y() < stock.getMin().y() - tool.getRadius() || pt.y() > stock.getMax().y() + tool.getRadius()) {
+                if (pt.x() < stock.getMin().x() || pt.x() > stock.getMax().x()
+                    || pt.y() < stock.getMin().y() || pt.y() > stock.getMax().y()) {
                     return "Finishing toolpath trajectory extends outside stock envelope.";
                 }
             }
@@ -157,15 +157,13 @@ public class ContourFinishingOperation implements CamOperation {
                 currentPos = nextPos;
             }
 
-            // Retract back to approach clearance
+            // Retract to approach clearance then to safety clearance
             CamPoint3D retPos = new CamPoint3D(currentPos.x(), currentPos.y(), approachZ);
             path.addSegment(MotionType.RETRACT, currentPos, retPos, 0.0, spindleRpm);
-            currentPos = retPos;
+            CamPoint3D safePos = new CamPoint3D(currentPos.x(), currentPos.y(), safetyZ);
+            path.addSegment(MotionType.RETRACT, retPos, safePos, 0.0, spindleRpm);
+            currentPos = safePos;
         }
-
-        // Final safe retract to safety plane
-        CamPoint3D finalPos = new CamPoint3D(currentPos.x(), currentPos.y(), safetyZ);
-        path.addSegment(MotionType.RETRACT, currentPos, finalPos, 0.0, spindleRpm);
         return path;
     }
 

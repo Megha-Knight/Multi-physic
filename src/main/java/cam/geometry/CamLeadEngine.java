@@ -10,7 +10,7 @@ import java.util.List;
  */
 public final class CamLeadEngine {
 
-    private static final int ARC_STEPS = 12;
+    public static final double MAX_CHORD_ERROR_MM = 0.02;
 
     private CamLeadEngine() {}
 
@@ -124,10 +124,12 @@ public final class CamLeadEngine {
     }
 
     private static List<CamPoint2D> sampleArc(CamPoint2D c, double r, double a1, double a2, boolean cw) {
-        List<CamPoint2D> pts = new ArrayList<>(ARC_STEPS + 1);
         double span = cw ? (a2 > a1 ? a2 - a1 - 2 * Math.PI : a2 - a1) : (a2 < a1 ? a2 - a1 + 2 * Math.PI : a2 - a1);
-        for (int i = 0; i <= ARC_STEPS; i++) {
-            double ang = a1 + span * (i / (double) ARC_STEPS);
+        double maxStepAngle = 2.0 * Math.acos(Math.max(-1.0, Math.min(1.0, 1.0 - MAX_CHORD_ERROR_MM / r)));
+        int steps = Math.max(12, (int) Math.ceil(Math.abs(span) / Math.max(1e-4, maxStepAngle)));
+        List<CamPoint2D> pts = new ArrayList<>(steps + 1);
+        for (int i = 0; i <= steps; i++) {
+            double ang = a1 + span * (i / (double) steps);
             pts.add(new CamPoint2D(c.x() + r * Math.cos(ang), c.y() + r * Math.sin(ang)));
         }
         return pts;

@@ -109,4 +109,48 @@ public final class ToolpathValidator {
         }
         return new ValidationResult(errors.isEmpty(), errors);
     }
+
+    public static ValidationResult validateContourFinishing(Toolpath toolpath, cam.geometry.CamContour2D partBoundary,
+                                                            cam.geometry.ContourSide side, double cutterRadius,
+                                                            double allowance, double targetDepth, ManufacturingSetup setup) {
+        var baseRes = validate(toolpath, setup);
+        List<String> errors = new java.util.ArrayList<>(baseRes.errors());
+        if (partBoundary == null || toolpath == null) {
+            errors.add("Boundary or toolpath cannot be null for contour validation.");
+            return new ValidationResult(false, errors);
+        }
+        double minAllowedZ = -targetDepth - 1e-4;
+        boolean inside = (side == cam.geometry.ContourSide.INSIDE);
+
+        for (int i = 0; i < toolpath.getSegments().size(); i++) {
+            var s = toolpath.getSegments().get(i);
+            if (s.motionType().isCutting()) {
+                if (s.start().z() < minAllowedZ || s.end().z() < minAllowedZ) {
+                    errors.add(String.format("Cutting segment %d exceeds maximum depth: minZ = %.4f mm < %.4f mm",
+                            i, Math.min(s.start().z(), s.end().z()), minAllowedZ));
+                }
+                cam.geometry.CamPoint2D p0 = new cam.geometry.CamPoint2D(s.start().x(), s.start().y());
+                cam.geometry.CamPoint2D p1 = new cam.geometry.CamPoint2D(s.end().x(), s.end().y());
+                double segLen = p0.distanceTo(p1);
+                int samples = Math.max(2, (int) Math.ceil(segLen / Math.max(0.5, cutterRadius * 0.5)) + 1);
+
+                for (int k = 0; k < samples; k++) {
+                    double t = (double) k / (samples - 1);
+                    cam.geometry.CamPoint2D pt = new cam.geometry.CamPoint2D(
+                        p0.x() + t * (p1.x() - p0.x()), p0.y() + t * (p1.y() - p0.y())
+                    );
+                    if (partBoundary.isClosed()) {
+                        if (inside && !partBoundary.contains(pt)) {
+                            errors.add(String.format("Swept cutter path at segment %d (t=%.2f) escapes cavity into part material.", i, t));
+                            break;
+                        } else if (!inside && partBoundary.contains(pt)) {
+                            errors.add(String.format("Swept cutter path at segment %d (t=%.2f) gouges inside closed part boundary.", i, t));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return new ValidationResult(errors.isEmpty(), errors);
+    }
 }
