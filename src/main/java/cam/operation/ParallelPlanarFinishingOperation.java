@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Deterministic 3D Parallel Planar Finishing Operation for bounded triangulated surfaces.
- * Generates linear G01 cutting trajectories with stepover, segmentation, and safe linking.
+ * Evaluates exact flat-endmill disk contact, stepover bounds, and safe obstacle clearance.
  */
 public class ParallelPlanarFinishingOperation implements CamOperation {
 
@@ -30,6 +30,7 @@ public class ParallelPlanarFinishingOperation implements CamOperation {
     private double clearanceHeightZ = 25.0;
     private double localClearanceMm = 2.0;
     private boolean bidirectional = true;
+    private boolean cutterRadiusCompensation = true;
 
     public ParallelPlanarFinishingOperation(String id, String name, CamTriangulatedSurface surface,
                                            CamTool tool, double stepoverMm, double cuttingFeedRateMmMin,
@@ -58,11 +59,16 @@ public class ParallelPlanarFinishingOperation implements CamOperation {
     public void setClearanceHeight(double z)                { this.clearanceHeightZ = z; }
     public boolean isBidirectional()                        { return bidirectional; }
     public void setBidirectional(boolean b)                 { this.bidirectional = b; }
+    public boolean isCutterRadiusCompensation()             { return cutterRadiusCompensation; }
+    public void setCutterRadiusCompensation(boolean c)      { this.cutterRadiusCompensation = c; }
 
     @Override
     public String validate(ManufacturingSetup setup) {
         if (setup == null) return "Manufacturing setup cannot be null.";
         if (surface == null || surface.getTriangleCount() == 0) return "Triangulated surface cannot be null or empty.";
+        String topErr = surface.validateSingleSheetTopology();
+        if (topErr != null) return "Invalid surface topology: " + topErr;
+
         if (tool == null) return "Tool cannot be null.";
         if (tool.getType() != ToolType.FLAT_ENDMILL) {
             return "Parallel planar finishing requires a flat endmill (got: " + tool.getType() + ").";
@@ -74,12 +80,21 @@ public class ParallelPlanarFinishingOperation implements CamOperation {
         if (cuttingFeedRateMmMin <= 0.0 || plungeFeedRateMmMin <= 0.0) return "Feed rates must be strictly positive.";
         if (spindleRpm <= 0.0) return "Spindle RPM must be strictly positive.";
 
+        double clearZ = (setup.getSafetyPlane() != null) ? setup.getSafetyPlane().getClearanceZ() : clearanceHeightZ;
+        if (clearZ <= surface.getMaxZ()) return "Clearance height must be strictly above surface maximum Z.";
         if (setup.getStock() != null) {
             var st = setup.getStock();
             if (surface.getMinZ() < st.getBottomZ() - 1e-4) return "Surface depth penetrates below stock bottom.";
-            if (clearanceHeightZ <= st.getTopZ()) return "Clearance height must be above stock top.";
+            if (clearZ <= st.getTopZ()) return "Clearance height must be strictly above stock top.";
         }
         return null;
+    }
+
+    private double evaluateZ(double x, double y) {
+        double r = cutterRadiusCompensation ? tool.getRadius() : 0.0;
+        double z = (r > 1e-6) ? surface.queryCutterDiskHeight(x, y, r) : surface.queryHeight(x, y);
+        if (Double.isNaN(z)) z = surface.queryHeight(x, y);
+        return Double.isNaN(z) ? surface.getMinZ() : z;
     }
 
     @Override
@@ -94,7 +109,6 @@ public class ParallelPlanarFinishingOperation implements CamOperation {
         double spanY = maxY - minY;
         int passCount = (spanY < 1e-6) ? 1 : Math.max(2, (int) Math.ceil(spanY / stepoverMm) + 1);
         double stepY = (passCount > 1) ? spanY / (passCount - 1) : 0.0;
-
         CamPoint3D curPos = null;
 
         for (int k = 0; k < passCount; k++) {
@@ -108,13 +122,11 @@ public class ParallelPlanarFinishingOperation implements CamOperation {
 
             for (int i = startIdx; forward ? i < intervals.size() : i >= 0; i += stepIdx) {
                 Interval1D iv = intervals.get(i);
-                double x1 = forward ? iv.startX() : iv.endX();
-                double x2 = forward ? iv.endX() : iv.startX();
+                double x1 = forward ? iv.startX() : iv.endX(), x2 = forward ? iv.endX() : iv.startX();
                 double len = Math.abs(x2 - x1);
                 int segCount = (len < 1e-6) ? 1 : Math.max(2, (int) Math.ceil(len / maxSegmentLengthMm) + 1);
 
-                double zFirst = surface.queryHeight(x1, curY);
-                if (Double.isNaN(zFirst)) zFirst = surface.getMinZ();
+                double zFirst = evaluateZ(x1, curY);
                 CamPoint3D leadIn = new CamPoint3D(x1, curY, zFirst);
                 CamPoint3D clearPos = new CamPoint3D(x1, curY, clearZ);
 
@@ -134,15 +146,13 @@ public class ParallelPlanarFinishingOperation implements CamOperation {
                 for (int s = 1; s < segCount; s++) {
                     double t = (double) s / (segCount - 1);
                     double xs = x1 + t * (x2 - x1);
-                    double zs = surface.queryHeight(xs, curY);
-                    if (Double.isNaN(zs)) zs = zFirst;
+                    double zs = evaluateZ(xs, curY);
                     CamPoint3D next = new CamPoint3D(xs, curY, zs);
                     path.addSegment(MotionType.FEED, curPos, next, cuttingFeedRateMmMin, spindleRpm);
                     curPos = next;
                 }
             }
         }
-
         if (curPos != null) {
             CamPoint3D finalClear = new CamPoint3D(curPos.x(), curPos.y(), clearZ);
             path.addSegment(MotionType.RETRACT, curPos, finalClear, 0.0, spindleRpm);
