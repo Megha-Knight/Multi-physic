@@ -34,33 +34,20 @@ public class NcProgramVerifier {
         List<NcVerificationFinding> findings = new ArrayList<>();
         NcInterpreterState state = new NcInterpreterState();
 
-        findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_COLLISION_CHECK,
-            NcFindingSeverity.INFO, 0, "", "Preflight checks audit endpoints and stock boundaries. Swept 3D cutter volume, holder, and fixture checks require complete 3D solid models."));
-        findings.add(new NcVerificationFinding(NcFindingCode.TOOL_HOLDER_CLEARANCE_UNVERIFIED,
-            NcFindingSeverity.INFO, 0, "", "Tool holder geometry unmodeled; holder clearance unverified."));
-        findings.add(new NcVerificationFinding(NcFindingCode.MACHINE_ENVELOPE_UNVERIFIED,
-            NcFindingSeverity.INFO, 0, "", "Machine axis travel limits unmodeled; travel limits unverified."));
+        findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_COLLISION_CHECK, NcFindingSeverity.INFO, 0, "", "Preflight checks audit endpoints and stock boundaries. Swept 3D cutter volume, holder, and fixture checks require complete 3D solid models."));
+        findings.add(new NcVerificationFinding(NcFindingCode.TOOL_HOLDER_CLEARANCE_UNVERIFIED, NcFindingSeverity.INFO, 0, "", "Tool holder geometry unmodeled; holder clearance unverified."));
+        findings.add(new NcVerificationFinding(NcFindingCode.MACHINE_ENVELOPE_UNVERIFIED, NcFindingSeverity.INFO, 0, "", "Machine axis travel limits unmodeled; travel limits unverified."));
 
         if (setup == null || !setup.hasFixtureGeometry()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_CLEARANCE_UNVERIFIED,
-                NcFindingSeverity.WARNING, 0, "", "Fixture and clamp geometry is not configured in setup."));
+            findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_CLEARANCE_UNVERIFIED, NcFindingSeverity.WARNING, 0, "", "Fixture and clamp geometry is not configured in setup."));
         } else if (!setup.getFixtureBounds().isValid()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.INVALID_FIXTURE_BOUNDS,
-                NcFindingSeverity.ERROR, 0, "", "Configured fixture bounding volume is inverted, degenerate, or invalid."));
+            findings.add(new NcVerificationFinding(NcFindingCode.INVALID_FIXTURE_BOUNDS, NcFindingSeverity.ERROR, 0, "", "Configured fixture bounding volume is inverted, degenerate, or invalid."));
         }
 
-        for (int i = 0; i < blocks.size(); i++) {
-            verifyBlock(blocks.get(i), i, state, findings);
-        }
+        for (int i = 0; i < blocks.size(); i++) verifyBlock(blocks.get(i), i, state, findings);
 
-        if (!state.isProgramTerminated()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.PROGRAM_END_MISSING,
-                NcFindingSeverity.ERROR, blocks.size(), "", "Program ends without M30/M02 termination block."));
-        }
-        if (state.isCannedCycleActive()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_NOT_CANCELLED,
-                NcFindingSeverity.ERROR, blocks.size(), "", "Program finished with active canned cycle without G80."));
-        }
+        if (!state.isProgramTerminated()) findings.add(new NcVerificationFinding(NcFindingCode.PROGRAM_END_MISSING, NcFindingSeverity.ERROR, blocks.size(), "", "Program ends without M30/M02 termination block."));
+        if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_NOT_CANCELLED, NcFindingSeverity.ERROR, blocks.size(), "", "Program finished with active canned cycle without G80."));
 
         return new NcVerificationReport(programName, profile.getName(), blocks.size(), findings, state);
     }
@@ -93,12 +80,10 @@ public class NcProgramVerifier {
 
         if (p.hasM("M30") || p.hasM("M02")) {
             if (profile.isEmitToolLengthCancel() && state.isToolLengthCompActive()) {
-                findings.add(new NcVerificationFinding(NcFindingCode.TOOL_LENGTH_NOT_CANCELLED,
-                    NcFindingSeverity.ERROR, idx, line, "Program terminated (M30) without canceling tool length compensation (missing G49)."));
+                findings.add(new NcVerificationFinding(NcFindingCode.TOOL_LENGTH_NOT_CANCELLED, NcFindingSeverity.ERROR, idx, line, "Missing G49 tool length cancel before M30."));
             }
             if (state.isCannedCycleActive()) {
-                findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_NOT_CANCELLED,
-                    NcFindingSeverity.ERROR, idx, line, "M30 program end executed while canned cycle is still active."));
+                findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_NOT_CANCELLED, NcFindingSeverity.ERROR, idx, line, "M30 executed with active canned cycle."));
             }
             state.setProgramTerminated(true);
         }
@@ -120,7 +105,18 @@ public class NcProgramVerifier {
             }
             state.setInitialized(true);
         }
-        for (String g : p.getGCodes()) { if (g.matches("G5[4-9]")) state.setActiveWcs(g); }
+        for (String g : p.getGCodes()) {
+            if (g.matches("G5[4-9]")) {
+                state.setActiveWcs(g);
+                if (setup != null) {
+                    var cs = setup.getCoordinateSystem(g);
+                    if (cs == null || !cs.isValid()) {
+                        findings.add(new NcVerificationFinding(NcFindingCode.COORDINATE_OFFSET_INVALID,
+                            NcFindingSeverity.ERROR, idx, line, "WCS " + g + " is unconfigured or invalid in setup."));
+                    }
+                }
+            }
+        }
 
         if (p.hasWord('T')) {
             if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_CHANGE_DURING_CYCLE,
@@ -157,15 +153,13 @@ public class NcProgramVerifier {
             state.setSpindleRunning(true);
             if (p.hasWord('S')) {
                 state.setSpindleRpm(p.getWord('S'));
-                if (p.getWord('S') <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.SPINDLE_RPM_NON_POSITIVE,
-                    NcFindingSeverity.ERROR, idx, line, "Spindle speed S must be strictly positive (got: " + p.getWord('S') + ")."));
+                if (p.getWord('S') <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.SPINDLE_RPM_NON_POSITIVE, NcFindingSeverity.ERROR, idx, line, "Spindle speed S non-positive."));
             }
         }
         if (p.hasM("M05")) state.setSpindleRunning(false);
         if (p.hasWord('F')) {
             state.setActiveFeedRate(p.getWord('F'));
-            if (p.getWord('F') <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.FEED_RATE_NON_POSITIVE,
-                NcFindingSeverity.ERROR, idx, line, "Feed rate F must be strictly positive (got: " + p.getWord('F') + ")."));
+            if (p.getWord('F') <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.FEED_RATE_NON_POSITIVE, NcFindingSeverity.ERROR, idx, line, "Feed rate F non-positive."));
         }
     }
 
@@ -178,14 +172,19 @@ public class NcProgramVerifier {
         }
         if (p.hasG("G28")) {
             if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "G28 return attempted during canned cycle."));
-            if (p.hasG("G91") || "G91".equals(state.getActiveDistanceMode())) state.setReferenceReturnPendingRestore(true);
+            if (p.hasG("G91") || "G91".equals(state.getActiveDistanceMode())) {
+                state.setReferenceReturnPendingRestore(true);
+            } else if ("G90".equals(state.getActiveDistanceMode())) {
+                findings.add(new NcVerificationFinding(NcFindingCode.UNSAFE_REFERENCE_RETURN,
+                    NcFindingSeverity.WARNING, idx, line, "G28 in absolute mode (G90) risks intermediate collision; use G91 G28 Z0."));
+            }
         }
 
         if (p.hasG("G80") || p.hasG("G00") || p.hasG("G0") || p.hasG("G01") || p.hasG("G1")) {
             state.setCannedCycleActive(false);
             state.clearModalCycleParams();
         }
-        if (p.hasG("G81") || p.hasG("G83") || p.hasG("G73")) {
+        if (p.hasG("G81") || p.hasG("G82") || p.hasG("G83") || p.hasG("G73")) {
             state.setCannedCycleActive(true);
             NcMotionVerifier.verifyCannedCycle(p, idx, line, state, profile, setup, findings);
         } else if (state.isCannedCycleActive() && (p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z'))) {

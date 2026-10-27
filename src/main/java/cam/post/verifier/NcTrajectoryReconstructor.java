@@ -46,11 +46,19 @@ public class NcTrajectoryReconstructor {
     ) {}
 
     public static TrajectoryReconstructionResult reconstruct(NcProgram program, ControllerProfile profile) {
+        return reconstruct(program, profile, null);
+    }
+
+    public static TrajectoryReconstructionResult reconstruct(NcProgram program, ControllerProfile profile, cam.model.ManufacturingSetup setup) {
         if (program == null) throw new IllegalArgumentException("NcProgram cannot be null.");
-        return reconstruct(program.getBlocks(), profile);
+        return reconstruct(program.getBlocks(), profile, setup);
     }
 
     public static TrajectoryReconstructionResult reconstruct(List<String> blocks, ControllerProfile profile) {
+        return reconstruct(blocks, profile, null);
+    }
+
+    public static TrajectoryReconstructionResult reconstruct(List<String> blocks, ControllerProfile profile, cam.model.ManufacturingSetup setup) {
         if (blocks == null) throw new IllegalArgumentException("Block list cannot be null.");
         ControllerProfile prof = (profile != null) ? profile : ControllerProfile.createIso6983Standard();
 
@@ -76,6 +84,12 @@ public class NcTrajectoryReconstructor {
             for (String cmd : p.getUnsupportedCommands()) {
                 errors.add("Block " + i + ": Unsupported command '" + cmd + "'.");
             }
+            if (p.hasG("G20") && prof.getUnitMode() == ControllerProfile.UnitMode.METRIC_G21) {
+                errors.add("Block " + i + ": G20 inch mode commanded in metric G21 profile.");
+            }
+            if (p.hasG("G21") && prof.getUnitMode() == ControllerProfile.UnitMode.INCH_G20) {
+                errors.add("Block " + i + ": G21 metric mode commanded in inch G20 profile.");
+            }
 
             if (p.hasG("G90")) activeDistanceMode = "G90";
             if (p.hasG("G91")) activeDistanceMode = "G91";
@@ -97,9 +111,12 @@ public class NcTrajectoryReconstructor {
                 if (p.hasWord('Z')) curZ = p.getWord('Z');
             }
             if (p.hasG("G49")) toolLengthCompActive = false;
+            if (p.hasG("G28") && "G90".equals(activeDistanceMode) && !p.hasG("G91")) {
+                errors.add("Block " + i + ": G28 in absolute G90 mode risks intermediate collision before reference return; use G91 G28 Z0.");
+            }
 
             boolean isMotion = p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z');
-            if (isMotion && !p.hasG("G53") && !p.hasG("G28") && !p.hasG("G43")) {
+            if (isMotion && !p.hasG("G28") && !p.hasG("G43")) {
                 if (terminated) errors.add("Block " + i + ": Motion commanded after program termination M30.");
                 if (activeMotionGroup == null) {
                     errors.add("Block " + i + ": Motion commanded without active motion group (G00/G01).");
@@ -107,9 +124,22 @@ public class NcTrajectoryReconstructor {
                 }
 
                 CoordinateFrame frame = CoordinateFrame.WORKPIECE_WCS;
-                if (activeWcs == null) {
+                if (p.hasG("G53")) {
+                    frame = CoordinateFrame.MACHINE_G53;
+                } else if (activeWcs == null) {
                     frame = CoordinateFrame.UNRESOLVED;
                     errors.add("Block " + i + ": Motion commanded without active work coordinate system (G54-G59); physical tool-tip position is unresolved.");
+                } else if (setup != null) {
+                    cam.model.MachineCoordinateSystem cs = setup.getCoordinateSystem(activeWcs);
+                    if (cs == null || !cs.isValid()) {
+                        frame = CoordinateFrame.UNRESOLVED;
+                        errors.add("Block " + i + ": Work coordinate system " + activeWcs + " is not configured or contains invalid offsets; cannot resolve physical position.");
+                    }
+                }
+
+                if ("G01".equals(activeMotionGroup) && !toolLengthCompActive && !p.hasG("G53")) {
+                    frame = CoordinateFrame.UNRESOLVED;
+                    errors.add("Block " + i + ": Cutting motion commanded without active tool length compensation (G43); tool-tip position is uncompensated.");
                 }
 
                 boolean isInc = "G91".equals(activeDistanceMode);

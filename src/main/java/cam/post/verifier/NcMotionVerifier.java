@@ -46,7 +46,7 @@ public final class NcMotionVerifier {
                 NcFindingSeverity.ERROR, idx, line, "Canned cycle commanded after G91 G28 without restoring G90."));
         }
 
-        boolean isInitial = p.hasG("G81") || p.hasG("G83") || p.hasG("G73");
+        boolean isInitial = p.hasG("G81") || p.hasG("G82") || p.hasG("G83") || p.hasG("G73");
         if (isInitial && (!p.hasWord('Z') || !p.hasWord('R'))) {
             findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_INVALID_PARAMS,
                 NcFindingSeverity.ERROR, idx, line, "Initial canned cycle definition missing required Z depth or R plane."));
@@ -72,6 +72,15 @@ public final class NcMotionVerifier {
                 NcFindingSeverity.ERROR, idx, line, "Peck drilling cycle missing positive Q increment."));
         }
 
+        if ("G91".equals(state.getActiveDistanceMode())) {
+            findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_INCREMENTAL_UNSUPPORTED,
+                NcFindingSeverity.ERROR, idx, line, "Canned cycle commanded under G91 incremental mode."));
+        }
+        if (p.hasG("G82") && p.hasWord('P') && p.getWord('P') < 0.0) {
+            findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_INVALID_PARAMS,
+                NcFindingSeverity.ERROR, idx, line, "G82 dwell P cannot be negative."));
+        }
+
         double holeX = p.hasWord('X') ? p.getWord('X') : state.getCurrentX();
         double holeY = p.hasWord('Y') ? p.getWord('Y') : state.getCurrentY();
         if (setup != null && setup.getStock() != null) {
@@ -91,9 +100,16 @@ public final class NcMotionVerifier {
         if (setup != null && setup.hasFixtureGeometry() && setup.getFixtureBounds().isValid()
                 && Double.isFinite(holeX) && Double.isFinite(holeY) && Double.isFinite(targetZ)) {
             double startZ = Double.isFinite(rZ) ? rZ : state.getCurrentZ();
-            CamPoint3D p1 = new CamPoint3D(holeX, holeY, Double.isFinite(startZ) ? startZ : targetZ);
-            CamPoint3D p2 = new CamPoint3D(holeX, holeY, targetZ);
-            if (setup.getFixtureBounds().intersectsSegment(p1, p2, 0.0)) {
+            double curX = Double.isFinite(state.getCurrentX()) ? state.getCurrentX() : holeX;
+            double curY = Double.isFinite(state.getCurrentY()) ? state.getCurrentY() : holeY;
+            double curZ = Double.isFinite(state.getCurrentZ()) ? state.getCurrentZ() : startZ;
+            double toolRad = setup.resolveToolRadius(state.getActiveTool(), 0.0);
+            var fb = setup.getFixtureBounds();
+            double retZ = "G98".equals(state.getActiveReturnLevel()) ? curZ : startZ;
+            if (fb.intersectsSegment(new CamPoint3D(curX, curY, curZ), new CamPoint3D(holeX, holeY, curZ), toolRad)
+                    || fb.intersectsSegment(new CamPoint3D(holeX, holeY, curZ), new CamPoint3D(holeX, holeY, startZ), toolRad)
+                    || fb.intersectsSegment(new CamPoint3D(holeX, holeY, startZ), new CamPoint3D(holeX, holeY, targetZ), toolRad)
+                    || fb.intersectsSegment(new CamPoint3D(holeX, holeY, targetZ), new CamPoint3D(holeX, holeY, retZ), toolRad)) {
                 findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_COLLISION_DETECTED,
                     NcFindingSeverity.ERROR, idx, line, "Canned cycle penetrates modeled fixture envelope."));
             }
@@ -163,7 +179,8 @@ public final class NcMotionVerifier {
                 && Double.isFinite(state.getCurrentX()) && Double.isFinite(newX)) {
             CamPoint3D p1 = new CamPoint3D(state.getCurrentX(), state.getCurrentY(), state.getCurrentZ());
             CamPoint3D p2 = new CamPoint3D(newX, newY, newZ);
-            if (setup.getFixtureBounds().intersectsSegment(p1, p2, 0.0)) {
+            double toolRad = setup.resolveToolRadius(state.getActiveTool(), 0.0);
+            if (setup.getFixtureBounds().intersectsSegment(p1, p2, toolRad)) {
                 findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_COLLISION_DETECTED,
                     NcFindingSeverity.ERROR, idx, line, "Motion segment collides with modeled fixture envelope."));
             }

@@ -43,4 +43,9 @@ public class MachineCoordinateSystem {
                      .add(axisY.multiply(workPt.y()))
                      .add(axisZ.multiply(workPt.z()));
     }
+
+    public boolean isValid() {
+        return origin != null && Double.isFinite(origin.x()) && Double.isFinite(origin.y()) && Double.isFinite(origin.z())
+            && axisX != null && axisY != null && axisZ != null;
+    }
 }

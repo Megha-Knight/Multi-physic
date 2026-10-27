@@ -19,6 +19,8 @@ public class ManufacturingSetup {
     private MachineCoordinateSystem mcs;
     private SafetyPlane safetyPlane;
     private final List<CamOperation> operations = new ArrayList<>();
+    private final java.util.Map<String, MachineCoordinateSystem> workOffsets = new java.util.LinkedHashMap<>();
+    private final java.util.Map<Integer, cam.tool.CamTool> toolTable = new java.util.LinkedHashMap<>();
 
     public ManufacturingSetup(String id, String name, String targetPartId,
                               StockDimensions stock, MachineCoordinateSystem mcs, SafetyPlane safetyPlane) {
@@ -28,6 +30,7 @@ public class ManufacturingSetup {
         this.stock = stock;
         this.mcs = (mcs != null) ? mcs : new MachineCoordinateSystem("G54", CamPoint3D.ZERO);
         this.safetyPlane = (safetyPlane != null) ? safetyPlane : new SafetyPlane(25.0, 5.0);
+        this.workOffsets.put(this.mcs.getName().toUpperCase(java.util.Locale.US), this.mcs);
     }
 
     public static ManufacturingSetup createDefault(String partId, double w, double d, double h) {
@@ -44,9 +47,42 @@ public class ManufacturingSetup {
     public StockDimensions getStock()           { return stock; }
     public void setStock(StockDimensions s)     { this.stock = s; }
     public MachineCoordinateSystem getMcs()     { return mcs; }
-    public void setMcs(MachineCoordinateSystem m) { this.mcs = m; }
+    public void setMcs(MachineCoordinateSystem m) {
+        this.mcs = m;
+        if (m != null) this.workOffsets.put(m.getName().toUpperCase(java.util.Locale.US), m);
+    }
     public SafetyPlane getSafetyPlane()         { return safetyPlane; }
     public void setSafetyPlane(SafetyPlane sp)  { this.safetyPlane = sp; }
+
+    public MachineCoordinateSystem getCoordinateSystem(String name) {
+        if (name == null) return null;
+        String key = name.toUpperCase(java.util.Locale.US);
+        if (workOffsets.containsKey(key)) return workOffsets.get(key);
+        if (mcs != null && key.equals(mcs.getName().toUpperCase(java.util.Locale.US))) return mcs;
+        return null;
+    }
+
+    public void setCoordinateSystem(String name, MachineCoordinateSystem cs) {
+        if (name != null && cs != null) workOffsets.put(name.toUpperCase(java.util.Locale.US), cs);
+    }
+
+    public void setTool(int toolNumber, cam.tool.CamTool tool) {
+        if (tool != null) toolTable.put(toolNumber, tool);
+    }
+
+    public cam.tool.CamTool findTool(Integer toolNumber) {
+        if (toolNumber == null) return null;
+        if (toolTable.containsKey(toolNumber)) return toolTable.get(toolNumber);
+        for (CamOperation op : operations) {
+            if (op.getTool() != null) return op.getTool();
+        }
+        return null;
+    }
+
+    public double resolveToolRadius(Integer toolNumber, double fallbackRadius) {
+        cam.tool.CamTool t = findTool(toolNumber);
+        return (t != null) ? t.getRadius() : fallbackRadius;
+    }
 
     public List<CamOperation> getOperations()   { return Collections.unmodifiableList(operations); }
     public void addOperation(CamOperation op)   { if (op != null) operations.add(op); }
