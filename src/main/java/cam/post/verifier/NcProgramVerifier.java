@@ -37,6 +37,12 @@ public class NcProgramVerifier {
         findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_COLLISION_CHECK,
             NcFindingSeverity.INFO, 0, "", "Preflight checks audit endpoints and stock boundaries. Swept 3D cutter volume, holder, and fixture checks require complete 3D solid models."));
 
+        if (setup == null || !setup.hasFixtureGeometry()) {
+            findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_CLEARANCE_UNVERIFIED,
+                NcFindingSeverity.WARNING, 0, "",
+                "Fixture and clamp geometry is not configured in setup. Fixture clearance is unverified; stock-relative clearance does not guarantee physical machine safety."));
+        }
+
         for (int i = 0; i < blocks.size(); i++) {
             verifyBlock(blocks.get(i), i, state, findings);
         }
@@ -61,17 +67,17 @@ public class NcProgramVerifier {
             findings.add(new NcVerificationFinding(NcFindingCode.MALFORMED_BLOCK_SYNTAX,
                 NcFindingSeverity.ERROR, idx, line, "Malformed block token or invalid number format."));
         }
-        p.getDuplicateWords().forEach(c -> findings.add(new NcVerificationFinding(
-            NcFindingCode.DUPLICATE_ADDRESS_WORD, NcFindingSeverity.ERROR, idx, line, "Duplicate address word '" + c + "'. ")));
-        if (p.hasConflictingModalCommands()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.CONFLICTING_MODAL_COMMANDS,
-                NcFindingSeverity.ERROR, idx, line, "Conflicting modal commands from the same modal group in single block."));
+        for (char c : p.getDuplicateWords()) {
+            findings.add(new NcVerificationFinding(NcFindingCode.DUPLICATE_ADDRESS_WORD, NcFindingSeverity.ERROR, idx, line, "Duplicate address word '" + c + "'. "));
         }
-        p.getUnsupportedCommands().forEach(cmd -> findings.add(new NcVerificationFinding(
-            NcFindingCode.UNSUPPORTED_NC_COMMAND, NcFindingSeverity.ERROR, idx, line, "Unsupported NC command '" + cmd + "'. ")));
+        if (p.hasConflictingModalCommands()) {
+            findings.add(new NcVerificationFinding(NcFindingCode.CONFLICTING_MODAL_COMMANDS, NcFindingSeverity.ERROR, idx, line, "Conflicting modal commands from same group."));
+        }
+        for (String cmd : p.getUnsupportedCommands()) {
+            findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_NC_COMMAND, NcFindingSeverity.ERROR, idx, line, "Unsupported NC command '" + cmd + "'. "));
+        }
         if (state.isProgramTerminated()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.MOTION_AFTER_PROGRAM_END,
-                NcFindingSeverity.ERROR, idx, line, "Executable command or motion encountered after M30 termination."));
+            findings.add(new NcVerificationFinding(NcFindingCode.MOTION_AFTER_PROGRAM_END, NcFindingSeverity.ERROR, idx, line, "Command after M30 termination."));
             return;
         }
 
@@ -108,19 +114,16 @@ public class NcProgramVerifier {
         for (String g : p.getGCodes()) { if (g.matches("G5[4-9]")) state.setActiveWcs(g); }
 
         if (p.hasWord('T')) {
-            if (state.isCannedCycleActive()) {
-                findings.add(new NcVerificationFinding(NcFindingCode.TOOL_CHANGE_DURING_CYCLE,
-                    NcFindingSeverity.ERROR, idx, line, "Tool change attempted during active canned cycle."));
-            }
+            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_CHANGE_DURING_CYCLE,
+                NcFindingSeverity.ERROR, idx, line, "Tool change attempted during active canned cycle."));
             if (p.hasM("M06")) {
                 if (profile.isEmitToolLengthCancel() && state.isToolLengthCompActive() && !p.hasG("G49")) {
                     findings.add(new NcVerificationFinding(NcFindingCode.TOOL_LENGTH_NOT_CANCELLED,
-                        NcFindingSeverity.ERROR, idx, line, "Tool change attempted without canceling previous tool compensation (missing G49)."));
+                        NcFindingSeverity.ERROR, idx, line, "Tool change attempted without canceling previous compensation."));
                 }
                 state.setActiveTool(p.getWord('T').intValue());
             }
         }
-
         if (p.hasG("G43")) {
             if (p.hasWord('Z') && setup != null && setup.getStock() != null && p.getWord('Z') < setup.getStock().getTopZ() - 1e-4) {
                 findings.add(new NcVerificationFinding(NcFindingCode.UNSAFE_COMPENSATION_POSITION,
@@ -131,13 +134,10 @@ public class NcProgramVerifier {
                 state.setActiveHRegister(h);
                 state.setToolLengthCompActive(true);
                 int expH = profile.resolveHRegister(state.getActiveTool() != null ? state.getActiveTool() : 1);
-                if (h != expH) {
-                    findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH,
-                        NcFindingSeverity.ERROR, idx, line, String.format("Tool length offset H%d does not match expected H%d for active tool T%d.", h, expH, state.getActiveTool())));
-                }
+                if (h != expH) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH,
+                    NcFindingSeverity.ERROR, idx, line, String.format("Tool length offset H%d does not match expected H%d for active tool T%d.", h, expH, state.getActiveTool())));
             } else {
-                findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH,
-                    NcFindingSeverity.ERROR, idx, line, "G43 emitted without H offset register."));
+                findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G43 emitted without H offset register."));
             }
         }
         if (p.hasG("G49")) state.setToolLengthCompActive(false);
@@ -147,19 +147,16 @@ public class NcProgramVerifier {
         if (p.hasM("M03") || p.hasM("M04")) {
             state.setSpindleRunning(true);
             if (p.hasWord('S')) {
-                double rpm = p.getWord('S');
-                state.setSpindleRpm(rpm);
-                if (rpm <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.SPINDLE_RPM_NON_POSITIVE,
-                    NcFindingSeverity.ERROR, idx, line, "Spindle speed S must be strictly positive (got: " + rpm + ")."));
+                state.setSpindleRpm(p.getWord('S'));
+                if (p.getWord('S') <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.SPINDLE_RPM_NON_POSITIVE,
+                    NcFindingSeverity.ERROR, idx, line, "Spindle speed S must be strictly positive (got: " + p.getWord('S') + ")."));
             }
         }
         if (p.hasM("M05")) state.setSpindleRunning(false);
-
         if (p.hasWord('F')) {
-            double feed = p.getWord('F');
-            state.setActiveFeedRate(feed);
-            if (feed <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.FEED_RATE_NON_POSITIVE,
-                NcFindingSeverity.ERROR, idx, line, "Feed rate F must be strictly positive (got: " + feed + ")."));
+            state.setActiveFeedRate(p.getWord('F'));
+            if (p.getWord('F') <= 0.0) findings.add(new NcVerificationFinding(NcFindingCode.FEED_RATE_NON_POSITIVE,
+                NcFindingSeverity.ERROR, idx, line, "Feed rate F must be strictly positive (got: " + p.getWord('F') + ")."));
         }
     }
 

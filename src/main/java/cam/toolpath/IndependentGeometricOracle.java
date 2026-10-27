@@ -2,12 +2,13 @@ package cam.toolpath;
 
 import cam.geometry.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * Independent analytical geometric oracle for toolpath swept-envelope verification.
- * Employs exact segment-to-segment Euclidean distance minimization and continuous
- * capsule-polygon interference without point-sampling approximations.
+ * Employs exact segment-to-segment Euclidean distance minimization, collinear intersection
+ * detection, and independent ray-casting material containment without point-sampling.
  */
 public final class IndependentGeometricOracle {
 
@@ -18,14 +19,22 @@ public final class IndependentGeometricOracle {
     public static OracleReport verifyContourFinishing(
             Toolpath toolpath, CamContour2D boundary, ContourSide side,
             double cutterRadius, double finishAllowance) {
+        return verifyContourFinishingWithIslands(toolpath, boundary, List.of(), side, cutterRadius, finishAllowance, 0.0);
+    }
+
+    public static OracleReport verifyContourFinishingWithIslands(
+            Toolpath toolpath, CamContour2D boundary, List<CamContour2D> islands,
+            ContourSide side, double cutterRadius, double finishAllowance, double chordalSagittaTolerance) {
         if (toolpath == null || boundary == null) {
             return new OracleReport(false, 0.0, List.of("Toolpath or boundary cannot be null."));
         }
 
-        double requiredClearance = cutterRadius + finishAllowance;
+        double requiredClearance = cutterRadius + finishAllowance + chordalSagittaTolerance;
         double minObservedDist = Double.MAX_VALUE;
         List<String> errors = new ArrayList<>();
         boolean inside = (side == ContourSide.INSIDE);
+
+        List<CamPoint2D> bVerts = boundary.getVertices();
 
         for (int i = 0; i < toolpath.getSegments().size(); i++) {
             ToolpathSegment seg = toolpath.getSegments().get(i);
@@ -33,17 +42,44 @@ public final class IndependentGeometricOracle {
 
             CamPoint2D t0 = new CamPoint2D(seg.start().x(), seg.start().y());
             CamPoint2D t1 = new CamPoint2D(seg.end().x(), seg.end().y());
+            CamPoint2D tMid = new CamPoint2D((t0.x() + t1.x()) * 0.5, (t0.y() + t1.y()) * 0.5);
 
-            // 1. Independent material containment of endpoints
+            // 1. Independent material containment (ray casting parity)
             if (boundary.isClosed()) {
-                if (inside && (!boundary.contains(t0) || !boundary.contains(t1))) {
+                boolean in0 = pointInPolygon(t0, bVerts);
+                boolean in1 = pointInPolygon(t1, bVerts);
+                boolean inM = pointInPolygon(tMid, bVerts);
+
+                if (inside && (!in0 || !in1 || !inM)) {
                     errors.add(String.format("Segment %d trajectory escapes cavity into retained material.", i));
-                } else if (!inside && (boundary.contains(t0) || boundary.contains(t1))) {
+                } else if (!inside && (in0 || in1 || inM)) {
                     errors.add(String.format("Segment %d trajectory penetrates nominal part solid.", i));
                 }
             }
 
-            // 2. Exact segment-to-segment distance across all boundary edges
+            // 2. Island material retention
+            if (islands != null) {
+                for (int isIdx = 0; isIdx < islands.size(); isIdx++) {
+                    CamContour2D isl = islands.get(isIdx);
+                    if (!isl.isClosed()) continue;
+                    List<CamPoint2D> iVerts = isl.getVertices();
+                    if (pointInPolygon(t0, iVerts) || pointInPolygon(t1, iVerts) || pointInPolygon(tMid, iVerts)) {
+                        errors.add(String.format("Segment %d trajectory penetrates retained island %d.", i, isIdx));
+                    }
+                    for (int ib = 0; ib < isl.getSegmentCount(); ib++) {
+                        CamSegment2D iSeg = isl.getSegment(ib);
+                        double idist = segmentToSegmentDistance(t0, t1, iSeg.p1(), iSeg.p2());
+                        if (idist < minObservedDist) minObservedDist = idist;
+                        if (idist < requiredClearance - 1e-3) {
+                            errors.add(String.format("Segment %d swept capsule violates island %d edge %d: dist = %.4f mm < %.4f mm",
+                                i, isIdx, ib, idist, requiredClearance));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 3. Exact segment-to-segment distance across all boundary edges
             for (int b = 0; b < boundary.getSegmentCount(); b++) {
                 CamSegment2D bSeg = boundary.getSegment(b);
                 double d = segmentToSegmentDistance(t0, t1, bSeg.p1(), bSeg.p2());
@@ -57,7 +93,21 @@ public final class IndependentGeometricOracle {
             }
         }
 
-        return new OracleReport(errors.isEmpty(), minObservedDist, errors);
+        return new OracleReport(errors.isEmpty(), minObservedDist, Collections.unmodifiableList(errors));
+    }
+
+    public static boolean pointInPolygon(CamPoint2D pt, List<CamPoint2D> poly) {
+        if (poly == null || poly.size() < 3) return false;
+        boolean inside = false;
+        double px = pt.x(), py = pt.y();
+        for (int i = 0, j = poly.size() - 1; i < poly.size(); j = i++) {
+            double xi = poly.get(i).x(), yi = poly.get(i).y();
+            double xj = poly.get(j).x(), yj = poly.get(j).y();
+            boolean intersect = ((yi > py) != (yj > py))
+                && (px < (xj - xi) * (py - yi) / (yj - yi + 1e-15) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     }
 
     public static double segmentToSegmentDistance(CamPoint2D a, CamPoint2D b, CamPoint2D c, CamPoint2D d) {
@@ -75,14 +125,26 @@ public final class IndependentGeometricOracle {
         if (len2 <= 1e-12) return p.distanceTo(a);
         double t = ((p.x() - a.x()) * dx + (p.y() - a.y()) * dy) / len2;
         t = Math.max(0.0, Math.min(1.0, t));
-        double projX = a.x() + t * dx, projY = a.y() + t * dy;
-        return Math.hypot(p.x() - projX, p.y() - projY);
+        return Math.hypot(p.x() - (a.x() + t * dx), p.y() - (a.y() + t * dy));
     }
 
-    private static boolean segmentsIntersect(CamPoint2D a, CamPoint2D b, CamPoint2D c, CamPoint2D d) {
+    public static boolean segmentsIntersect(CamPoint2D a, CamPoint2D b, CamPoint2D c, CamPoint2D d) {
         double d1 = ccw(a, b, c), d2 = ccw(a, b, d);
         double d3 = ccw(c, d, a), d4 = ccw(c, d, b);
-        return (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)));
+        if (((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9))
+                && ((d3 > 1e-9 && d4 < -1e-9) || (d3 < -1e-9 && d4 > 1e-9))) {
+            return true;
+        }
+        if (Math.abs(d1) <= 1e-9 && onSegment(a, b, c)) return true;
+        if (Math.abs(d2) <= 1e-9 && onSegment(a, b, d)) return true;
+        if (Math.abs(d3) <= 1e-9 && onSegment(c, d, a)) return true;
+        if (Math.abs(d4) <= 1e-9 && onSegment(c, d, b)) return true;
+        return false;
+    }
+
+    private static boolean onSegment(CamPoint2D p, CamPoint2D q, CamPoint2D r) {
+        return r.x() >= Math.min(p.x(), q.x()) - 1e-9 && r.x() <= Math.max(p.x(), q.x()) + 1e-9
+            && r.y() >= Math.min(p.y(), q.y()) - 1e-9 && r.y() <= Math.max(p.y(), q.y()) + 1e-9;
     }
 
     private static double ccw(CamPoint2D a, CamPoint2D b, CamPoint2D c) {

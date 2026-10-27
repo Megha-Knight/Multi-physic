@@ -52,4 +52,9 @@ public class ManufacturingSetup {
     public void addOperation(CamOperation op)   { if (op != null) operations.add(op); }
     public void removeOperation(String opId)    { operations.removeIf(op -> op.getId().equals(opId)); }
     public void clearOperations()               { operations.clear(); }
+
+    private StockDimensions fixtureBounds = null;
+    public StockDimensions getFixtureBounds()   { return fixtureBounds; }
+    public void setFixtureBounds(StockDimensions fb) { this.fixtureBounds = fb; }
+    public boolean hasFixtureGeometry()         { return fixtureBounds != null; }
 }
