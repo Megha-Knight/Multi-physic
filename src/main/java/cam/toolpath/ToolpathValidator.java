@@ -147,6 +147,13 @@ public final class ToolpathValidator {
                             errors.add(String.format("Swept cutter path at segment %d (t=%.2f) gouges inside closed part boundary.", i, t));
                             break;
                         }
+                        double dist = partBoundary.distanceToBoundary(pt);
+                        double reqClearance = cutterRadius + allowance;
+                        if (dist < reqClearance - 1e-3) {
+                            errors.add(String.format("Swept cutter footprint at segment %d (t=%.2f) violates boundary clearance: dist=%.4f mm < required %.4f mm",
+                                    i, t, dist, reqClearance));
+                            break;
+                        }
                     }
                 }
             }

@@ -95,7 +95,7 @@ public class ContourFinishingOperation implements CamOperation {
             return "Contour finishing offset failed: " + offsetRes.getErrors();
         }
 
-        CamLeadResult leadRes = CamLeadEngine.generateLeads(offsetRes.getOffsetContour(), side,
+        CamLeadResult leadRes = CamLeadEngine.generateLeads(resolveEffContour(offsetRes.getOffsetContour()), side,
             leadInConfig, leadOutConfig, contour);
         if (!leadRes.isSuccess()) {
             return "Contour finishing lead generation failed: " + leadRes.getErrors();
@@ -120,7 +120,7 @@ public class ContourFinishingOperation implements CamOperation {
 
         double offsetDist = tool.getRadius() + finishStockAllowance;
         CamContourOffsetResult offsetRes = CamContourOffsetEngine.offset(contour, offsetDist, side);
-        CamLeadResult leadRes = CamLeadEngine.generateLeads(offsetRes.getOffsetContour(), side,
+        CamLeadResult leadRes = CamLeadEngine.generateLeads(resolveEffContour(offsetRes.getOffsetContour()), side,
             leadInConfig, leadOutConfig, contour);
 
         CamContour2D pathContour = leadRes.getCombinedPath();
@@ -169,8 +169,7 @@ public class ContourFinishingOperation implements CamOperation {
 
     private List<Double> computeZLevels() {
         List<Double> levels = new ArrayList<>();
-        double remaining = targetDepth;
-        double curZ = topZ;
+        double remaining = targetDepth, curZ = topZ;
         while (remaining > 1e-4) {
             double step = Math.min(stepdown, remaining);
             curZ -= step;
@@ -178,5 +177,21 @@ public class ContourFinishingOperation implements CamOperation {
             remaining -= step;
         }
         return levels;
+    }
+
+    private CamContour2D resolveEffContour(CamContour2D c) {
+        if (!contour.isClosed() || (leadInConfig.type() == CamLeadType.NONE && leadOutConfig.type() == CamLeadType.NONE)) return c;
+        int best = 0; double maxL = 0;
+        for (int i = 0; i < c.getSegmentCount(); i++) {
+            double len = c.getSegment(i).length();
+            if (len > maxL) { maxL = len; best = i; }
+        }
+        var seg = c.getSegment(best);
+        CamPoint2D mid = new CamPoint2D((seg.p1().x() + seg.p2().x()) * 0.5, (seg.p1().y() + seg.p2().y()) * 0.5);
+        int n = c.getVertexCount();
+        List<CamPoint2D> pts = new ArrayList<>(n + 1);
+        pts.add(mid);
+        for (int i = 0; i < n; i++) pts.add(c.getVertices().get((best + 1 + i) % n));
+        return CamContour2D.closed(pts);
     }
 }
