@@ -1,4 +1,25 @@
 cmake_minimum_required(VERSION 3.20)
+
+# Locate local LLVM toolchain if not explicitly provided or invalid
+if(NOT DEFINED CMAKE_C_COMPILER OR NOT EXISTS "${CMAKE_C_COMPILER}")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../src/main/cpp/bin/clang.exe")
+        set(CMAKE_C_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/../src/main/cpp/bin/clang.exe" CACHE FILEPATH "C Compiler" FORCE)
+    elseif(EXISTS "E:/LLVM/bin/clang.exe")
+        set(CMAKE_C_COMPILER "E:/LLVM/bin/clang.exe" CACHE FILEPATH "C Compiler" FORCE)
+    endif()
+endif()
+
+if(NOT DEFINED CMAKE_CXX_COMPILER OR NOT EXISTS "${CMAKE_CXX_COMPILER}")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../src/main/cpp/bin/clang++.exe")
+        set(CMAKE_CXX_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/../src/main/cpp/bin/clang++.exe" CACHE FILEPATH "CXX Compiler" FORCE)
+    elseif(EXISTS "E:/LLVM/bin/clang++.exe")
+        set(CMAKE_CXX_COMPILER "E:/LLVM/bin/clang++.exe" CACHE FILEPATH "CXX Compiler" FORCE)
+    endif()
+endif()
+
+set(CMAKE_C_COMPILER_TARGET x86_64-w64-windows-gnu CACHE STRING "Target" FORCE)
+set(CMAKE_CXX_COMPILER_TARGET x86_64-w64-windows-gnu CACHE STRING "Target" FORCE)
+
 project(astra_native VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)

@@ -4,7 +4,6 @@ import cam.geometry.CamPoint2D;
 import cam.geometry.CamSegment2D;
 import cam.model.CamPoint3D;
 import cam.tool.CamTool;
-import cam.toolpath.MotionType;
 import cam.toolpath.Toolpath;
 import cam.toolpath.ToolpathSegment;
 
