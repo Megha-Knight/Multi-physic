@@ -125,6 +125,7 @@ public class CamPlanExecutor {
     public static boolean isSupported(CamOperationType type) {
         return type == CamOperationType.SPOT_DRILLING
             || type == CamOperationType.DEEP_HOLE_DRILLING
-            || type == CamOperationType.PRISMATIC_ROUGHING;
+            || type == CamOperationType.PRISMATIC_ROUGHING
+            || type == CamOperationType.CONTOUR_FINISHING;
     }
 }

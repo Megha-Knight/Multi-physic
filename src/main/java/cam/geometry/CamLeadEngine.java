@@ -60,8 +60,11 @@ public final class CamLeadEngine {
         CamLeadMove leadOut = createLeadOut(outCfg, pOut, tOut, nOut);
 
         List<String> errors = new ArrayList<>();
-        validateGouge(leadIn, partBoundary, pIn, "Lead-in", errors);
-        validateGouge(leadOut, partBoundary, pOut, "Lead-out", errors);
+        validateGouge(leadIn, partBoundary, side, pIn, "Lead-in", errors);
+        validateGouge(leadOut, partBoundary, side, pOut, "Lead-out", errors);
+        if (leadIn != null && leadOut != null && contour.isClosed()) {
+            validateLeadCross(leadIn, leadOut, errors);
+        }
         if (!errors.isEmpty()) return CamLeadResult.failure(errors);
 
         List<CamPoint2D> combined = new ArrayList<>();
@@ -130,7 +133,8 @@ public final class CamLeadEngine {
         return pts;
     }
 
-    private static void validateGouge(CamLeadMove lead, CamContour2D part, CamPoint2D touch, String name, List<String> errs) {
+    private static void validateGouge(CamLeadMove lead, CamContour2D part, ContourSide side,
+                                     CamPoint2D touch, String name, List<String> errs) {
         if (lead == null || part == null) return;
         List<CamPoint2D> pts = lead.getPathPoints();
         for (int i = 0; i < pts.size() - 1; i++) {
@@ -143,9 +147,30 @@ public final class CamLeadEngine {
             }
         }
         if (part.isClosed()) {
+            boolean inside = (side == ContourSide.INSIDE);
             for (CamPoint2D pt : pts) {
-                if (pt.distanceTo(touch) > CamContour2D.EPSILON && part.contains(pt)) {
-                    errs.add(name + " penetrates inside closed part boundary.");
+                if (pt.distanceTo(touch) > CamContour2D.EPSILON) {
+                    if (inside && !part.contains(pt)) {
+                        errs.add(name + " penetrates outside cavity boundary into part material.");
+                        return;
+                    } else if (!inside && part.contains(pt)) {
+                        errs.add(name + " penetrates inside closed part boundary.");
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    private static void validateLeadCross(CamLeadMove in, CamLeadMove out, List<String> errs) {
+        List<CamPoint2D> inPts = in.getPathPoints();
+        List<CamPoint2D> outPts = out.getPathPoints();
+        for (int i = 0; i < inPts.size() - 1; i++) {
+            CamSegment2D segIn = new CamSegment2D(inPts.get(i), inPts.get(i + 1));
+            for (int j = 0; j < outPts.size() - 1; j++) {
+                CamSegment2D segOut = new CamSegment2D(outPts.get(j), outPts.get(j + 1));
+                if (segIn.intersectsStrict(segOut)) {
+                    errs.add("Lead-out intersects lead-in transition path.");
                     return;
                 }
             }
