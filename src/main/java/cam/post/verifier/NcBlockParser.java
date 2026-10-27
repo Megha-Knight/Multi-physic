@@ -86,7 +86,9 @@ public class NcBlockParser {
 
     private void checkConflictingModalCommands() {
         if ((hasG("G00") && hasG("G01")) || (hasG("G90") && hasG("G91"))
-                || (hasG("G17") && (hasG("G18") || hasG("G19")))) {
+                || (hasG("G17") && (hasG("G18") || hasG("G19")))
+                || (hasG("G98") && hasG("G99"))
+                || (hasM("M03") && hasM("M05"))) {
             conflictingModalCommands = true;
         }
     }

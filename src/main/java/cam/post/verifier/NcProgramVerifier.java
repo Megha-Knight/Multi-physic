@@ -61,18 +61,14 @@ public class NcProgramVerifier {
             findings.add(new NcVerificationFinding(NcFindingCode.MALFORMED_BLOCK_SYNTAX,
                 NcFindingSeverity.ERROR, idx, line, "Malformed block token or invalid number format."));
         }
-        for (char c : p.getDuplicateWords()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.DUPLICATE_ADDRESS_WORD,
-                NcFindingSeverity.ERROR, idx, line, "Duplicate address word '" + c + "' encountered in block."));
-        }
+        p.getDuplicateWords().forEach(c -> findings.add(new NcVerificationFinding(
+            NcFindingCode.DUPLICATE_ADDRESS_WORD, NcFindingSeverity.ERROR, idx, line, "Duplicate address word '" + c + "'. ")));
         if (p.hasConflictingModalCommands()) {
             findings.add(new NcVerificationFinding(NcFindingCode.CONFLICTING_MODAL_COMMANDS,
                 NcFindingSeverity.ERROR, idx, line, "Conflicting modal commands from the same modal group in single block."));
         }
-        for (String cmd : p.getUnsupportedCommands()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_NC_COMMAND,
-                NcFindingSeverity.ERROR, idx, line, "Unsupported NC command or word '" + cmd + "' encountered."));
-        }
+        p.getUnsupportedCommands().forEach(cmd -> findings.add(new NcVerificationFinding(
+            NcFindingCode.UNSUPPORTED_NC_COMMAND, NcFindingSeverity.ERROR, idx, line, "Unsupported NC command '" + cmd + "'. ")));
         if (state.isProgramTerminated()) {
             findings.add(new NcVerificationFinding(NcFindingCode.MOTION_AFTER_PROGRAM_END,
                 NcFindingSeverity.ERROR, idx, line, "Executable command or motion encountered after M30 termination."));
@@ -105,14 +101,11 @@ public class NcProgramVerifier {
     }
 
     private void verifySetupAndTooling(NcBlockParser p, int idx, String line, NcInterpreterState state, List<NcVerificationFinding> findings) {
-        if (p.hasG("G90")) state.setActiveDistanceMode("G90");
+        if (p.hasG("G90")) { state.setActiveDistanceMode("G90"); state.setReferenceReturnPendingRestore(false); }
         if (p.hasG("G91")) state.setActiveDistanceMode("G91");
         if (p.hasG("G17")) state.setActivePlane("G17");
         if (p.hasG("G21")) state.setInitialized(true);
-
-        for (String g : p.getGCodes()) {
-            if (g.matches("G5[4-9]")) state.setActiveWcs(g);
-        }
+        for (String g : p.getGCodes()) { if (g.matches("G5[4-9]")) state.setActiveWcs(g); }
 
         if (p.hasWord('T')) {
             if (state.isCannedCycleActive()) {
@@ -179,14 +172,22 @@ public class NcProgramVerifier {
                     NcFindingSeverity.ERROR, idx, line, String.format("G53 retract target Z%.3f does not match configured machine Z%.3f.", p.getWord('Z'), profile.getMachineRetractZ())));
             }
         }
+        if (p.hasG("G28")) {
+            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE,
+                NcFindingSeverity.ERROR, idx, line, "G28 reference return attempted during active canned cycle."));
+            if (p.hasG("G91") || "G91".equals(state.getActiveDistanceMode())) {
+                state.setReferenceReturnPendingRestore(true);
+            }
+        }
 
         if (p.hasG("G80") || p.hasG("G00") || p.hasG("G0") || p.hasG("G01") || p.hasG("G1")) {
             state.setCannedCycleActive(false);
+            state.clearModalCycleParams();
         }
         if (p.hasG("G81") || p.hasG("G83") || p.hasG("G73")) {
             state.setCannedCycleActive(true);
             NcMotionVerifier.verifyCannedCycle(p, idx, line, state, profile, setup, findings);
-        } else if (state.isCannedCycleActive() && (p.hasWord('X') || p.hasWord('Y'))) {
+        } else if (state.isCannedCycleActive() && (p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z'))) {
             NcMotionVerifier.verifyCannedCycle(p, idx, line, state, profile, setup, findings);
         }
     }

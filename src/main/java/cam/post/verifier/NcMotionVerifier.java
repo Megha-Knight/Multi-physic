@@ -40,8 +40,23 @@ public final class NcMotionVerifier {
                                          ControllerProfile profile, ManufacturingSetup setup,
                                          List<NcVerificationFinding> findings) {
         verifyCuttingPreconditions(idx, line, state, profile, findings);
-        double targetZ = p.hasWord('Z') ? p.getWord('Z') : state.getCurrentZ();
-        double rZ = p.hasWord('R') ? p.getWord('R') : Double.NaN;
+        if (state.isReferenceReturnPendingRestore() && "G91".equals(state.getActiveDistanceMode())) {
+            findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_MODE_NOT_RESTORED,
+                NcFindingSeverity.ERROR, idx, line, "Canned cycle commanded after G91 G28 without restoring G90."));
+        }
+
+        boolean isInitial = p.hasG("G81") || p.hasG("G83") || p.hasG("G73");
+        if (isInitial && (!p.hasWord('Z') || !p.hasWord('R'))) {
+            findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_INVALID_PARAMS,
+                NcFindingSeverity.ERROR, idx, line, "Initial canned cycle definition missing required Z depth or R plane."));
+        }
+        if (p.hasWord('Z')) state.setModalCycleZ(p.getWord('Z'));
+        if (p.hasWord('R')) state.setModalCycleR(p.getWord('R'));
+        if (p.hasG("G98")) state.setActiveReturnLevel("G98");
+        if (p.hasG("G99")) state.setActiveReturnLevel("G99");
+
+        double targetZ = state.getModalCycleZ();
+        double rZ = state.getModalCycleR();
 
         if (Double.isFinite(targetZ) && Double.isFinite(rZ) && targetZ >= rZ) {
             findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_INVERTED_DEPTH,
@@ -67,6 +82,10 @@ public final class NcMotionVerifier {
                 findings.add(new NcVerificationFinding(NcFindingCode.STOCK_BOUNDARY_VIOLATION,
                     NcFindingSeverity.ERROR, idx, line, String.format("Canned cycle hole Y%.3f exceeds stock boundary.", holeY)));
             }
+            if (Double.isFinite(targetZ) && targetZ < setup.getStock().getBottomZ() - 1e-4) {
+                findings.add(new NcVerificationFinding(NcFindingCode.STOCK_DEPTH_VIOLATION,
+                    NcFindingSeverity.ERROR, idx, line, String.format("Canned cycle depth Z%.3f penetrates below stock bottom Z%.3f.", targetZ, setup.getStock().getBottomZ())));
+            }
         }
         state.recordMotion(true);
         state.updatePosition(holeX, holeY, targetZ);
@@ -81,6 +100,11 @@ public final class NcMotionVerifier {
             findings.add(new NcVerificationFinding(NcFindingCode.NON_FINITE_COORDINATE,
                 NcFindingSeverity.ERROR, idx, line, "Non-finite coordinate (NaN/Infinity) encountered in motion block."));
             return;
+        }
+
+        if (state.isReferenceReturnPendingRestore() && "G91".equals(state.getActiveDistanceMode())) {
+            findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_MODE_NOT_RESTORED,
+                NcFindingSeverity.ERROR, idx, line, "Motion commanded after G91 G28 reference return without restoring absolute mode (G90)."));
         }
 
         boolean isIncremental = "G91".equals(state.getActiveDistanceMode());

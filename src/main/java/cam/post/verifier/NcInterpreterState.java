@@ -20,6 +20,10 @@ public class NcInterpreterState {
     private Integer activeHRegister = null;
     private boolean toolLengthCompActive = false;
     private boolean cannedCycleActive = false;
+    private String activeReturnLevel = "G98";
+    private double modalCycleZ = Double.NaN;
+    private double modalCycleR = Double.NaN;
+    private boolean referenceReturnPendingRestore = false;
 
     private double currentX = Double.NaN;
     private double currentY = Double.NaN;
@@ -124,4 +128,14 @@ public class NcInterpreterState {
     public double getMaxX()                         { return maxX; }
     public double getMinY()                         { return minY; }
     public double getMaxY()                         { return maxY; }
+
+    public String getActiveReturnLevel()            { return activeReturnLevel; }
+    public void setActiveReturnLevel(String lvl)    { this.activeReturnLevel = lvl; }
+    public double getModalCycleZ()                  { return modalCycleZ; }
+    public void setModalCycleZ(double z)            { this.modalCycleZ = z; }
+    public double getModalCycleR()                  { return modalCycleR; }
+    public void setModalCycleR(double r)            { this.modalCycleR = r; }
+    public void clearModalCycleParams()             { this.modalCycleZ = Double.NaN; this.modalCycleR = Double.NaN; }
+    public boolean isReferenceReturnPendingRestore()                 { return referenceReturnPendingRestore; }
+    public void setReferenceReturnPendingRestore(boolean pending)    { this.referenceReturnPendingRestore = pending; }
 }
