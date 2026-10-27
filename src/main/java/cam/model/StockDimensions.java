@@ -9,6 +9,10 @@ public class StockDimensions {
     private final CamPoint3D max;
 
     public StockDimensions(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+        if (!Double.isFinite(minX) || !Double.isFinite(minY) || !Double.isFinite(minZ)
+                || !Double.isFinite(maxX) || !Double.isFinite(maxY) || !Double.isFinite(maxZ)) {
+            throw new IllegalArgumentException("Non-finite coordinate encountered in stock bounds.");
+        }
         if (minX > maxX || minY > maxY || minZ > maxZ) {
             throw new IllegalArgumentException("Invalid stock bounds: min cannot exceed max.");
         }
@@ -46,7 +50,7 @@ public class StockDimensions {
             && Double.isFinite(min.x()) && Double.isFinite(min.y()) && Double.isFinite(min.z())
             && Double.isFinite(max.x()) && Double.isFinite(max.y()) && Double.isFinite(max.z())
             && min.x() <= max.x() && min.y() <= max.y() && min.z() <= max.z()
-            && (max.x() - min.x() > 1e-9 || max.y() - min.y() > 1e-9 || max.z() - min.z() > 1e-9);
+            && (max.x() - min.x() > 1e-9 && max.y() - min.y() > 1e-9 && max.z() - min.z() > 1e-9);
     }
 
     public boolean intersectsSegment(CamPoint3D p1, CamPoint3D p2, double margin) {
@@ -65,7 +69,6 @@ public class StockDimensions {
             double t1 = (bx0 - p1.x()) / dx, t2 = (bx1 - p1.x()) / dx;
             tMin = Math.max(tMin, Math.min(t1, t2));
             tMax = Math.min(tMax, Math.max(t1, t2));
-            if (tMin > tMax) return false;
         }
 
         if (Math.abs(dy) < 1e-12) {
@@ -74,7 +77,6 @@ public class StockDimensions {
             double t1 = (by0 - p1.y()) / dy, t2 = (by1 - p1.y()) / dy;
             tMin = Math.max(tMin, Math.min(t1, t2));
             tMax = Math.min(tMax, Math.max(t1, t2));
-            if (tMin > tMax) return false;
         }
 
         if (Math.abs(dz) < 1e-12) {
@@ -83,10 +85,53 @@ public class StockDimensions {
             double t1 = (bz0 - p1.z()) / dz, t2 = (bz1 - p1.z()) / dz;
             tMin = Math.max(tMin, Math.min(t1, t2));
             tMax = Math.min(tMax, Math.max(t1, t2));
-            if (tMin > tMax) return false;
         }
 
         return tMin <= tMax && tMax >= 0.0 && tMin <= 1.0;
+    }
+
+    public double distanceToSegment2D(CamPoint3D p1, CamPoint3D p2) {
+        if (p1 == null || p2 == null || !isValid()) return Double.NaN;
+        double dx = p2.x() - p1.x(), dy = p2.y() - p1.y();
+        double tMin = 0.0, tMax = 1.0;
+        if (Math.abs(dx) < 1e-12) {
+            if (p1.x() < min.x() || p1.x() > max.x()) { tMin = 1.0; tMax = 0.0; }
+        } else {
+            double t1 = (min.x() - p1.x()) / dx, t2 = (max.x() - p1.x()) / dx;
+            tMin = Math.max(tMin, Math.min(t1, t2));
+            tMax = Math.min(tMax, Math.max(t1, t2));
+        }
+        if (Math.abs(dy) < 1e-12) {
+            if (p1.y() < min.y() || p1.y() > max.y()) { tMin = 1.0; tMax = 0.0; }
+        } else {
+            double t1 = (min.y() - p1.y()) / dy, t2 = (max.y() - p1.y()) / dy;
+            tMin = Math.max(tMin, Math.min(t1, t2));
+            tMax = Math.min(tMax, Math.max(t1, t2));
+        }
+        if (tMin <= tMax && tMax >= 0.0 && tMin <= 1.0) return 0.0;
+
+        double d1 = Math.hypot(Math.max(0.0, Math.max(min.x() - p1.x(), p1.x() - max.x())),
+                               Math.max(0.0, Math.max(min.y() - p1.y(), p1.y() - max.y())));
+        double d2 = Math.hypot(Math.max(0.0, Math.max(min.x() - p2.x(), p2.x() - max.x())),
+                               Math.max(0.0, Math.max(min.y() - p2.y(), p2.y() - max.y())));
+        double minD = Math.min(d1, d2);
+
+        double[][] corners = {{min.x(), min.y()}, {max.x(), min.y()}, {max.x(), max.y()}, {min.x(), max.y()}};
+        double len2 = dx * dx + dy * dy;
+        for (double[] c : corners) {
+            double t = (len2 > 1e-12) ? Math.max(0.0, Math.min(1.0, ((c[0] - p1.x()) * dx + (c[1] - p1.y()) * dy) / len2)) : 0.0;
+            double cd = Math.hypot(c[0] - (p1.x() + t * dx), c[1] - (p1.y() + t * dy));
+            if (cd < minD) minD = cd;
+        }
+        return minD;
+    }
+
+    public boolean collidesWithSweptCylinder(CamPoint3D p1, CamPoint3D p2, double toolRadius, double toolLength) {
+        if (p1 == null || p2 == null || !isValid()) return false;
+        double zMin = Math.min(p1.z(), p2.z());
+        double zMax = Math.max(p1.z(), p2.z()) + Math.max(0.0, toolLength);
+        if (zMax < min.z() - 1e-6 || zMin > max.z() + 1e-6) return false;
+        return distanceToSegment2D(p1, p2) <= Math.max(0.0, toolRadius) + 1e-9;
     }
 
     public boolean contains(CamPoint3D pt) {

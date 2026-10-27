@@ -1,5 +1,6 @@
 package cam.post.verifier;
 
+import cam.model.CamPoint3D;
 import cam.model.ManufacturingSetup;
 import cam.post.ControllerProfile;
 import cam.post.NcProgram;
@@ -20,7 +21,6 @@ public class NcProgramVerifier {
         this.profile = (profile != null) ? profile : ControllerProfile.createIso6983Standard();
         this.setup = setup;
     }
-
     public NcProgramVerifier(ControllerProfile profile) { this(profile, null); }
     public NcProgramVerifier()                          { this(ControllerProfile.createIso6983Standard(), null); }
 
@@ -34,20 +34,20 @@ public class NcProgramVerifier {
         List<NcVerificationFinding> findings = new ArrayList<>();
         NcInterpreterState state = new NcInterpreterState();
 
-        findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_COLLISION_CHECK, NcFindingSeverity.INFO, 0, "", "Preflight checks audit endpoints and stock boundaries. Swept 3D cutter volume, holder, and fixture checks require complete 3D solid models."));
-        findings.add(new NcVerificationFinding(NcFindingCode.TOOL_HOLDER_CLEARANCE_UNVERIFIED, NcFindingSeverity.INFO, 0, "", "Tool holder geometry unmodeled; holder clearance unverified."));
-        findings.add(new NcVerificationFinding(NcFindingCode.MACHINE_ENVELOPE_UNVERIFIED, NcFindingSeverity.INFO, 0, "", "Machine axis travel limits unmodeled; travel limits unverified."));
+        findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_COLLISION_CHECK, NcFindingSeverity.INFO, 0, "", "Preflight audits linear segments. Holder and machine envelope unmodeled."));
+        findings.add(new NcVerificationFinding(NcFindingCode.TOOL_HOLDER_CLEARANCE_UNVERIFIED, NcFindingSeverity.INFO, 0, "", "Tool holder geometry unmodeled."));
+        findings.add(new NcVerificationFinding(NcFindingCode.MACHINE_ENVELOPE_UNVERIFIED, NcFindingSeverity.INFO, 0, "", "Machine axis travel limits unmodeled."));
 
         if (setup == null || !setup.hasFixtureGeometry()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_CLEARANCE_UNVERIFIED, NcFindingSeverity.WARNING, 0, "", "Fixture and clamp geometry is not configured in setup."));
+            findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_CLEARANCE_UNVERIFIED, NcFindingSeverity.WARNING, 0, "", "Fixture geometry not configured in setup."));
         } else if (!setup.getFixtureBounds().isValid()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.INVALID_FIXTURE_BOUNDS, NcFindingSeverity.ERROR, 0, "", "Configured fixture bounding volume is inverted, degenerate, or invalid."));
+            findings.add(new NcVerificationFinding(NcFindingCode.INVALID_FIXTURE_BOUNDS, NcFindingSeverity.ERROR, 0, "", "Configured fixture bounding volume is invalid."));
         }
 
         for (int i = 0; i < blocks.size(); i++) verifyBlock(blocks.get(i), i, state, findings);
 
-        if (!state.isProgramTerminated()) findings.add(new NcVerificationFinding(NcFindingCode.PROGRAM_END_MISSING, NcFindingSeverity.ERROR, blocks.size(), "", "Program ends without M30/M02 termination block."));
-        if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_NOT_CANCELLED, NcFindingSeverity.ERROR, blocks.size(), "", "Program finished with active canned cycle without G80."));
+        if (!state.isProgramTerminated()) findings.add(new NcVerificationFinding(NcFindingCode.PROGRAM_END_MISSING, NcFindingSeverity.ERROR, blocks.size(), "", "Program ends without M30/M02."));
+        if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_NOT_CANCELLED, NcFindingSeverity.ERROR, blocks.size(), "", "Program ended with active canned cycle."));
 
         return new NcVerificationReport(programName, profile.getName(), blocks.size(), findings, state);
     }
@@ -94,15 +94,13 @@ public class NcProgramVerifier {
         if (p.hasG("G91")) state.setActiveDistanceMode("G91");
         if (p.hasG("G17")) state.setActivePlane("G17");
         if (p.hasG("G21")) {
-            if (profile.getUnitMode() == ControllerProfile.UnitMode.INCH_G20) {
-                findings.add(new NcVerificationFinding(NcFindingCode.UNIT_MODE_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G21 metric programmed but profile is inch G20."));
-            }
+            if (profile.getUnitMode() == ControllerProfile.UnitMode.INCH_G20) findings.add(new NcVerificationFinding(NcFindingCode.UNIT_MODE_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G21 metric in inch profile."));
+            if (state.getTotalMotionBlocks() > 0) findings.add(new NcVerificationFinding(NcFindingCode.MID_PROGRAM_UNIT_CHANGE, NcFindingSeverity.ERROR, idx, line, "G21 mid-program unit change."));
             state.setInitialized(true);
         }
         if (p.hasG("G20")) {
-            if (profile.getUnitMode() == ControllerProfile.UnitMode.METRIC_G21) {
-                findings.add(new NcVerificationFinding(NcFindingCode.UNIT_MODE_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G20 inch programmed but profile is metric G21."));
-            }
+            if (profile.getUnitMode() == ControllerProfile.UnitMode.METRIC_G21) findings.add(new NcVerificationFinding(NcFindingCode.UNIT_MODE_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G20 inch in metric profile."));
+            if (state.getTotalMotionBlocks() > 0) findings.add(new NcVerificationFinding(NcFindingCode.MID_PROGRAM_UNIT_CHANGE, NcFindingSeverity.ERROR, idx, line, "G20 mid-program unit change."));
             state.setInitialized(true);
         }
         for (String g : p.getGCodes()) {
@@ -110,40 +108,28 @@ public class NcProgramVerifier {
                 state.setActiveWcs(g);
                 if (setup != null) {
                     var cs = setup.getCoordinateSystem(g);
-                    if (cs == null || !cs.isValid()) {
-                        findings.add(new NcVerificationFinding(NcFindingCode.COORDINATE_OFFSET_INVALID,
-                            NcFindingSeverity.ERROR, idx, line, "WCS " + g + " is unconfigured or invalid in setup."));
-                    }
+                    if (cs == null || !cs.isValid()) findings.add(new NcVerificationFinding(NcFindingCode.COORDINATE_OFFSET_INVALID, NcFindingSeverity.ERROR, idx, line, "WCS " + g + " unconfigured/invalid."));
                 }
             }
         }
-
         if (p.hasWord('T')) {
-            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_CHANGE_DURING_CYCLE,
-                NcFindingSeverity.ERROR, idx, line, "Tool change attempted during active canned cycle."));
+            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_CHANGE_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "Tool change during canned cycle."));
             if (p.hasM("M06")) {
-                if (profile.isEmitToolLengthCancel() && state.isToolLengthCompActive() && !p.hasG("G49")) {
-                    findings.add(new NcVerificationFinding(NcFindingCode.TOOL_LENGTH_NOT_CANCELLED,
-                        NcFindingSeverity.ERROR, idx, line, "Tool change attempted without canceling previous compensation."));
-                }
+                if (profile.isEmitToolLengthCancel() && state.isToolLengthCompActive() && !p.hasG("G49")) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_LENGTH_NOT_CANCELLED, NcFindingSeverity.ERROR, idx, line, "Tool change without canceling previous comp."));
                 state.setActiveTool(p.getWord('T').intValue());
             }
         }
         if (p.hasG("G43")) {
             if (p.hasWord('Z') && setup != null && setup.getStock() != null && p.getWord('Z') < setup.getStock().getTopZ() - 1e-4) {
-                findings.add(new NcVerificationFinding(NcFindingCode.UNSAFE_COMPENSATION_POSITION,
-                    NcFindingSeverity.ERROR, idx, line, String.format("G43 activated at unsafe height Z%.3f below stock top Z%.3f.", p.getWord('Z'), setup.getStock().getTopZ())));
+                findings.add(new NcVerificationFinding(NcFindingCode.UNSAFE_COMPENSATION_POSITION, NcFindingSeverity.ERROR, idx, line, String.format("G43 activated at unsafe height Z%.3f.", p.getWord('Z'))));
             }
             if (p.hasWord('H')) {
                 int h = p.getWord('H').intValue();
                 state.setActiveHRegister(h);
                 state.setToolLengthCompActive(true);
                 int expH = profile.resolveHRegister(state.getActiveTool() != null ? state.getActiveTool() : 1);
-                if (h != expH) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH,
-                    NcFindingSeverity.ERROR, idx, line, String.format("Tool length offset H%d does not match expected H%d for active tool T%d.", h, expH, state.getActiveTool())));
-            } else {
-                findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G43 emitted without H offset register."));
-            }
+                if (h != expH) findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH, NcFindingSeverity.ERROR, idx, line, String.format("H%d does not match expected H%d for T%d.", h, expH, state.getActiveTool())));
+            } else findings.add(new NcVerificationFinding(NcFindingCode.TOOL_OFFSET_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G43 without H register."));
         }
         if (p.hasG("G49")) state.setToolLengthCompActive(false);
     }
@@ -165,30 +151,41 @@ public class NcProgramVerifier {
 
     private void verifyCyclesAndRetracts(NcBlockParser p, int idx, String line, NcInterpreterState state, List<NcVerificationFinding> findings) {
         if (p.hasG("G53")) {
-            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "G53 retract attempted during canned cycle."));
+            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "G53 retract during canned cycle."));
             if (p.hasWord('Z') && profile.getMachineRetractZ() != null && Math.abs(p.getWord('Z') - profile.getMachineRetractZ()) > 1e-4) {
-                findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_TARGET_INVALID, NcFindingSeverity.ERROR, idx, line, String.format("G53 target Z%.3f does not match configured machine Z%.3f.", p.getWord('Z'), profile.getMachineRetractZ())));
+                findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_TARGET_INVALID, NcFindingSeverity.ERROR, idx, line, String.format("G53 target Z%.3f does not match machine Z%.3f.", p.getWord('Z'), profile.getMachineRetractZ())));
             }
         }
         if (p.hasG("G28")) {
-            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "G28 return attempted during canned cycle."));
-            if (p.hasG("G91") || "G91".equals(state.getActiveDistanceMode())) {
-                state.setReferenceReturnPendingRestore(true);
-            } else if ("G90".equals(state.getActiveDistanceMode())) {
-                findings.add(new NcVerificationFinding(NcFindingCode.UNSAFE_REFERENCE_RETURN,
-                    NcFindingSeverity.WARNING, idx, line, "G28 in absolute mode (G90) risks intermediate collision; use G91 G28 Z0."));
-            }
+            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "G28 during canned cycle."));
+            boolean isInc = p.hasG("G91") || "G91".equals(state.getActiveDistanceMode());
+            if (isInc) state.setReferenceReturnPendingRestore(true);
+            else if ("G90".equals(state.getActiveDistanceMode())) findings.add(new NcVerificationFinding(NcFindingCode.UNSAFE_REFERENCE_RETURN, NcFindingSeverity.WARNING, idx, line, "G28 in G90 risks intermediate collision; use G91 G28 Z0."));
+            checkG28IntermediateMotion(p, idx, line, state, isInc, findings);
         }
-
         if (p.hasG("G80") || p.hasG("G00") || p.hasG("G0") || p.hasG("G01") || p.hasG("G1")) {
             state.setCannedCycleActive(false);
             state.clearModalCycleParams();
         }
-        if (p.hasG("G81") || p.hasG("G82") || p.hasG("G83") || p.hasG("G73")) {
+        if (p.hasG("G81") || p.hasG("G82") || p.hasG("G83") || p.hasG("G73") || (state.isCannedCycleActive() && (p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z')))) {
             state.setCannedCycleActive(true);
             NcMotionVerifier.verifyCannedCycle(p, idx, line, state, profile, setup, findings);
-        } else if (state.isCannedCycleActive() && (p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z'))) {
-            NcMotionVerifier.verifyCannedCycle(p, idx, line, state, profile, setup, findings);
+        }
+    }
+
+    private void checkG28IntermediateMotion(NcBlockParser p, int idx, String line, NcInterpreterState state, boolean isInc, List<NcVerificationFinding> findings) {
+        double curX = Double.isFinite(state.getCurrentX()) ? state.getCurrentX() : 0.0;
+        double curY = Double.isFinite(state.getCurrentY()) ? state.getCurrentY() : 0.0;
+        double curZ = Double.isFinite(state.getCurrentZ()) ? state.getCurrentZ() : 0.0;
+        double interX = p.hasWord('X') ? (isInc ? curX + p.getWord('X') : p.getWord('X')) : curX;
+        double interY = p.hasWord('Y') ? (isInc ? curY + p.getWord('Y') : p.getWord('Y')) : curY;
+        double interZ = p.hasWord('Z') ? (isInc ? curZ + p.getWord('Z') : p.getWord('Z')) : curZ;
+        if (setup != null && setup.hasFixtureGeometry() && setup.getFixtureBounds().isValid()) {
+            double toolRad = setup.resolveToolRadius(state.getActiveTool(), 0.0);
+            double toolLen = setup.resolveToolLength(state.getActiveTool(), 50.0);
+            if (setup.getFixtureBounds().collidesWithSweptCylinder(new CamPoint3D(curX, curY, curZ), new CamPoint3D(interX, interY, interZ), toolRad, toolLen)) {
+                findings.add(new NcVerificationFinding(NcFindingCode.INTERMEDIATE_MOTION_COLLISION, NcFindingSeverity.ERROR, idx, line, "G28 intermediate motion collides with fixture."));
+            }
         }
     }
 }

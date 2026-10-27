@@ -84,6 +84,11 @@ public class ManufacturingSetup {
         return (t != null) ? t.getRadius() : fallbackRadius;
     }
 
+    public double resolveToolLength(Integer toolNumber, double fallbackLength) {
+        cam.tool.CamTool t = findTool(toolNumber);
+        return (t != null) ? t.getOverallLength() : fallbackLength;
+    }
+
     public List<CamOperation> getOperations()   { return Collections.unmodifiableList(operations); }
     public void addOperation(CamOperation op)   { if (op != null) operations.add(op); }
     public void removeOperation(String opId)    { operations.removeIf(op -> op.getId().equals(opId)); }
