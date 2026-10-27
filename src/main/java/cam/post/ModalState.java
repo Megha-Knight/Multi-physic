@@ -14,6 +14,8 @@ public class ModalState {
     private double activeSpindleRpm = -1.0;
     private boolean spindleRunning = false;
     private int activeToolNumber = -1;
+    private boolean toolLengthCompActive = false;
+    private int activeHRegister = -1;
     private boolean setupExecuted = false;
 
     public void reset() {
@@ -26,6 +28,8 @@ public class ModalState {
         activeSpindleRpm = -1.0;
         spindleRunning = false;
         activeToolNumber = -1;
+        toolLengthCompActive = false;
+        activeHRegister = -1;
         setupExecuted = false;
     }
 
@@ -51,6 +55,14 @@ public class ModalState {
     public void setSpindleRunning(boolean r)   { this.spindleRunning = r; }
     public int getActiveToolNumber()           { return activeToolNumber; }
     public void setActiveToolNumber(int t)     { this.activeToolNumber = t; }
+    public boolean isToolLengthCompActive()    { return toolLengthCompActive; }
+    public void setToolLengthCompActive(boolean c) { this.toolLengthCompActive = c; }
+    public int getActiveHRegister()            { return activeHRegister; }
+    public void setActiveHRegister(int h)      { this.activeHRegister = h; }
     public boolean isSetupExecuted()           { return setupExecuted; }
     public void setSetupExecuted(boolean s)    { this.setupExecuted = s; }
+
+    public boolean isCannedCycleActive() {
+        return activeMotionGroup != null && activeMotionGroup.startsWith("G8") && !"G80".equals(activeMotionGroup);
+    }
 }

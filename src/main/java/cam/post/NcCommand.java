@@ -37,6 +37,14 @@ public record NcCommand(
         return new NcCommand(NcCommandType.TOOL_CHANGE, null, 0, 0, toolNumber, toolName, 0, 0, 0);
     }
 
+    public static NcCommand toolLengthComp(int hRegister, double zClearance) {
+        return new NcCommand(NcCommandType.TOOL_LENGTH_COMP, null, 0, 0, hRegister, null, zClearance, 0, 0);
+    }
+
+    public static NcCommand toolLengthCancel() {
+        return new NcCommand(NcCommandType.TOOL_LENGTH_CANCEL, null, 0, 0, 0, null, 0, 0, 0);
+    }
+
     public static NcCommand spindleStart(double rpm) {
         return new NcCommand(NcCommandType.SPINDLE_START, null, 0, rpm, 0, null, 0, 0, 0);
     }

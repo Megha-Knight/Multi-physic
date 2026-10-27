@@ -34,8 +34,14 @@ public class NcCommandBuilder {
         for (CamOperation op : setup.getOperations()) {
             commands.add(NcCommand.comment("--- Operation: " + op.getName() + " ---"));
             CamTool tool = op.getTool();
+            if (tool == null) throw new IllegalArgumentException("Operation " + op.getName() + " has null tool.");
             int tNum = toolCounter++;
             commands.add(NcCommand.toolChange(tNum, tool.getName()));
+
+            double clearanceZ = (setup.getSafetyPlane() != null) ? setup.getSafetyPlane().getClearanceZ() : 25.0;
+            if (profile.isEmitToolLengthComp()) {
+                commands.add(NcCommand.toolLengthComp(tNum, clearanceZ));
+            }
 
             if (profile.supportsCannedCycles() && op instanceof SpotDrillingOperation spotOp) {
                 appendSpotDrillingCanned(commands, spotOp, setup);
@@ -44,6 +50,10 @@ public class NcCommandBuilder {
             } else {
                 Toolpath tp = op.generateToolpath(setup);
                 appendToolpathSegments(commands, tp);
+            }
+
+            if (profile.isEmitToolLengthCancel()) {
+                commands.add(NcCommand.toolLengthCancel());
             }
         }
 
@@ -62,11 +72,20 @@ public class NcCommandBuilder {
         String wcs = (setup != null && setup.getMcs() != null) ? setup.getMcs().getName() : profile.getDefaultWcs();
         commands.add(NcCommand.workCoordinateSystem(wcs));
 
+        int tNum = toolNumber > 0 ? toolNumber : 1;
         String toolName = (tool != null) ? tool.getName() : "Standard Tool";
-        commands.add(NcCommand.toolChange(toolNumber > 0 ? toolNumber : 1, toolName));
+        commands.add(NcCommand.toolChange(tNum, toolName));
+
+        double clearanceZ = (setup != null && setup.getSafetyPlane() != null) ? setup.getSafetyPlane().getClearanceZ() : 25.0;
+        if (profile.isEmitToolLengthComp()) {
+            commands.add(NcCommand.toolLengthComp(tNum, clearanceZ));
+        }
 
         appendToolpathSegments(commands, toolpath);
 
+        if (profile.isEmitToolLengthCancel()) {
+            commands.add(NcCommand.toolLengthCancel());
+        }
         commands.add(NcCommand.safeRetract());
         commands.add(NcCommand.programEnd());
         return commands;
@@ -94,10 +113,13 @@ public class NcCommandBuilder {
     private static void appendSpotDrillingCanned(List<NcCommand> commands, SpotDrillingOperation op, ManufacturingSetup setup) {
         commands.add(NcCommand.spindleStart(op.getSpindleRpm()));
         double clearanceZ = (setup.getSafetyPlane() != null) ? setup.getSafetyPlane().getRetractZ() : 5.0;
+        double stockTopZ = (setup.getStock() != null) ? setup.getStock().getTopZ() : 0.0;
 
         for (CamPoint3D hole : op.getHoleCenters()) {
             double finalZ = hole.z() - op.getSpotDepth();
             double rZ = hole.z() + op.getLocalClearance();
+            NcFormatUtils.validateCannedCycle(finalZ, rZ, 0.0, stockTopZ);
+
             commands.add(NcCommand.rapid(new CamPoint3D(hole.x(), hole.y(), clearanceZ)));
             commands.add(NcCommand.cannedCycle("G81", new CamPoint3D(hole.x(), hole.y(), finalZ), rZ, 0.0, op.getPlungeFeedRate()));
         }
@@ -108,10 +130,13 @@ public class NcCommandBuilder {
         commands.add(NcCommand.spindleStart(op.getSpindleRpm()));
         String cycle = (op.getRetractStrategy() == PeckRetractStrategy.CHIP_BREAK) ? "G73" : "G83";
         double clearanceZ = (setup.getSafetyPlane() != null) ? setup.getSafetyPlane().getRetractZ() : 5.0;
+        double stockTopZ = (setup.getStock() != null) ? setup.getStock().getTopZ() : 0.0;
 
         for (CamPoint3D hole : op.getHoleCenters()) {
             double finalZ = hole.z() - op.getFinalDepth();
-            double rZ = hole.z() + 2.0; // standard R-plane clearance
+            double rZ = hole.z() + 2.0;
+            NcFormatUtils.validateCannedCycle(finalZ, rZ, op.getPeckDepth(), stockTopZ);
+
             commands.add(NcCommand.rapid(new CamPoint3D(hole.x(), hole.y(), clearanceZ)));
             commands.add(NcCommand.cannedCycle(cycle, new CamPoint3D(hole.x(), hole.y(), finalZ), rZ, op.getPeckDepth(), op.getPlungeFeedRate()));
         }
