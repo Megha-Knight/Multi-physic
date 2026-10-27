@@ -36,11 +36,17 @@ public class NcProgramVerifier {
 
         findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_COLLISION_CHECK,
             NcFindingSeverity.INFO, 0, "", "Preflight checks audit endpoints and stock boundaries. Swept 3D cutter volume, holder, and fixture checks require complete 3D solid models."));
+        findings.add(new NcVerificationFinding(NcFindingCode.TOOL_HOLDER_CLEARANCE_UNVERIFIED,
+            NcFindingSeverity.INFO, 0, "", "Tool holder geometry unmodeled; holder clearance unverified."));
+        findings.add(new NcVerificationFinding(NcFindingCode.MACHINE_ENVELOPE_UNVERIFIED,
+            NcFindingSeverity.INFO, 0, "", "Machine axis travel limits unmodeled; travel limits unverified."));
 
         if (setup == null || !setup.hasFixtureGeometry()) {
             findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_CLEARANCE_UNVERIFIED,
-                NcFindingSeverity.WARNING, 0, "",
-                "Fixture and clamp geometry is not configured in setup. Fixture clearance is unverified; stock-relative clearance does not guarantee physical machine safety."));
+                NcFindingSeverity.WARNING, 0, "", "Fixture and clamp geometry is not configured in setup."));
+        } else if (!setup.getFixtureBounds().isValid()) {
+            findings.add(new NcVerificationFinding(NcFindingCode.INVALID_FIXTURE_BOUNDS,
+                NcFindingSeverity.ERROR, 0, "", "Configured fixture bounding volume is inverted, degenerate, or invalid."));
         }
 
         for (int i = 0; i < blocks.size(); i++) {
@@ -63,19 +69,11 @@ public class NcProgramVerifier {
         NcBlockParser p = new NcBlockParser(line);
         if (p.isCommentOnly() || p.isProgramNumber() || p.isTapeHeaderOrRewind()) return;
 
-        if (p.isMalformed()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.MALFORMED_BLOCK_SYNTAX,
-                NcFindingSeverity.ERROR, idx, line, "Malformed block token or invalid number format."));
-        }
-        for (char c : p.getDuplicateWords()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.DUPLICATE_ADDRESS_WORD, NcFindingSeverity.ERROR, idx, line, "Duplicate address word '" + c + "'. "));
-        }
-        if (p.hasConflictingModalCommands()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.CONFLICTING_MODAL_COMMANDS, NcFindingSeverity.ERROR, idx, line, "Conflicting modal commands from same group."));
-        }
-        for (String cmd : p.getUnsupportedCommands()) {
-            findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_NC_COMMAND, NcFindingSeverity.ERROR, idx, line, "Unsupported NC command '" + cmd + "'. "));
-        }
+        if (p.isMalformed()) findings.add(new NcVerificationFinding(NcFindingCode.MALFORMED_BLOCK_SYNTAX, NcFindingSeverity.ERROR, idx, line, "Malformed block token."));
+        for (char c : p.getDuplicateWords()) findings.add(new NcVerificationFinding(NcFindingCode.DUPLICATE_ADDRESS_WORD, NcFindingSeverity.ERROR, idx, line, "Duplicate address word '" + c + "'."));
+        if (p.hasConflictingModalCommands()) findings.add(new NcVerificationFinding(NcFindingCode.CONFLICTING_MODAL_COMMANDS, NcFindingSeverity.ERROR, idx, line, "Conflicting modal commands."));
+        for (String cmd : p.getUnsupportedCommands()) findings.add(new NcVerificationFinding(NcFindingCode.UNSUPPORTED_NC_COMMAND, NcFindingSeverity.ERROR, idx, line, "Unsupported NC command '" + cmd + "'."));
+
         if (state.isProgramTerminated()) {
             findings.add(new NcVerificationFinding(NcFindingCode.MOTION_AFTER_PROGRAM_END, NcFindingSeverity.ERROR, idx, line, "Command after M30 termination."));
             return;
@@ -110,7 +108,18 @@ public class NcProgramVerifier {
         if (p.hasG("G90")) { state.setActiveDistanceMode("G90"); state.setReferenceReturnPendingRestore(false); }
         if (p.hasG("G91")) state.setActiveDistanceMode("G91");
         if (p.hasG("G17")) state.setActivePlane("G17");
-        if (p.hasG("G21")) state.setInitialized(true);
+        if (p.hasG("G21")) {
+            if (profile.getUnitMode() == ControllerProfile.UnitMode.INCH_G20) {
+                findings.add(new NcVerificationFinding(NcFindingCode.UNIT_MODE_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G21 metric programmed but profile is inch G20."));
+            }
+            state.setInitialized(true);
+        }
+        if (p.hasG("G20")) {
+            if (profile.getUnitMode() == ControllerProfile.UnitMode.METRIC_G21) {
+                findings.add(new NcVerificationFinding(NcFindingCode.UNIT_MODE_MISMATCH, NcFindingSeverity.ERROR, idx, line, "G20 inch programmed but profile is metric G21."));
+            }
+            state.setInitialized(true);
+        }
         for (String g : p.getGCodes()) { if (g.matches("G5[4-9]")) state.setActiveWcs(g); }
 
         if (p.hasWord('T')) {
@@ -162,19 +171,14 @@ public class NcProgramVerifier {
 
     private void verifyCyclesAndRetracts(NcBlockParser p, int idx, String line, NcInterpreterState state, List<NcVerificationFinding> findings) {
         if (p.hasG("G53")) {
-            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE,
-                NcFindingSeverity.ERROR, idx, line, "G53 retract attempted during active canned cycle."));
+            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "G53 retract attempted during canned cycle."));
             if (p.hasWord('Z') && profile.getMachineRetractZ() != null && Math.abs(p.getWord('Z') - profile.getMachineRetractZ()) > 1e-4) {
-                findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_TARGET_INVALID,
-                    NcFindingSeverity.ERROR, idx, line, String.format("G53 retract target Z%.3f does not match configured machine Z%.3f.", p.getWord('Z'), profile.getMachineRetractZ())));
+                findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_TARGET_INVALID, NcFindingSeverity.ERROR, idx, line, String.format("G53 target Z%.3f does not match configured machine Z%.3f.", p.getWord('Z'), profile.getMachineRetractZ())));
             }
         }
         if (p.hasG("G28")) {
-            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE,
-                NcFindingSeverity.ERROR, idx, line, "G28 reference return attempted during active canned cycle."));
-            if (p.hasG("G91") || "G91".equals(state.getActiveDistanceMode())) {
-                state.setReferenceReturnPendingRestore(true);
-            }
+            if (state.isCannedCycleActive()) findings.add(new NcVerificationFinding(NcFindingCode.RETRACT_DURING_CYCLE, NcFindingSeverity.ERROR, idx, line, "G28 return attempted during canned cycle."));
+            if (p.hasG("G91") || "G91".equals(state.getActiveDistanceMode())) state.setReferenceReturnPendingRestore(true);
         }
 
         if (p.hasG("G80") || p.hasG("G00") || p.hasG("G0") || p.hasG("G01") || p.hasG("G1")) {

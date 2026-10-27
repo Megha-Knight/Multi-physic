@@ -16,15 +16,27 @@ import java.util.List;
  */
 public class NcTrajectoryReconstructor {
 
+    public enum CoordinateFrame {
+        WORKPIECE_WCS,
+        MACHINE_G53,
+        UNRESOLVED
+    }
+
     public record ReconstructedMotion(
         CamPoint3D start,
         CamPoint3D end,
         MotionType motionType,
         double feedRate,
         int toolNumber,
+        CoordinateFrame frame,
         int blockIndex,
         String blockText
-    ) {}
+    ) {
+        public ReconstructedMotion(CamPoint3D start, CamPoint3D end, MotionType motionType,
+                                   double feedRate, int toolNumber, int blockIndex, String blockText) {
+            this(start, end, motionType, feedRate, toolNumber, CoordinateFrame.WORKPIECE_WCS, blockIndex, blockText);
+        }
+    }
 
     public record TrajectoryReconstructionResult(
         boolean success,
@@ -52,6 +64,8 @@ public class NcTrajectoryReconstructor {
         int activeTool = 1;
         double activeFeed = 0.0;
         boolean terminated = false;
+        String activeWcs = null;
+        boolean toolLengthCompActive = false;
 
         for (int i = 0; i < blocks.size(); i++) {
             String line = blocks.get(i);
@@ -65,6 +79,9 @@ public class NcTrajectoryReconstructor {
 
             if (p.hasG("G90")) activeDistanceMode = "G90";
             if (p.hasG("G91")) activeDistanceMode = "G91";
+            for (String g : p.getGCodes()) {
+                if (g.matches("G5[4-9]")) activeWcs = g;
+            }
             if (p.hasWord('T')) activeTool = p.getWord('T').intValue();
             if (p.hasWord('F')) activeFeed = p.getWord('F');
 
@@ -75,9 +92,11 @@ public class NcTrajectoryReconstructor {
                 activeMotionGroup = "G01";
             }
 
-            if (p.hasG("G43") && p.hasWord('Z')) {
-                curZ = p.getWord('Z');
+            if (p.hasG("G43")) {
+                toolLengthCompActive = true;
+                if (p.hasWord('Z')) curZ = p.getWord('Z');
             }
+            if (p.hasG("G49")) toolLengthCompActive = false;
 
             boolean isMotion = p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z');
             if (isMotion && !p.hasG("G53") && !p.hasG("G28") && !p.hasG("G43")) {
@@ -85,6 +104,12 @@ public class NcTrajectoryReconstructor {
                 if (activeMotionGroup == null) {
                     errors.add("Block " + i + ": Motion commanded without active motion group (G00/G01).");
                     continue;
+                }
+
+                CoordinateFrame frame = CoordinateFrame.WORKPIECE_WCS;
+                if (activeWcs == null) {
+                    frame = CoordinateFrame.UNRESOLVED;
+                    errors.add("Block " + i + ": Motion commanded without active work coordinate system (G54-G59); physical tool-tip position is unresolved.");
                 }
 
                 boolean isInc = "G91".equals(activeDistanceMode);
@@ -97,7 +122,7 @@ public class NcTrajectoryReconstructor {
                     CamPoint3D startPt = new CamPoint3D(curX, curY, curZ);
                     CamPoint3D endPt = new CamPoint3D(targetX, targetY, targetZ);
                     MotionType mType = "G01".equals(activeMotionGroup) ? MotionType.FEED : MotionType.RAPID;
-                    motions.add(new ReconstructedMotion(startPt, endPt, mType, activeFeed, activeTool, i, line));
+                    motions.add(new ReconstructedMotion(startPt, endPt, mType, activeFeed, activeTool, frame, i, line));
                     toolpath.addSegment(mType, startPt, endPt, activeFeed, 0.0);
                 }
 

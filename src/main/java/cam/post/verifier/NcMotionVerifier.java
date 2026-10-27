@@ -1,5 +1,6 @@
 package cam.post.verifier;
 
+import cam.model.CamPoint3D;
 import cam.model.ManufacturingSetup;
 import cam.post.ControllerProfile;
 
@@ -87,6 +88,16 @@ public final class NcMotionVerifier {
                     NcFindingSeverity.ERROR, idx, line, String.format("Canned cycle depth Z%.3f penetrates below stock bottom Z%.3f.", targetZ, setup.getStock().getBottomZ())));
             }
         }
+        if (setup != null && setup.hasFixtureGeometry() && setup.getFixtureBounds().isValid()
+                && Double.isFinite(holeX) && Double.isFinite(holeY) && Double.isFinite(targetZ)) {
+            double startZ = Double.isFinite(rZ) ? rZ : state.getCurrentZ();
+            CamPoint3D p1 = new CamPoint3D(holeX, holeY, Double.isFinite(startZ) ? startZ : targetZ);
+            CamPoint3D p2 = new CamPoint3D(holeX, holeY, targetZ);
+            if (setup.getFixtureBounds().intersectsSegment(p1, p2, 0.0)) {
+                findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_COLLISION_DETECTED,
+                    NcFindingSeverity.ERROR, idx, line, "Canned cycle penetrates modeled fixture envelope."));
+            }
+        }
         state.recordMotion(true);
         state.updatePosition(holeX, holeY, targetZ);
     }
@@ -145,6 +156,16 @@ public final class NcMotionVerifier {
                 findings.add(new NcVerificationFinding(NcFindingCode.SAFETY_CLEARANCE_VIOLATION,
                     NcFindingSeverity.ERROR, idx, line, String.format("Rapid traverse Z%.3f penetrates below stock bottom Z%.3f.",
                     newZ, setup.getStock().getBottomZ())));
+            }
+        }
+
+        if (setup != null && setup.hasFixtureGeometry() && setup.getFixtureBounds().isValid()
+                && Double.isFinite(state.getCurrentX()) && Double.isFinite(newX)) {
+            CamPoint3D p1 = new CamPoint3D(state.getCurrentX(), state.getCurrentY(), state.getCurrentZ());
+            CamPoint3D p2 = new CamPoint3D(newX, newY, newZ);
+            if (setup.getFixtureBounds().intersectsSegment(p1, p2, 0.0)) {
+                findings.add(new NcVerificationFinding(NcFindingCode.FIXTURE_COLLISION_DETECTED,
+                    NcFindingSeverity.ERROR, idx, line, "Motion segment collides with modeled fixture envelope."));
             }
         }
 

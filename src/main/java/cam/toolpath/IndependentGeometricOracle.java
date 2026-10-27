@@ -68,6 +68,11 @@ public final class IndependentGeometricOracle {
                     }
                     for (int ib = 0; ib < isl.getSegmentCount(); ib++) {
                         CamSegment2D iSeg = isl.getSegment(ib);
+                        if (segmentsIntersect(t0, t1, iSeg.p1(), iSeg.p2())) {
+                            errors.add(String.format("Segment %d analytically crosses island %d edge %d.", i, isIdx, ib));
+                            minObservedDist = 0.0;
+                            break;
+                        }
                         double idist = segmentToSegmentDistance(t0, t1, iSeg.p1(), iSeg.p2());
                         if (idist < minObservedDist) minObservedDist = idist;
                         if (idist < requiredClearance - 1e-3) {
@@ -82,6 +87,11 @@ public final class IndependentGeometricOracle {
             // 3. Exact segment-to-segment distance across all boundary edges
             for (int b = 0; b < boundary.getSegmentCount(); b++) {
                 CamSegment2D bSeg = boundary.getSegment(b);
+                if (boundary.isClosed() && segmentsIntersect(t0, t1, bSeg.p1(), bSeg.p2())) {
+                    errors.add(String.format("Segment %d analytically crosses boundary edge %d.", i, b));
+                    minObservedDist = 0.0;
+                    break;
+                }
                 double d = segmentToSegmentDistance(t0, t1, bSeg.p1(), bSeg.p2());
                 if (d < minObservedDist) minObservedDist = d;
 
