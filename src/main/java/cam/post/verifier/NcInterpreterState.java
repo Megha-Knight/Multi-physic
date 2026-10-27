@@ -135,7 +135,10 @@ public class NcInterpreterState {
     public void setModalCycleZ(double z)            { this.modalCycleZ = z; }
     public double getModalCycleR()                  { return modalCycleR; }
     public void setModalCycleR(double r)            { this.modalCycleR = r; }
-    public void clearModalCycleParams()             { this.modalCycleZ = Double.NaN; this.modalCycleR = Double.NaN; }
+    private double modalCycleInitialZ = Double.NaN;
+    public double getModalCycleInitialZ()           { return modalCycleInitialZ; }
+    public void setModalCycleInitialZ(double z)     { this.modalCycleInitialZ = z; }
+    public void clearModalCycleParams()             { this.modalCycleZ = Double.NaN; this.modalCycleR = Double.NaN; this.modalCycleInitialZ = Double.NaN; }
     public boolean isReferenceReturnPendingRestore()                 { return referenceReturnPendingRestore; }
     public void setReferenceReturnPendingRestore(boolean pending)    { this.referenceReturnPendingRestore = pending; }
 }

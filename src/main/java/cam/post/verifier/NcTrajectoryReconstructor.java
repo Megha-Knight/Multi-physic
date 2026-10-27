@@ -47,9 +47,9 @@ public class NcTrajectoryReconstructor {
         Toolpath toolpath = new Toolpath("RECONSTRUCTED");
 
         double curX = Double.NaN, curY = Double.NaN, curZ = Double.NaN;
-        String activeMotionGroup = null, activeDistanceMode = "G90", activeWcs = null;
+        String activeMotionGroup = null, activeDistanceMode = "G90", activeWcs = null, activeReturnLevel = "G98", modalCycleType = null;
         int activeTool = 1;
-        double activeFeed = 0.0, cycleZ = Double.NaN, cycleR = Double.NaN, cycleQ = Double.NaN;
+        double activeFeed = 0.0, cycleZ = Double.NaN, cycleR = Double.NaN, cycleQ = Double.NaN, cycleInitZ = Double.NaN;
         boolean terminated = false, toolLengthCompActive = false, cycleActive = false;
 
         for (int i = 0; i < blocks.size(); i++) {
@@ -64,6 +64,8 @@ public class NcTrajectoryReconstructor {
 
             if (p.hasG("G90")) activeDistanceMode = "G90";
             if (p.hasG("G91")) activeDistanceMode = "G91";
+            if (p.hasG("G98")) activeReturnLevel = "G98";
+            if (p.hasG("G99")) activeReturnLevel = "G99";
             for (String g : p.getGCodes()) if (g.matches("G5[4-9]")) activeWcs = g;
             if (p.hasWord('T')) activeTool = p.getWord('T').intValue();
             if (p.hasWord('F')) activeFeed = p.getWord('F');
@@ -94,38 +96,57 @@ public class NcTrajectoryReconstructor {
             }
 
             boolean isCycle = p.hasG("G81") || p.hasG("G82") || p.hasG("G83") || p.hasG("G73");
+            if (isCycle) {
+                cycleActive = true;
+                if (Double.isFinite(curZ)) cycleInitZ = curZ;
+                if (p.hasG("G81")) modalCycleType = "G81";
+                if (p.hasG("G82")) modalCycleType = "G82";
+                if (p.hasG("G83")) modalCycleType = "G83";
+                if (p.hasG("G73")) modalCycleType = "G73";
+            }
             if (isCycle || (cycleActive && (p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z')))) {
                 if (p.hasWord('Z')) cycleZ = p.getWord('Z');
                 if (p.hasWord('R')) cycleR = p.getWord('R');
                 if (p.hasWord('Q')) cycleQ = p.getWord('Q');
-                if (isCycle) cycleActive = true;
                 double hX = p.hasWord('X') ? p.getWord('X') : curX, hY = p.hasWord('Y') ? p.getWord('Y') : curY;
                 if (Double.isFinite(hX) && Double.isFinite(hY) && Double.isFinite(cycleZ) && Double.isFinite(cycleR)) {
                     CamPoint3D appPt = new CamPoint3D(hX, hY, cycleR);
                     motions.add(new ReconstructedMotion(new CamPoint3D(curX, curY, curZ), appPt, MotionType.RAPID, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
                     toolpath.addSegment(MotionType.RAPID, new CamPoint3D(curX, curY, curZ), appPt, activeFeed, 0.0);
-                    if (p.hasG("G83") && cycleQ > 0.0) {
-                        double cd = cycleR;
-                        while (cd > cycleZ + 1e-6) {
-                            double nd = Math.max(cd - cycleQ, cycleZ);
-                            CamPoint3D ps = new CamPoint3D(hX, hY, cd), pe = new CamPoint3D(hX, hY, nd);
-                            motions.add(new ReconstructedMotion(ps, pe, MotionType.PLUNGE, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
-                            toolpath.addSegment(MotionType.PLUNGE, ps, pe, activeFeed, 0.0);
-                            motions.add(new ReconstructedMotion(pe, appPt, MotionType.RAPID, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
-                            toolpath.addSegment(MotionType.RAPID, pe, appPt, activeFeed, 0.0);
-                            cd = nd;
+                    double finalRetZ = "G98".equals(activeReturnLevel) ? (Double.isFinite(cycleInitZ) ? cycleInitZ : cycleR) : cycleR;
+                    CamPoint3D retPt = new CamPoint3D(hX, hY, finalRetZ);
+                    if ("G83".equals(modalCycleType)) {
+                        if (Double.isNaN(cycleQ) || cycleQ <= 1e-4) {
+                            errors.add("Block " + i + ": G83 peck increment Q must be positive and >= 0.0001.");
+                        } else {
+                            double cd = cycleR;
+                            int iter = 0;
+                            while (cd > cycleZ + 1e-6) {
+                                if (++iter > 1000) { errors.add("Block " + i + ": G83 peck cycle exceeded maximum iteration limit (1000)."); break; }
+                                double nd = Math.max(cd - cycleQ, cycleZ);
+                                CamPoint3D ps = new CamPoint3D(hX, hY, cd), pe = new CamPoint3D(hX, hY, nd);
+                                motions.add(new ReconstructedMotion(ps, pe, MotionType.PLUNGE, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
+                                toolpath.addSegment(MotionType.PLUNGE, ps, pe, activeFeed, 0.0);
+                                motions.add(new ReconstructedMotion(pe, appPt, MotionType.RAPID, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
+                                toolpath.addSegment(MotionType.RAPID, pe, appPt, activeFeed, 0.0);
+                                cd = nd;
+                            }
+                        }
+                        if (!appPt.equals(retPt)) {
+                            motions.add(new ReconstructedMotion(appPt, retPt, MotionType.RAPID, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
+                            toolpath.addSegment(MotionType.RAPID, appPt, retPt, activeFeed, 0.0);
                         }
                     } else {
                         CamPoint3D bPt = new CamPoint3D(hX, hY, cycleZ);
                         motions.add(new ReconstructedMotion(appPt, bPt, MotionType.PLUNGE, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
                         toolpath.addSegment(MotionType.PLUNGE, appPt, bPt, activeFeed, 0.0);
-                        motions.add(new ReconstructedMotion(bPt, appPt, MotionType.RAPID, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
-                        toolpath.addSegment(MotionType.RAPID, bPt, appPt, activeFeed, 0.0);
+                        motions.add(new ReconstructedMotion(bPt, retPt, MotionType.RAPID, activeFeed, activeTool, CoordinateFrame.WORKPIECE_WCS, i, line));
+                        toolpath.addSegment(MotionType.RAPID, bPt, retPt, activeFeed, 0.0);
                     }
-                    curX = hX; curY = hY; curZ = cycleR;
+                    curX = hX; curY = hY; curZ = finalRetZ;
                 }
             }
-            if (p.hasG("G80")) cycleActive = false;
+            if (p.hasG("G80")) { cycleActive = false; modalCycleType = null; cycleZ = Double.NaN; cycleR = Double.NaN; cycleQ = Double.NaN; cycleInitZ = Double.NaN; }
 
             boolean isMotion = p.hasWord('X') || p.hasWord('Y') || p.hasWord('Z');
             if (isMotion && !p.hasG("G28") && !p.hasG("G43") && !cycleActive && !isCycle) {

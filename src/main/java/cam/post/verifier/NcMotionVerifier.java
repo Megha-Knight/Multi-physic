@@ -43,6 +43,7 @@ public final class NcMotionVerifier {
         if (isInitial && (!p.hasWord('Z') || !p.hasWord('R'))) {
             findings.add(new NcVerificationFinding(NcFindingCode.CANNED_CYCLE_INVALID_PARAMS, NcFindingSeverity.ERROR, idx, line, "Initial canned cycle missing Z depth or R plane."));
         }
+        if (isInitial && Double.isFinite(state.getCurrentZ())) state.setModalCycleInitialZ(state.getCurrentZ());
         if (p.hasWord('Z')) state.setModalCycleZ(p.getWord('Z'));
         if (p.hasWord('R')) state.setModalCycleR(p.getWord('R'));
         if (p.hasG("G98")) state.setActiveReturnLevel("G98");
@@ -71,16 +72,18 @@ public final class NcMotionVerifier {
         double holeY = p.hasWord('Y') ? p.getWord('Y') : state.getCurrentY();
         checkStockViolations(idx, line, holeX, holeY, targetZ, setup, findings, true);
 
+        double startZ = Double.isFinite(rZ) ? rZ : state.getCurrentZ();
+        double initZ = Double.isFinite(state.getModalCycleInitialZ()) ? state.getModalCycleInitialZ() : state.getCurrentZ();
+        double retZ = "G98".equals(state.getActiveReturnLevel()) ? (Double.isFinite(initZ) ? initZ : startZ) : startZ;
+
         if (setup != null && setup.hasFixtureGeometry() && setup.getFixtureBounds().isValid()
                 && Double.isFinite(holeX) && Double.isFinite(holeY) && Double.isFinite(targetZ)) {
-            double startZ = Double.isFinite(rZ) ? rZ : state.getCurrentZ();
             double curX = Double.isFinite(state.getCurrentX()) ? state.getCurrentX() : holeX;
             double curY = Double.isFinite(state.getCurrentY()) ? state.getCurrentY() : holeY;
             double curZ = Double.isFinite(state.getCurrentZ()) ? state.getCurrentZ() : startZ;
             double toolRad = setup.resolveToolRadius(state.getActiveTool(), 0.0);
             double toolLen = setup.resolveToolLength(state.getActiveTool(), 50.0);
             var fb = setup.getFixtureBounds();
-            double retZ = "G98".equals(state.getActiveReturnLevel()) ? curZ : startZ;
             if (fb.collidesWithSweptCylinder(new CamPoint3D(curX, curY, curZ), new CamPoint3D(holeX, holeY, curZ), toolRad, toolLen)
                     || fb.collidesWithSweptCylinder(new CamPoint3D(holeX, holeY, curZ), new CamPoint3D(holeX, holeY, startZ), toolRad, toolLen)
                     || fb.collidesWithSweptCylinder(new CamPoint3D(holeX, holeY, startZ), new CamPoint3D(holeX, holeY, targetZ), toolRad, toolLen)
@@ -89,7 +92,8 @@ public final class NcMotionVerifier {
             }
         }
         state.recordMotion(true);
-        state.updatePosition(holeX, holeY, targetZ);
+        if (Double.isFinite(targetZ)) state.updatePosition(holeX, holeY, targetZ);
+        state.updatePosition(holeX, holeY, retZ);
     }
 
     public static void verifyLinearMotion(NcBlockParser p, int idx, String line, NcInterpreterState state,

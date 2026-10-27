@@ -128,10 +128,21 @@ public class StockDimensions {
 
     public boolean collidesWithSweptCylinder(CamPoint3D p1, CamPoint3D p2, double toolRadius, double toolLength) {
         if (p1 == null || p2 == null || !isValid()) return false;
-        double zMin = Math.min(p1.z(), p2.z());
-        double zMax = Math.max(p1.z(), p2.z()) + Math.max(0.0, toolLength);
-        if (zMax < min.z() - 1e-6 || zMin > max.z() + 1e-6) return false;
-        return distanceToSegment2D(p1, p2) <= Math.max(0.0, toolRadius) + 1e-9;
+        double dz = p2.z() - p1.z();
+        double tzMin = 0.0, tzMax = 1.0;
+        double l = Math.max(0.0, toolLength);
+        if (Math.abs(dz) < 1e-9) {
+            if (p1.z() + l < min.z() - 1e-6 || p1.z() > max.z() + 1e-6) return false;
+        } else {
+            double t1 = (min.z() - l - p1.z()) / dz, t2 = (max.z() - p1.z()) / dz;
+            tzMin = Math.max(0.0, Math.min(t1, t2));
+            tzMax = Math.min(1.0, Math.max(t1, t2));
+            if (tzMin > tzMax) return false;
+        }
+        double dx = p2.x() - p1.x(), dy = p2.y() - p1.y();
+        CamPoint3D pA = new CamPoint3D(p1.x() + tzMin * dx, p1.y() + tzMin * dy, p1.z() + tzMin * dz);
+        CamPoint3D pB = new CamPoint3D(p1.x() + tzMax * dx, p1.y() + tzMax * dy, p1.z() + tzMax * dz);
+        return distanceToSegment2D(pA, pB) <= Math.max(0.0, toolRadius) + 1e-9;
     }
 
     public boolean contains(CamPoint3D pt) {
