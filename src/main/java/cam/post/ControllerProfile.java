@@ -29,6 +29,8 @@ public class ControllerProfile {
     private final String programEndCommand;
     private final boolean emitToolLengthComp;
     private final boolean emitToolLengthCancel;
+    private final Double machineRetractZ;
+    private final java.util.Map<Integer, Integer> toolToHRegisterMap;
 
     public ControllerProfile(String name, UnitMode unitMode, CoordinateMode coordinateMode,
                              PlaneMode planeMode, String defaultWcs, boolean modalSuppressionEnabled,
@@ -36,6 +38,19 @@ public class ControllerProfile {
                              boolean supportCannedCycles, RetractStrategy retractStrategy,
                              String safeRetractCommand, String programEndCommand,
                              boolean emitToolLengthComp, boolean emitToolLengthCancel) {
+        this(name, unitMode, coordinateMode, planeMode, defaultWcs, modalSuppressionEnabled,
+             lineNumbersEnabled, lineNumberIncrement, decimalPrecision, supportCannedCycles,
+             retractStrategy, safeRetractCommand, programEndCommand, emitToolLengthComp,
+             emitToolLengthCancel, 0.0, null);
+    }
+
+    public ControllerProfile(String name, UnitMode unitMode, CoordinateMode coordinateMode,
+                             PlaneMode planeMode, String defaultWcs, boolean modalSuppressionEnabled,
+                             boolean lineNumbersEnabled, int lineNumberIncrement, int decimalPrecision,
+                             boolean supportCannedCycles, RetractStrategy retractStrategy,
+                             String safeRetractCommand, String programEndCommand,
+                             boolean emitToolLengthComp, boolean emitToolLengthCancel,
+                             Double machineRetractZ, java.util.Map<Integer, Integer> toolToHRegisterMap) {
         this.name = (name != null) ? name : "ISO 6983 Standard 3-Axis VMC Profile";
         this.unitMode = (unitMode != null) ? unitMode : UnitMode.METRIC_G21;
         this.coordinateMode = (coordinateMode != null) ? coordinateMode : CoordinateMode.ABSOLUTE_G90;
@@ -51,6 +66,8 @@ public class ControllerProfile {
         this.programEndCommand = (programEndCommand != null) ? programEndCommand : "M30";
         this.emitToolLengthComp = emitToolLengthComp;
         this.emitToolLengthCancel = emitToolLengthCancel;
+        this.machineRetractZ = machineRetractZ;
+        this.toolToHRegisterMap = (toolToHRegisterMap != null) ? java.util.Map.copyOf(toolToHRegisterMap) : null;
     }
 
     public static ControllerProfile createIso6983Standard() {
@@ -112,4 +129,13 @@ public class ControllerProfile {
     public String getProgramEndCommand()        { return programEndCommand; }
     public boolean isEmitToolLengthComp()      { return emitToolLengthComp; }
     public boolean isEmitToolLengthCancel()    { return emitToolLengthCancel; }
+    public Double getMachineRetractZ()         { return machineRetractZ; }
+    public java.util.Map<Integer, Integer> getToolToHRegisterMap() { return toolToHRegisterMap; }
+
+    public int resolveHRegister(int toolNumber) {
+        if (toolToHRegisterMap != null && toolToHRegisterMap.containsKey(toolNumber)) {
+            return toolToHRegisterMap.get(toolNumber);
+        }
+        return toolNumber;
+    }
 }

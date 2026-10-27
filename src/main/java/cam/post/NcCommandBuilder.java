@@ -40,7 +40,8 @@ public class NcCommandBuilder {
 
             double clearanceZ = (setup.getSafetyPlane() != null) ? setup.getSafetyPlane().getClearanceZ() : 25.0;
             if (profile.isEmitToolLengthComp()) {
-                commands.add(NcCommand.toolLengthComp(tNum, clearanceZ));
+                int hReg = profile.resolveHRegister(tNum);
+                commands.add(NcCommand.toolLengthComp(hReg, clearanceZ));
             }
 
             if (profile.supportsCannedCycles() && op instanceof SpotDrillingOperation spotOp) {
@@ -78,7 +79,8 @@ public class NcCommandBuilder {
 
         double clearanceZ = (setup != null && setup.getSafetyPlane() != null) ? setup.getSafetyPlane().getClearanceZ() : 25.0;
         if (profile.isEmitToolLengthComp()) {
-            commands.add(NcCommand.toolLengthComp(tNum, clearanceZ));
+            int hReg = profile.resolveHRegister(tNum);
+            commands.add(NcCommand.toolLengthComp(hReg, clearanceZ));
         }
 
         appendToolpathSegments(commands, toolpath);

@@ -1,0 +1,48 @@
+package cam.post.verifier;
+
+/**
+ * Stable diagnostic codes identifying specific safety and structural violations
+ * discovered during independent NC preflight program verification.
+ */
+public enum NcFindingCode {
+    // 1. Program Structure & Initialization
+    INIT_MISSING,
+    WORK_OFFSET_MISSING,
+    PROGRAM_END_MISSING,
+    MOTION_AFTER_PROGRAM_END,
+    UNEXPECTED_INCREMENTAL_MODE,
+
+    // 2. Tooling & Compensation
+    TOOL_NOT_SELECTED,
+    TOOL_LENGTH_COMP_MISSING,
+    TOOL_OFFSET_MISMATCH,
+    TOOL_LENGTH_NOT_CANCELLED,
+    TOOL_CHANGE_DURING_CYCLE,
+
+    // 3. Spindle & Feed Kinematics
+    SPINDLE_NOT_STARTED,
+    SPINDLE_RPM_NON_POSITIVE,
+    FEED_RATE_MISSING,
+    FEED_RATE_NON_POSITIVE,
+
+    // 4. Canned Cycles
+    CANNED_CYCLE_NOT_CANCELLED,
+    CANNED_CYCLE_INVALID_PARAMS,
+    CANNED_CYCLE_INVERTED_DEPTH,
+    CANNED_CYCLE_SUB_SURFACE_R,
+    RETRACT_DURING_CYCLE,
+
+    // 5. Retract & Reference Return
+    RETRACT_TARGET_INVALID,
+    RETRACT_MODE_NOT_RESTORED,
+
+    // 6. Geometry & Stock Safety Bounds
+    STOCK_BOUNDARY_VIOLATION,
+    STOCK_DEPTH_VIOLATION,
+    SAFETY_CLEARANCE_VIOLATION,
+    NON_FINITE_COORDINATE,
+
+    // 7. General Syntax & Parser
+    UNSUPPORTED_NC_COMMAND,
+    MALFORMED_BLOCK_SYNTAX
+}
