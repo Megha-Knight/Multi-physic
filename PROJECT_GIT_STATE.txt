@@ -1,0 +1,15 @@
+Astra / MultiPhysics — Git Snapshot State
+Date: 2026-10-28
+Branch: main
+Current Commit: 7a76731
+Commit Message: feat(milestone-9.1): add bounded 3d waterline finishing
+Remote URL: https://github.com/Megha-Knight/Multi-physic.git
+Remote Status: Up-to-date with 'origin/main'
+POM SHA-256: DEEA003B51DD0A6145657727FC85153913F273B8FEC8B840F65A240BC7EF6309
+Production Files: 315 files (all <= 200 physical lines)
+CAM Regression Battery: 24 Suites, 1,370 Direct Assertions, 0 Failures
+
+Notes on Archive Contents:
+- This ZIP is a source snapshot and handoff artifact. It does not include the .git directory.
+- The large untracked directory 'src/main/CPP/' is intentionally excluded as it contains external prebuilt binaries.
+- The pure headless CAM engine is 100% self-contained in Java (JDK 25) and does not require C++ binaries to compile, generate toolpaths, or run verification tests.

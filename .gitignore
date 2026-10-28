@@ -10,3 +10,4 @@ Thumbs.db
 *.mp4
 scratch/
 native/build/
+dist/
