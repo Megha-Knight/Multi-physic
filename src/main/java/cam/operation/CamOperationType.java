@@ -9,6 +9,7 @@ public enum CamOperationType {
     PRISMATIC_ROUGHING("Prismatic Roughing", false),
     CONTOUR_FINISHING("Contour Finishing", false),
     PARALLEL_PLANAR_FINISHING("Parallel Planar Finishing", false),
+    WATERLINE_FINISHING("Waterline Finishing", false),
     FACING("Facing", false);
 
     private final String label;

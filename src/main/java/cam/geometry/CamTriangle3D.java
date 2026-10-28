@@ -116,4 +116,42 @@ public class CamTriangle3D {
             }
         }
     }
+
+    public CamPoint3D[] intersectZPlane(double z) {
+        if (z < minZ - 1e-9 || z > maxZ + 1e-9) return new CamPoint3D[0];
+        if (Math.abs(normA) < 1e-9 && Math.abs(normB) < 1e-9) return new CamPoint3D[0];
+        List<CamPoint3D> pts = new ArrayList<>(3);
+        intersectEdgeZ(a, b, z, pts);
+        intersectEdgeZ(b, c, z, pts);
+        intersectEdgeZ(c, a, z, pts);
+        if (pts.size() < 2) return new CamPoint3D[0];
+        List<CamPoint3D> unique = new ArrayList<>(2);
+        for (CamPoint3D p : pts) {
+            boolean dup = false;
+            for (CamPoint3D u : unique) {
+                if (p.distanceTo(u) < 1e-6) { dup = true; break; }
+            }
+            if (!dup) unique.add(p);
+        }
+        if (unique.size() < 2) return new CamPoint3D[0];
+        if (unique.get(0).distanceTo(unique.get(1)) < 1e-6) return new CamPoint3D[0];
+        return new CamPoint3D[]{ unique.get(0), unique.get(1) };
+    }
+
+    private void intersectEdgeZ(CamPoint3D p1, CamPoint3D p2, double z, List<CamPoint3D> out) {
+        double z1 = p1.z(), z2 = p2.z();
+        if ((z1 <= z + 1e-9 && z2 >= z - 1e-9) || (z2 <= z + 1e-9 && z1 >= z - 1e-9)) {
+            double dz = z2 - z1;
+            if (Math.abs(dz) < 1e-9) {
+                out.add(p1);
+                out.add(p2);
+            } else {
+                double t = (z - z1) / dz;
+                if (t >= -1e-9 && t <= 1.0 + 1e-9) {
+                    double ct = Math.max(0.0, Math.min(1.0, t));
+                    out.add(new CamPoint3D(p1.x() + ct * (p2.x() - p1.x()), p1.y() + ct * (p2.y() - p1.y()), z));
+                }
+            }
+        }
+    }
 }
