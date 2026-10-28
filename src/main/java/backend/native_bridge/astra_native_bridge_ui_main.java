@@ -108,6 +108,9 @@ public final class astra_native_bridge_ui_main {
     public double rayTriangleIntersect(double[] orig, double[] dir, double[] v0, double[] v1, double[] v2, double[] outBary) {
         ensureLoaded();
         if (orig == null || dir == null || v0 == null || v1 == null || v2 == null) throw new IllegalArgumentException("Array args cannot be null");
+        if (orig.length < 3 || dir.length < 3 || v0.length < 3 || v1.length < 3 || v2.length < 3) {
+            throw new IllegalArgumentException("Ray and vertex arrays must contain at least 3 coordinates.");
+        }
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment mOrig = arena.allocateFrom(ValueLayout.JAVA_DOUBLE, orig);
             MemorySegment mDir = arena.allocateFrom(ValueLayout.JAVA_DOUBLE, dir);
