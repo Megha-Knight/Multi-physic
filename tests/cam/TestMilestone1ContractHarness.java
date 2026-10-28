@@ -154,14 +154,27 @@ public class TestMilestone1ContractHarness {
     }
 
     private static void testNativeGeometryAbiFailClosed() {
-        System.out.println("\n--- 6. Native Geometry ABI Fail-Closed Behavior ---");
+        System.out.println("\n--- 6. Native Geometry ABI Integration & Fail-Closed Behavior ---");
         var bridge = astra_geometry_native_bridge_ui_main.getInstance();
-        assertTrue(!bridge.isAvailable(), "Geometry ABI correctly reports unavailable in absence of B-rep exports");
-        try {
-            bridge.evaluateFeature(null, 1);
-            assertTrue(false, "Should have thrown UnsupportedOperationException");
-        } catch (UnsupportedOperationException e) {
-            assertTrue(e.getMessage().contains("Geometry kernel unavailable"), "Fail-closed exception thrown with diagnostic");
+        assertTrue(bridge.isAvailable(), "Geometry ABI successfully loaded and verified available in native DLL");
+        assertTrue(bridge.getAbiVersion() == 1, "Native geometry ABI reports version 1");
+
+        try (var model = bridge.createModel()) {
+            assertTrue(model != null && model.isValid(), "Native model allocation succeeded");
+            try (java.lang.foreign.Arena arena = java.lang.foreign.Arena.ofConfined()) {
+                // Request size = 184 bytes for astra_geom_feature_request
+                java.lang.foreign.MemorySegment req = arena.allocate(184);
+                req.set(java.lang.foreign.ValueLayout.JAVA_INT, 0, 184); // struct_size
+                req.set(java.lang.foreign.ValueLayout.JAVA_INT, 4, 3);   // op_kind = EXTRUDE
+                bridge.evaluateFeature(model, req);
+                assertTrue(false, "Should have thrown UnsupportedOperationException for unimplemented feature");
+            } catch (UnsupportedOperationException e) {
+                assertTrue(e.getMessage().contains("B-rep evaluation not yet implemented"), "Fail-closed exception received with native diagnostic: " + e.getMessage());
+            }
+            model.close();
+            assertTrue(!model.isValid(), "Model close is idempotent and invalidates handle");
+        } catch (Throwable t) {
+            assertTrue(false, "Unexpected exception in geometry model lifecycle: " + t.getMessage());
         }
     }
 }

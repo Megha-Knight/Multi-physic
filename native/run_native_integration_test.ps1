@@ -1,5 +1,5 @@
 # run_native_integration_test.ps1
-# Builds native backend and executes Java 25 FFM integration test
+# Portable runner: builds native backend and executes Java 25 FFM integration tests
 $ErrorActionPreference = "Stop"
 
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -19,12 +19,23 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "`n=========================================================="
 Write-Host "Step 2: Executing Java 25 FFM End-to-End Integration Test"
 Write-Host "=========================================================="
+
 $JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
+if (-not (Test-Path $JAVA_HOME)) {
+    if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin\javac.exe"))) {
+        $JAVA_HOME = $env:JAVA_HOME
+    } else {
+        $JAVA_HOME = "C:\Program Files\Java\jdk-25"
+    }
+}
+
 $JAVAC = Join-Path $JAVA_HOME "bin\javac.exe"
 $JAVA  = Join-Path $JAVA_HOME "bin\java.exe"
 
-$TEST_JAVA = "E:\MultiPhysics_Supporting_Files\scratch\TestJavaNativeIntegration.java"
-$CP = "E:\MultiPhysics\target\classes;E:\MultiPhysics_Supporting_Files\scratch"
+$TEST_DIR = Join-Path $PROJECT_ROOT "tests\cam"
+$TEST_JAVA = Join-Path $TEST_DIR "TestJavaNativeIntegration.java"
+$TARGET_CLASSES = Join-Path $PROJECT_ROOT "target\classes"
+$CP = "$TARGET_CLASSES;$TEST_DIR"
 
 Write-Host "Compiling $TEST_JAVA..."
 & $JAVAC -cp $CP $TEST_JAVA
@@ -34,7 +45,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Running TestJavaNativeIntegration..."
-& $JAVA -ea --enable-native-access=ALL-UNNAMED -cp $CP TestJavaNativeIntegration
+$DLL_PATH = Join-Path $PROJECT_ROOT "native\build\bin\astra_native.dll"
+& $JAVA -ea --enable-native-access=ALL-UNNAMED "-Dastra.native.path=$DLL_PATH" -cp $CP TestJavaNativeIntegration
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Java integration test failed with exit code $LASTEXITCODE"

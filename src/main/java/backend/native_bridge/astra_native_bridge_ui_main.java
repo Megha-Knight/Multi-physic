@@ -59,7 +59,7 @@ public final class astra_native_bridge_ui_main {
         }
     }
 
-    private Path resolveLibraryPath() {
+    Path resolveLibraryPath() {
         String prop = System.getProperty("astra.native.path");
         if (prop != null && Files.exists(Paths.get(prop))) return Paths.get(prop);
         Path[] candidates = new Path[]{

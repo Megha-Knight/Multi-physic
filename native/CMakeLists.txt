@@ -34,6 +34,7 @@ include_directories(include)
 # Main native shared library
 add_library(astra_native SHARED
     src/astra_native.cpp
+    src/astra_geometry.cpp
 )
 
 target_compile_definitions(astra_native PRIVATE ASTRA_BUILD_DLL)
@@ -45,12 +46,22 @@ set_target_properties(astra_native PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
-# Standalone native test
+# Standalone native test (math & raycast)
 add_executable(test_native_main
     tests/test_native_main.cpp
 )
 
 target_link_libraries(test_native_main PRIVATE astra_native)
 set_target_properties(test_native_main PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+
+# Standalone native test (geometry ABI contract)
+add_executable(test_geometry_abi_contract
+    tests/test_geometry_abi_contract.c
+)
+
+target_link_libraries(test_geometry_abi_contract PRIVATE astra_native)
+set_target_properties(test_geometry_abi_contract PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )

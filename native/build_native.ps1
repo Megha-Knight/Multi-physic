@@ -45,9 +45,9 @@ $TEST_OUT = Join-Path $BIN_DIR "test_native_main.exe"
 
 # 1. Compile DLL
 Write-Host "Building shared library: $DLL_OUT..."
-$SRC_FILE = Join-Path $SRC_DIR "astra_native.cpp"
+$SRC_FILES = @((Join-Path $SRC_DIR "astra_native.cpp"), (Join-Path $SRC_DIR "astra_geometry.cpp"))
 & $CLANG_CXX --target=x86_64-w64-windows-gnu -std=c++17 -O2 -shared -DASTRA_BUILD_DLL `
-    "-I$INC_DIR" $SRC_FILE -o $DLL_OUT "-Wl,--out-implib,$LIB_OUT"
+    "-I$INC_DIR" $SRC_FILES -o $DLL_OUT "-Wl,--out-implib,$LIB_OUT"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to compile astra_native.dll"
@@ -55,7 +55,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Build SUCCESS: $DLL_OUT created."
 
-# 2. Compile Standalone Test
+# 2. Compile Standalone Tests
 Write-Host "Building test executable: $TEST_OUT..."
 $TEST_SRC = Join-Path $TEST_DIR "test_native_main.cpp"
 & $CLANG_CXX --target=x86_64-w64-windows-gnu -std=c++17 -O2 `
@@ -67,13 +67,32 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Build SUCCESS: $TEST_OUT created."
 
-# 3. Execute Standalone Test
+$GEOM_TEST_OUT = Join-Path $BIN_DIR "test_geometry_abi_contract.exe"
+$GEOM_TEST_SRC = Join-Path $TEST_DIR "test_geometry_abi_contract.c"
+Write-Host "Building geometry ABI test: $GEOM_TEST_OUT..."
+$CLANG_CC = Join-Path $LLVM_BIN "clang.exe"
+& $CLANG_CC --target=x86_64-w64-windows-gnu -std=c99 -O2 `
+    "-I$INC_DIR" $GEOM_TEST_SRC "-L$BIN_DIR" -lastra_native -o $GEOM_TEST_OUT
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to compile test_geometry_abi_contract.exe"
+    exit 1
+}
+Write-Host "Build SUCCESS: $GEOM_TEST_OUT created."
+
+# 3. Execute Standalone Tests
 Write-Host "`nRunning standalone native tests..."
 $env:PATH = "$BIN_DIR;$env:PATH"
 & $TEST_OUT
-
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Native tests failed with exit code $LASTEXITCODE"
+    Write-Error "Native math tests failed with exit code $LASTEXITCODE"
+    exit 1
+}
+
+Write-Host "`nRunning geometry ABI contract tests..."
+& $GEOM_TEST_OUT
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Geometry ABI tests failed with exit code $LASTEXITCODE"
     exit 1
 }
 
