@@ -6,7 +6,14 @@ import java.util.*;
 public class feature_dependency_graph_ui_main {
     private final Map<String, feature_node_ui_main> nodes = new LinkedHashMap<>();
 
-    public void registerFeature(feature_node_ui_main node) { if (node != null) nodes.put(node.getId(), node); }
+    public void registerFeature(feature_node_ui_main node) {
+        if (node == null) return;
+        if (nodes.containsKey(node.getId())) {
+            node.setInvalid("Duplicate feature ID: " + node.getId());
+            return;
+        }
+        nodes.put(node.getId(), node);
+    }
     public void addNode(feature_node_ui_main node) { registerFeature(node); }
     public feature_node_ui_main getFeature(String id) { return nodes.get(id); }
     public feature_node_ui_main getNode(String id) { return nodes.get(id); }
@@ -93,7 +100,9 @@ public class feature_dependency_graph_ui_main {
     public List<String> detectCycle() {
         Set<String> visited = new HashSet<>(), recStack = new HashSet<>();
         List<String> cyclePath = new ArrayList<>();
-        for (String id : nodes.keySet()) {
+        List<String> sortedKeys = new ArrayList<>(nodes.keySet());
+        Collections.sort(sortedKeys);
+        for (String id : sortedKeys) {
             if (findCycleDfs(id, visited, recStack, cyclePath)) return cyclePath;
         }
         return Collections.emptyList();
@@ -126,7 +135,9 @@ public class feature_dependency_graph_ui_main {
         }
         List<String> order = new ArrayList<>();
         Set<String> visited = new HashSet<>();
-        for (String id : nodes.keySet()) {
+        List<String> sortedKeys = new ArrayList<>(nodes.keySet());
+        Collections.sort(sortedKeys);
+        for (String id : sortedKeys) {
             if (!visited.contains(id)) topoDfs(id, visited, new HashSet<>(), order);
         }
         return order;
@@ -155,6 +166,8 @@ public class feature_dependency_graph_ui_main {
                     node.setInvalid("Missing dependency: " + dep.dependencyId()); break;
                 } else if (depNode.getState() == feature_state_ui_main.INVALID) {
                     node.setInvalid("Upstream dependency " + depNode.getId() + " is invalid"); break;
+                } else if (depNode.getState() == feature_state_ui_main.SUPPRESSED) {
+                    node.setInvalid("Dependent on suppressed feature: " + depNode.getId()); break;
                 }
             }
         }

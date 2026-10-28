@@ -31,7 +31,7 @@ public class shape_item_ui_main {
     private final shape_overlay_holder_ui_main overlays = new shape_overlay_holder_ui_main();
     private boolean selected = false, consumed = false;
     private String consumedBy = null, faceOwnerId = null, selectedExtrudeId = null;
-    private Point3D uAxis = new Point3D(1, 0, 0), vAxis = new Point3D(0, 0, 1), normal = new Point3D(0, -1, 0);
+    Point3D uAxis = new Point3D(1, 0, 0), vAxis = new Point3D(0, 0, 1), normal = new Point3D(0, -1, 0);
     private face_kind_ui_main faceKind = null;
     private double localHitU = 0, localHitV = 0;
     private final List<hole_feature_ui_main> holes = new java.util.ArrayList<>();
@@ -147,35 +147,8 @@ public class shape_item_ui_main {
     public void translate(double dx, double dz) { applyWorldDelta(dx, 0, dz); }
 
     public void rebuild() {
-        shapeGroup.getChildren().clear(); handlesGroup.getChildren().clear(); List<hole_feature_ui_main> eff = getAllEffectiveHoles();
-        if (overlays.hasCustomMesh()) overlays.updateCustomMeshMaterial(selected);
-        else if (shells.hasValidShell()) shapeGroup.getChildren().addAll(shells.buildVisuals(this, selected));
-        else if (lofts.hasValidLoft()) shapeGroup.getChildren().addAll(lofts.buildVisuals(this, selected));
-        else if (sweeps.hasValidSweep()) shapeGroup.getChildren().addAll(sweeps.buildVisuals(this, selected));
-        else if (revolves.hasValidRevolve()) shapeGroup.getChildren().addAll(revolves.buildVisuals(this, selected));
-        else if (machining.hasVisibleValidFeatures() && (type == basic_shapes_ui_main.CUBE || type == basic_shapes_ui_main.CUBOID || type == basic_shapes_ui_main.CYLINDER || type == basic_shapes_ui_main.CONE)) {
-            Node machSolid = ui.workspace.drafting.machining.machining_solid_mesh_builder_ui_main.buildSolid(this, selected);
-            if (machSolid != null) shapeGroup.getChildren().add(machSolid);
-        } else {
-            Node geo = switch (type) {
-                case CIRCLE    -> hasValidExtrusions() ? null : shape_geometry_ui_main.createCircle(p1, p2, uAxis, vAxis, normal, false, selected);
-                case SQUARE    -> hasValidExtrusions() ? null : shape_geometry_ui_main.createSquare(p1, p2, uAxis, vAxis, normal, false, selected);
-                case RECTANGLE -> hasValidExtrusions() ? null : shape_geometry_ui_main.createRectangle(p1, p2, uAxis, vAxis, normal, false, selected);
-                case EQUILATERAL_TRIANGLE -> hasValidExtrusions() ? null : shape_geometry_ui_main.createEquilateralTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
-                case RIGHT_TRIANGLE -> hasValidExtrusions() ? null : shape_geometry_ui_main.createRightTriangle(p1, p2, uAxis, vAxis, normal, false, selected);
-                case CUBE      -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCube(p1, p2, false, selected) : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCubeWithHoles(p1, p2, eff, false, selected);
-                case CUBOID    -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCuboid(p1, p2, false, selected) : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCuboidWithHoles(p1, p2, eff, false, selected);
-                case CYLINDER  -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCylinder(p1, p2, false, selected) : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildCylinderWithHoles(p1, p2, eff, false, selected);
-                case SPHERE    -> shape_geometry_3d_ui_main.createSphere(p1, p2, false, selected);
-                case CONE      -> eff.isEmpty() ? shape_geometry_3d_ui_main.createCone(p1, p2, false, selected) : ui.workspace.shapes.holes.hole_mesh_builder_ui_main.buildConeWithHoles(p1, p2, eff, false, selected);
-                default -> null;
-            };
-            if (geo != null) shapeGroup.getChildren().add(geo);
-        }
-        if (!eff.isEmpty()) shapeGroup.getChildren().add(ui.workspace.drafting.topology.derived_region_visual_builder_ui_main.buildDerivedRegionVisuals(this, getTopology()));
-        if (machining.hasVisibleValidFeatures() && !hasValidExtrusions() && type != basic_shapes_ui_main.CUBE && type != basic_shapes_ui_main.CUBOID && type != basic_shapes_ui_main.CYLINDER && type != basic_shapes_ui_main.CONE) shapeGroup.getChildren().addAll(machining.buildVisuals(this, selected));
-        for (var ext : extrusions) if (ext.isVisible() && ext.getState() != ui.workspace.drafting.features.feature_state_ui_main.INVALID) shapeGroup.getChildren().add(ui.workspace.drafting.extrude.extrude_mesh_builder_ui_main.buildExtrudeNode(this, ext, selected, selectedExtrudeId != null && selectedExtrudeId.equals(ext.getId())));
-        for (var sk : sketches) if (sk.isVisible()) shapeGroup.getChildren().add(ui.workspace.drafting.sketch.sketch_mesh_builder_ui_main.buildVisualGroup(sk, false));
+        shapeGroup.getChildren().clear(); handlesGroup.getChildren().clear();
+        shape_render_adapter_ui_main.buildShapeVisuals(this, shapeGroup, selected, getAllEffectiveHoles());
         if (selected) buildResizeHandles();
     }
 

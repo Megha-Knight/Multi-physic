@@ -21,28 +21,16 @@ public final class feature_regeneration_engine_ui_main {
         return regenerate(shapes, new feature_dependency_graph_ui_main());
     }
 
-    /**
-     * Marks the given feature and all transitive dependents as DIRTY on the
-     * actual persistent model objects, so a subsequent regenerateAll() will
-     * find and rebuild them. The graph is a one-shot computation tool here:
-     * build → propagate → write back to persistent objects → discard graph.
-     * Only the state written onto shape_item_ui_main/hole_feature_ui_main/etc.
-     * survives across the graph.clear() inside the next regenerateAll() call.
-     */
     public static void markDirtyAndCascade(String rootFeatureId, Collection<shape_item_ui_main> shapes) {
         if (rootFeatureId == null || shapes == null || shapes.isEmpty()) return;
         feature_dependency_graph_ui_main graph = new feature_dependency_graph_ui_main();
-        graph.buildFromShapes(shapes);   // seeds states from live objects
-        graph.markDirty(rootFeatureId);  // propagates DIRTY to all transitive dependents in graph
+        graph.buildFromShapes(shapes);
+        graph.markDirty(rootFeatureId);
         Map<String, shape_item_ui_main> shapeMap = new HashMap<>();
         for (shape_item_ui_main s : shapes) shapeMap.put(s.getId(), s);
         for (feature_node_ui_main fn : graph.getAllFeatures()) {
-            if (fn.getState() == feature_state_ui_main.DIRTY) {
-                syncEntityState(fn, shapeMap); // writes DIRTY onto the real persistent object
-            }
+            if (fn.getState() == feature_state_ui_main.DIRTY) syncEntityState(fn, shapeMap);
         }
-        // graph is discarded here; DIRTY state now lives on the persistent objects
-        // and will be re-read by buildFromShapes() inside the next regenerateAll() call
     }
 
     public static RegenerationReport regenerate(feature_dependency_graph_ui_main graph, Collection<shape_item_ui_main> shapes) {
@@ -68,35 +56,37 @@ public final class feature_regeneration_engine_ui_main {
             syncEntityState(fn, shapeMap);
         }
 
-        Set<shape_item_ui_main> rebuiltShapes = new LinkedHashSet<>();
+        Set<shape_item_ui_main> hostsToRebuild = new LinkedHashSet<>();
         for (String featId : order) {
             feature_node_ui_main node = graph.getFeature(featId);
-            if (node == null) continue;
-
-            if (node.getState() == feature_state_ui_main.CLEAN) {
-                continue; // nothing changed, no reason to touch this shape
-            }
+            if (node == null || node.getState() == feature_state_ui_main.CLEAN) continue;
             if (node.getState() == feature_state_ui_main.DIRTY) {
                 shape_item_ui_main host = resolveHost(node, shapeMap);
-                if (host != null && rebuiltShapes.add(host)) {
-                    List<javafx.scene.Node> backup = new ArrayList<>(host.getShapeGroup().getChildren());
+                if (host != null) {
                     try {
-                        host.revalidateFeatures();
-                        host.rebuild();
-                        regenCount++;
+                        evaluateNode(node, host);
                         node.setState(feature_state_ui_main.CLEAN);
+                        hostsToRebuild.add(host);
+                        regenCount++;
                     } catch (Throwable t) {
-                        host.getShapeGroup().getChildren().setAll(backup);
                         node.setInvalid("Regeneration error: " + t.getMessage());
                         invalidCount++;
                     }
-                } else {
-                    node.setState(feature_state_ui_main.CLEAN);
+                    syncEntityState(node, shapeMap);
                 }
-                syncEntityState(node, shapeMap);
             }
         }
+        for (shape_item_ui_main host : hostsToRebuild) {
+            try { host.revalidateFeatures(); host.rebuild(); } catch (Throwable ignored) {}
+        }
         return new RegenerationReport(graph.getAllFeatures().size(), regenCount, invalidCount, hasCycle, order);
+    }
+
+    private static void evaluateNode(feature_node_ui_main node, shape_item_ui_main host) {
+        if (node.getType() == feature_type_ui_main.BOOLEAN) {
+            node.setInvalid("Boolean solid evaluation requires native geometry kernel");
+            throw new UnsupportedOperationException("Native B-rep boolean kernel required");
+        }
     }
 
     private static shape_item_ui_main resolveHost(feature_node_ui_main node, Map<String, shape_item_ui_main> map) {
@@ -111,35 +101,19 @@ public final class feature_regeneration_engine_ui_main {
     private static void syncEntityState(feature_node_ui_main fn, Map<String, shape_item_ui_main> map) {
         shape_item_ui_main host = resolveHost(fn, map);
         if (host == null) return;
-        if (fn.getType() == feature_type_ui_main.SOLID_BODY || fn.getType() == feature_type_ui_main.BASE_SOLID ||
-            fn.getType() == feature_type_ui_main.SKETCH_PROFILE) {
-            host.setState(fn.getState());
-        } else if (fn.getType() == feature_type_ui_main.SKETCH) {
-            for (var sk : host.getSketches()) {
-                if (sk.getId().equals(fn.getId())) {
-                    sk.setState(fn.getState()); sk.setVisible(fn.isVisible());
-                    if (fn.getState() == feature_state_ui_main.INVALID) sk.setDiagnosticMessage(fn.getDiagnosticMessage());
-                    break;
-                }
-            }
-        } else if (fn.getType() == feature_type_ui_main.HOLE_FEATURE || fn.getType() == feature_type_ui_main.HOLE) {
-            for (hole_feature_ui_main h : host.getHoles()) {
-                if (h.getId().equals(fn.getId())) {
-                    h.setState(fn.getState()); h.setVisible(fn.isVisible()); break;
-                }
-            }
-        } else if (fn.getType() == feature_type_ui_main.PATTERN_FEATURE || fn.getType() == feature_type_ui_main.PATTERN) {
-            for (hole_pattern_ui_main p : host.getPatterns()) {
-                if (p.getId().equals(fn.getId())) {
-                    p.setState(fn.getState()); p.setVisible(fn.isVisible()); p.setDiagnosticMessage(fn.getDiagnosticMessage()); break;
-                }
-            }
-        } else if (fn.getType() == feature_type_ui_main.EXTRUDE_FEATURE || fn.getType() == feature_type_ui_main.EXTRUDE) {
-            for (extrude_feature_ui_main ext : host.getExtrusions()) {
-                if (ext.getId().equals(fn.getId())) {
-                    ext.setState(fn.getState()); ext.setVisible(fn.isVisible()); break;
-                }
-            }
-        }
+        var st = fn.getState(); var msg = fn.getDiagnosticMessage();
+        if (fn.getType() == feature_type_ui_main.SOLID_BODY || fn.getType() == feature_type_ui_main.BASE_SOLID || fn.getType() == feature_type_ui_main.SKETCH_PROFILE) host.setState(st);
+        else if (fn.getType() == feature_type_ui_main.SKETCH) { for (var sk : host.getSketches()) if (sk.getId().equals(fn.getId())) { sk.setState(st); sk.setVisible(fn.isVisible()); if (st == feature_state_ui_main.INVALID) sk.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.HOLE_FEATURE || fn.getType() == feature_type_ui_main.HOLE) { for (var h : host.getHoles()) if (h.getId().equals(fn.getId())) { h.setState(st); h.setVisible(fn.isVisible()); break; } }
+        else if (fn.getType() == feature_type_ui_main.PATTERN_FEATURE || fn.getType() == feature_type_ui_main.PATTERN) { for (var p : host.getPatterns()) if (p.getId().equals(fn.getId())) { p.setState(st); p.setVisible(fn.isVisible()); p.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.EXTRUDE_FEATURE || fn.getType() == feature_type_ui_main.EXTRUDE) { for (var ext : host.getExtrusions()) if (ext.getId().equals(fn.getId())) { ext.setState(st); ext.setVisible(fn.isVisible()); break; } }
+        else if (fn.getType() == feature_type_ui_main.FILLET) { for (var f : host.getFillets()) if (f.getId().equals(fn.getId())) { f.setState(st); f.setVisible(fn.isVisible()); f.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.CHAMFER) { for (var c : host.getChamfers()) if (c.getId().equals(fn.getId())) { c.setState(st); c.setVisible(fn.isVisible()); c.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.DRAFT) { for (var d : host.getDrafts()) if (d.getId().equals(fn.getId())) { d.setState(st); d.setVisible(fn.isVisible()); d.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.BOOLEAN) { for (var b : host.getBooleans()) if (b.getId().equals(fn.getId())) { b.setState(st); b.setVisible(fn.isVisible()); b.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.SHELL) { for (var sh : host.getShells()) if (sh.getId().equals(fn.getId())) { sh.setState(st); sh.setVisible(fn.isVisible()); sh.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.LOFT) { for (var l : host.getLofts()) if (l.getId().equals(fn.getId())) { l.setState(st); l.setVisible(fn.isVisible()); l.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.SWEEP) { for (var sw : host.getSweeps()) if (sw.getId().equals(fn.getId())) { sw.setState(st); sw.setVisible(fn.isVisible()); sw.setDiagnosticMessage(msg); break; } }
+        else if (fn.getType() == feature_type_ui_main.REVOLVE) { for (var r : host.getRevolves()) if (r.getId().equals(fn.getId())) { r.setState(st); r.setVisible(fn.isVisible()); r.setDiagnosticMessage(msg); break; } }
     }
 }
