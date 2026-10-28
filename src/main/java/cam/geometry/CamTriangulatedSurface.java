@@ -103,11 +103,12 @@ public class CamTriangulatedSurface {
                 double fx = ex1 - x, fy = ey1 - y, aq = edx * edx + edy * edy;
                 if (aq < 1e-9) continue;
                 double bq = 2.0 * (fx * edx + fy * edy), cq = fx * fx + fy * fy - r * r, disc = bq * bq - 4.0 * aq * cq;
-                if (disc >= 0) {
-                    double sq = Math.sqrt(disc);
+                if (disc >= -1e-9) {
+                    double sq = Math.sqrt(Math.max(0.0, disc));
                     for (double t : new double[]{ (-bq - sq) / (2.0 * aq), (-bq + sq) / (2.0 * aq) }) {
                         if (t >= -1e-6 && t <= 1.0 + 1e-6) {
-                            double z = tri.evaluateZ(ex1 + t * edx, ey1 + t * edy);
+                            double ct = Math.max(0.0, Math.min(1.0, t));
+                            double z = tri.evaluateZ(ex1 + ct * edx, ey1 + ct * edy);
                             if (Double.isFinite(z) && (Double.isNaN(topZ) || z > topZ)) topZ = z;
                         }
                     }
