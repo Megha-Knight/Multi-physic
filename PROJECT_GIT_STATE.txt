@@ -1,8 +1,8 @@
 Astra / MultiPhysics — Git Snapshot State
 Date: 2026-10-28
 Branch: main
-Current Commit: 99b7d68
-Commit Message: feat(milestone-1): implement geometry ABI contract, feature graph completeness, and lineage test harness
+Current Commit: d323dd8
+Commit Message: feat(milestone-2): implement native geometry ABI, real Java FFM downcalls, build integration, and forward-slash handoff packaging
 Remote URL: https://github.com/Megha-Knight/Multi-physic.git
 Remote Status: Up-to-date with 'origin/main'
 POM SHA-256: DEEA003B51DD0A6145657727FC85153913F273B8FEC8B840F65A240BC7EF6309
