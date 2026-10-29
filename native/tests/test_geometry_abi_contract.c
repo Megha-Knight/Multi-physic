@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <string.h>
 #include <math.h>
+#define ASTRA_PI 3.14159265358979323846
 #include "astra_geometry.h"
 
 int main(void) {
@@ -128,12 +129,82 @@ int main(void) {
     assert(rec0.successor_count == 1);
     printf("  [PASS] Face lineage outcome verified as ASTRA_LINEAGE_PRESERVED with 1 successor\n");
 
-    /* 7. Clean Cleanup */
+    /* 7. Evaluate Full Revolve (2*PI radians around Y axis) */
+    astra_id128 rev_full_id = { .high = 0x55555555ULL, .low = 0x66666666ULL };
+    astra_geom_feature_request rev_req;
+    memset(&rev_req, 0, sizeof(rev_req));
+    rev_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    rev_req.operation_kind = ASTRA_OP_REVOLVE;
+    rev_req.feature_id = rev_full_id;
+    rev_req.parameters.revolve.struct_size = (uint32_t)sizeof(astra_geom_revolve_params);
+    rev_req.parameters.revolve.profile_feature_id = prof_id;
+    rev_req.parameters.revolve.axis_origin_xyz_mm[0] = 0.0;
+    rev_req.parameters.revolve.axis_origin_xyz_mm[1] = 0.0;
+    rev_req.parameters.revolve.axis_origin_xyz_mm[2] = 0.0;
+    rev_req.parameters.revolve.axis_direction_xyz[0] = 0.0;
+    rev_req.parameters.revolve.axis_direction_xyz[1] = 1.0; // Y axis
+    rev_req.parameters.revolve.axis_direction_xyz[2] = 0.0;
+    rev_req.parameters.revolve.angle_rad = 2.0 * ASTRA_PI;
+
+    astra_geom_result_handle *rev_res1 = NULL;
+    st = astra_geom_evaluate_feature(model, &rev_req, &rev_res1);
+    assert(st == ASTRA_GEOM_OK);
+    assert(rev_res1 != NULL);
+
+    astra_tessellation_view rev_view1;
+    st = astra_geom_result_tessellation(rev_res1, &rev_view1);
+    assert(st == ASTRA_GEOM_OK);
+    assert(rev_view1.vertex_count > 0);
+    assert(rev_view1.triangle_count > 0);
+    printf("  [PASS] Full 2*PI revolve evaluated: %llu vertices, %llu triangles\n",
+           (unsigned long long)rev_view1.vertex_count, (unsigned long long)rev_view1.triangle_count);
+
+    /* Verify cylindrical face entity resolution */
+    astra_entity_ref cyl_query;
+    memset(&cyl_query, 0, sizeof(cyl_query));
+    cyl_query.role = ASTRA_ROLE_REVOLVE_CYLINDRICAL_FACE;
+    cyl_query.feature_id = rev_full_id;
+    cyl_query.sub_index = 1; // Edge parallel to Y axis
+    st = astra_geom_result_resolve_entity(rev_res1, &cyl_query, &kind);
+    assert(st == ASTRA_GEOM_OK);
+    printf("  [PASS] Revolve cylindrical face entity resolved\n");
+
+    /* 8. Evaluate Partial Revolve (PI radians) — verify start & end caps */
+    astra_id128 rev_part_id = { .high = 0x77777777ULL, .low = 0x88888888ULL };
+    rev_req.feature_id = rev_part_id;
+    rev_req.parameters.revolve.angle_rad = ASTRA_PI;
+    astra_geom_result_handle *rev_res2 = NULL;
+    st = astra_geom_evaluate_feature(model, &rev_req, &rev_res2);
+    assert(st == ASTRA_GEOM_OK);
+    assert(rev_res2 != NULL);
+
+    astra_entity_ref start_cap_query;
+    memset(&start_cap_query, 0, sizeof(start_cap_query));
+    start_cap_query.role = ASTRA_ROLE_REVOLVE_START_CAP;
+    start_cap_query.feature_id = rev_part_id;
+    start_cap_query.sub_index = 0;
+    st = astra_geom_result_resolve_entity(rev_res2, &start_cap_query, &kind);
+    assert(st == ASTRA_GEOM_OK);
+    printf("  [PASS] Partial revolve start cap entity resolved\n");
+
+    /* 9. Invalid Axis Direction (Zero length) */
+    rev_req.parameters.revolve.axis_direction_xyz[0] = 0.0;
+    rev_req.parameters.revolve.axis_direction_xyz[1] = 0.0;
+    rev_req.parameters.revolve.axis_direction_xyz[2] = 0.0;
+    astra_geom_result_handle *bad_rev_res = NULL;
+    st = astra_geom_evaluate_feature(model, &rev_req, &bad_rev_res);
+    assert(st == ASTRA_GEOM_DEGENERATE_INPUT);
+    assert(bad_rev_res == NULL);
+    printf("  [PASS] Zero-length revolve axis rejected with ASTRA_GEOM_DEGENERATE_INPUT\n");
+
+    /* 10. Clean Cleanup */
     astra_geom_result_release(ext_res1);
     astra_geom_result_release(ext_res2);
+    astra_geom_result_release(rev_res1);
+    astra_geom_result_release(rev_res2);
     astra_geom_model_release(model);
     printf("  [PASS] Cleanup completed cleanly\n");
 
-    printf("=== ALL ASTRA GEOMETRY MILESTONE 4 TESTS PASSED ===\n");
+    printf("=== ALL ASTRA GEOMETRY MILESTONE 5 TESTS PASSED ===\n");
     return 0;
 }

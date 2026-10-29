@@ -7,6 +7,8 @@
 #include <cmath>
 #include <algorithm>
 
+static const double ASTRA_PI = 3.14159265358979323846;
+
 static thread_local std::string g_last_error;
 
 static void set_error(const std::string &msg) {
@@ -212,12 +214,15 @@ static double cross2d(const Point2D &a, const Point2D &b, const Point2D &c) {
 }
 
 static bool point_in_triangle(const Point2D &p, const Point2D &a, const Point2D &b, const Point2D &c) {
+    if (std::hypot(p.u - a.u, p.v - a.v) < 1e-7 ||
+        std::hypot(p.u - b.u, p.v - b.v) < 1e-7 ||
+        std::hypot(p.u - c.u, p.v - c.v) < 1e-7) {
+        return false;
+    }
     double cp1 = cross2d(a, b, p);
     double cp2 = cross2d(b, c, p);
     double cp3 = cross2d(c, a, p);
-    bool has_neg = (cp1 < -1e-9) || (cp2 < -1e-9) || (cp3 < -1e-9);
-    bool has_pos = (cp1 > 1e-9) || (cp2 > 1e-9) || (cp3 > 1e-9);
-    return !(has_neg && has_pos);
+    return (cp1 > 1e-7 && cp2 > 1e-7 && cp3 > 1e-7);
 }
 
 static bool segments_intersect(const Point2D &p1, const Point2D &p2, const Point2D &p3, const Point2D &p4) {
@@ -659,6 +664,254 @@ static astra_geom_status evaluate_extrude(
     return ASTRA_GEOM_OK;
 }
 
+struct Point3DGeom {
+    double x, y, z;
+};
+
+static Point3DGeom rodrigues_rotate(const Point3DGeom &p, const double orig[3], const double k[3], double theta) {
+    double vx = p.x - orig[0];
+    double vy = p.y - orig[1];
+    double vz = p.z - orig[2];
+
+    double cos_t = std::cos(theta);
+    double sin_t = std::sin(theta);
+    double dot_kv = k[0]*vx + k[1]*vy + k[2]*vz;
+
+    double cross_x = k[1]*vz - k[2]*vy;
+    double cross_y = k[2]*vx - k[0]*vz;
+    double cross_z = k[0]*vy - k[1]*vx;
+
+    return Point3DGeom{
+        orig[0] + vx * cos_t + cross_x * sin_t + k[0] * dot_kv * (1.0 - cos_t),
+        orig[1] + vy * cos_t + cross_y * sin_t + k[1] * dot_kv * (1.0 - cos_t),
+        orig[2] + vz * cos_t + cross_z * sin_t + k[2] * dot_kv * (1.0 - cos_t)
+    };
+}
+
+static astra_geom_status evaluate_revolve(
+    astra_geom_model_handle *model,
+    const astra_geom_feature_request *request,
+    astra_geom_result_handle **out_result) {
+    const auto &p = request->parameters.revolve;
+    auto it = model->profiles.find(to_key(p.profile_feature_id));
+    if (it == model->profiles.end()) {
+        set_error("evaluate_revolve: referenced profile feature ID not found in model");
+        return ASTRA_GEOM_ENTITY_NOT_FOUND;
+    }
+    const StoredProfile &prof = it->second;
+
+    for (int i = 0; i < 3; i++) {
+        if (!std::isfinite(p.axis_origin_xyz_mm[i]) || !std::isfinite(p.axis_direction_xyz[i])) {
+            set_error("evaluate_revolve: non-finite axis origin or direction component");
+            return ASTRA_GEOM_INVALID_ARGUMENT;
+        }
+    }
+    double axis_len = std::sqrt(p.axis_direction_xyz[0]*p.axis_direction_xyz[0] +
+                                p.axis_direction_xyz[1]*p.axis_direction_xyz[1] +
+                                p.axis_direction_xyz[2]*p.axis_direction_xyz[2]);
+    if (axis_len < 1e-6) {
+        set_error("evaluate_revolve: axis direction vector has near-zero length");
+        return ASTRA_GEOM_DEGENERATE_INPUT;
+    }
+    double k[3] = {
+        p.axis_direction_xyz[0] / axis_len,
+        p.axis_direction_xyz[1] / axis_len,
+        p.axis_direction_xyz[2] / axis_len
+    };
+
+    double angle = p.angle_rad;
+    if (angle <= 1e-6 || angle > (2.0 * ASTRA_PI + 1e-4) || !std::isfinite(angle)) {
+        set_error("evaluate_revolve: angle must be positive, finite, and at most 2*PI radians");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+
+    bool is_full = std::abs(angle - 2.0 * ASTRA_PI) < 1e-4;
+    int segments = std::max(12, (int)std::ceil(24.0 * (angle / (2.0 * ASTRA_PI))));
+    double delta_theta = angle / segments;
+
+    uint32_t total_profile_pts = 0;
+    for (const auto &loop : prof.loops) total_profile_pts += (uint32_t)loop.points.size();
+
+    std::vector<Point3DGeom> base_3d(total_profile_pts);
+    uint32_t pt_cur = 0;
+    for (const auto &loop : prof.loops) {
+        for (const auto &pt : loop.points) {
+            base_3d[pt_cur++] = Point3DGeom{
+                prof.origin[0] + pt.u * prof.u_axis[0] + pt.v * prof.v_axis[0],
+                prof.origin[1] + pt.u * prof.u_axis[1] + pt.v * prof.v_axis[1],
+                prof.origin[2] + pt.u * prof.u_axis[2] + pt.v * prof.v_axis[2]
+            };
+        }
+    }
+
+    uint32_t num_slices = is_full ? segments : (segments + 1);
+    uint32_t total_verts = num_slices * total_profile_pts;
+
+    auto *res = new (std::nothrow) astra_geom_result_handle();
+    if (!res) return ASTRA_GEOM_OUT_OF_MEMORY;
+    res->magic = RESULT_MAGIC;
+    model->current_revision++;
+    res->revision = model->current_revision;
+
+    res->positions.resize(total_verts * 3);
+
+    for (int s = 0; s < (int)num_slices; s++) {
+        double theta = s * delta_theta;
+        for (uint32_t i = 0; i < total_profile_pts; i++) {
+            Point3DGeom rot = rodrigues_rotate(base_3d[i], p.axis_origin_xyz_mm, k, theta);
+            uint32_t v_idx = s * total_profile_pts + i;
+            res->positions[3 * v_idx + 0] = (float)rot.x;
+            res->positions[3 * v_idx + 1] = (float)rot.y;
+            res->positions[3 * v_idx + 2] = (float)rot.z;
+        }
+    }
+
+    // Lateral Quads (each split into 2 triangles)
+    for (int s = 0; s < segments; s++) {
+        int s_next = is_full ? ((s + 1) % segments) : (s + 1);
+        uint32_t loop_start = 0;
+
+        for (size_t l_idx = 0; l_idx < prof.loops.size(); l_idx++) {
+            const auto &loop = prof.loops[l_idx];
+            uint32_t ln = (uint32_t)loop.points.size();
+            bool is_inner = loop.is_hole;
+
+            for (uint32_t i = 0; i < ln; i++) {
+                uint32_t j = (i + 1) % ln;
+
+                Point3DGeom p0 = base_3d[loop_start + i];
+                Point3DGeom p1 = base_3d[loop_start + j];
+                double ex = p1.x - p0.x, ey = p1.y - p0.y, ez = p1.z - p0.z;
+                double elen = std::sqrt(ex*ex + ey*ey + ez*ez);
+                double cx = ey * k[2] - ez * k[1];
+                double cy = ez * k[0] - ex * k[2];
+                double cz = ex * k[1] - ey * k[0];
+                double clen = std::sqrt(cx*cx + cy*cy + cz*cz);
+                bool is_parallel_to_axis = (elen > 1e-6) && ((clen / elen) < 1e-3);
+
+                uint32_t role = is_parallel_to_axis ? ASTRA_ROLE_REVOLVE_CYLINDRICAL_FACE : ASTRA_ROLE_REVOLVE_LATERAL_FACE;
+
+                astra_entity_ref lat_ref;
+                std::memset(&lat_ref, 0, sizeof(lat_ref));
+                lat_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+                lat_ref.role = role;
+                lat_ref.feature_id = request->feature_id;
+                lat_ref.sub_index = (int32_t)i;
+                lat_ref.flags = is_inner ? 1u : 0u;
+                lat_ref.related_feature_id = p.profile_feature_id;
+
+                uint32_t v0 = s * total_profile_pts + loop_start + i;
+                uint32_t v1 = s * total_profile_pts + loop_start + j;
+                uint32_t v0_top = s_next * total_profile_pts + loop_start + i;
+                uint32_t v1_top = s_next * total_profile_pts + loop_start + j;
+
+                res->indices.push_back(v0);
+                res->indices.push_back(v1);
+                res->indices.push_back(v1_top);
+                res->entities.push_back(lat_ref);
+
+                res->indices.push_back(v0);
+                res->indices.push_back(v1_top);
+                res->indices.push_back(v0_top);
+                res->entities.push_back(lat_ref);
+            }
+            loop_start += ln;
+        }
+    }
+
+    // End Caps for partial revolutions
+    if (!is_full) {
+        std::vector<uint32_t> orig_indices;
+        std::vector<Point2D> bridged_pts = bridge_holes_into_outer(prof.loops, orig_indices);
+        std::vector<uint32_t> cap_triangles = triangulate_simple_polygon(bridged_pts);
+        uint32_t cap_tri_count = (uint32_t)cap_triangles.size() / 3;
+
+        astra_entity_ref start_cap_ref;
+        std::memset(&start_cap_ref, 0, sizeof(start_cap_ref));
+        start_cap_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+        start_cap_ref.role = ASTRA_ROLE_REVOLVE_START_CAP;
+        start_cap_ref.feature_id = request->feature_id;
+        start_cap_ref.sub_index = 0;
+
+        for (uint32_t t = 0; t < cap_tri_count; t++) {
+            uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]];
+            uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]];
+            uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]];
+            res->indices.push_back(i0);
+            res->indices.push_back(i2);
+            res->indices.push_back(i1);
+            res->entities.push_back(start_cap_ref);
+        }
+
+        astra_entity_ref end_cap_ref;
+        std::memset(&end_cap_ref, 0, sizeof(end_cap_ref));
+        end_cap_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+        end_cap_ref.role = ASTRA_ROLE_REVOLVE_END_CAP;
+        end_cap_ref.feature_id = request->feature_id;
+        end_cap_ref.sub_index = 0;
+
+        uint32_t end_offset = segments * total_profile_pts;
+        for (uint32_t t = 0; t < cap_tri_count; t++) {
+            uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]] + end_offset;
+            uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]] + end_offset;
+            uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]] + end_offset;
+            res->indices.push_back(i0);
+            res->indices.push_back(i1);
+            res->indices.push_back(i2);
+            res->entities.push_back(end_cap_ref);
+        }
+    }
+
+    // Cross-Revision Lineage for Revolve
+    if (model->last_solid_revision > 0) {
+        std::vector<LineageEntry> lineage_entries;
+        for (const auto &old_ref : model->last_solid_entities) {
+            LineageEntry entry;
+            entry.record.struct_size = (uint32_t)sizeof(astra_lineage_record);
+            entry.record.source_revision = model->last_solid_revision;
+            entry.record.destination_revision = res->revision;
+            entry.record.source = old_ref;
+            entry.record.reserved = 0;
+
+            bool found = false;
+            for (const auto &new_ref : res->entities) {
+                if (old_ref.role == new_ref.role &&
+                    old_ref.feature_id.high == new_ref.feature_id.high &&
+                    old_ref.feature_id.low == new_ref.feature_id.low &&
+                    old_ref.sub_index == new_ref.sub_index &&
+                    old_ref.flags == new_ref.flags) {
+                    entry.record.outcome = ASTRA_LINEAGE_PRESERVED;
+                    entry.record.successor_count = 1;
+                    entry.successors.push_back(new_ref);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                entry.record.outcome = ASTRA_LINEAGE_CONSUMED;
+                entry.record.successor_count = 0;
+            }
+            lineage_entries.push_back(entry);
+        }
+        res->lineage[model->last_solid_revision] = lineage_entries;
+    }
+
+    model->last_solid_revision = res->revision;
+    model->last_solid_entities = res->entities;
+
+    res->view.struct_size = (uint32_t)sizeof(astra_tessellation_view);
+    res->view.flags = 0;
+    res->view.geometry_revision = res->revision;
+    res->view.vertex_count = total_verts;
+    res->view.triangle_count = (uint32_t)res->entities.size();
+    res->view.positions_xyz = res->positions.data();
+    res->view.triangle_indices = res->indices.data();
+    res->view.triangle_entities = res->entities.data();
+
+    *out_result = res;
+    return ASTRA_GEOM_OK;
+}
+
 astra_geom_status astra_geom_evaluate_feature(
     const astra_geom_model_handle *model,
     const astra_geom_feature_request *request,
@@ -684,6 +937,8 @@ astra_geom_status astra_geom_evaluate_feature(
             return evaluate_sketch_profile(non_const_model, request, out_result);
         case ASTRA_OP_EXTRUDE:
             return evaluate_extrude(non_const_model, request, out_result);
+        case ASTRA_OP_REVOLVE:
+            return evaluate_revolve(non_const_model, request, out_result);
         default:
             set_error("astra_geom_evaluate_feature: unsupported operation kind " +
                       std::to_string(request->operation_kind));
