@@ -25,6 +25,7 @@ $TEST_SRC = Join-Path $SCRIPT_DIR "TestMilestone1ContractHarness.java"
 Write-Host "Compiling Milestone 1 test harness and dependencies..."
 & $JAVAC --module-path $mp --add-modules javafx.controls,javafx.fxml,javafx.graphics -d $BUILD_DIR -sourcepath "$SRC_DIR;$PROJECT_ROOT" `
     (Join-Path $SRC_DIR "backend\native_bridge\astra_native_bridge_ui_main.java") `
+    (Join-Path $SRC_DIR "backend\native_bridge\geometry_tessellation_snapshot_ui_main.java") `
     (Join-Path $SRC_DIR "backend\native_bridge\astra_geometry_native_bridge_ui_main.java") `
     (Join-Path $SRC_DIR "ui\workspace\drafting\features\feature_type_ui_main.java") `
     (Join-Path $SRC_DIR "ui\workspace\drafting\features\feature_state_ui_main.java") `

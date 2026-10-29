@@ -154,7 +154,7 @@ public class TestMilestone1ContractHarness {
     }
 
     private static void testNativeGeometryAbiFailClosed() {
-        System.out.println("\n--- 6. Native Geometry ABI Integration & Fail-Closed Behavior ---");
+        System.out.println("\n--- 6. Native Geometry ABI Integration & Milestone 3 Sketch -> Extrude ---");
         var bridge = astra_geometry_native_bridge_ui_main.getInstance();
         assertTrue(bridge.isAvailable(), "Geometry ABI successfully loaded and verified available in native DLL");
         assertTrue(bridge.getAbiVersion() == 1, "Native geometry ABI reports version 1");
@@ -162,19 +162,81 @@ public class TestMilestone1ContractHarness {
         try (var model = bridge.createModel()) {
             assertTrue(model != null && model.isValid(), "Native model allocation succeeded");
             try (java.lang.foreign.Arena arena = java.lang.foreign.Arena.ofConfined()) {
-                // Request size = 184 bytes for astra_geom_feature_request
-                java.lang.foreign.MemorySegment req = arena.allocate(184);
-                req.set(java.lang.foreign.ValueLayout.JAVA_INT, 0, 184); // struct_size
-                req.set(java.lang.foreign.ValueLayout.JAVA_INT, 4, 3);   // op_kind = EXTRUDE
-                bridge.evaluateFeature(model, req);
-                assertTrue(false, "Should have thrown UnsupportedOperationException for unimplemented feature");
-            } catch (UnsupportedOperationException e) {
-                assertTrue(e.getMessage().contains("B-rep evaluation not yet implemented"), "Fail-closed exception received with native diagnostic: " + e.getMessage());
+                // 1. Evaluate Sketch Profile
+                java.lang.foreign.MemorySegment profReq = arena.allocate(184);
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 0, 184); // struct_size
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 4, 1);   // op_kind = ASTRA_OP_SKETCH_PROFILE
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_LONG, 8, 0x11111111L); // feature_id.high
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_LONG, 16, 0x22222222L); // feature_id.low
+
+                // sketch params offset = 48
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 48, 120); // struct_size
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 52, 1);   // loop_count = 1
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 56, 4);   // point_count = 4
+                // plane u axis = (1, 0, 0)
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE, 88, 1.0);
+                // plane v axis = (0, 1, 0)
+                profReq.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE, 120, 1.0);
+
+                double[] squareCoords = { 0.0, 0.0,  10.0, 0.0,  10.0, 10.0,  0.0, 10.0 };
+                java.lang.foreign.MemorySegment coords = arena.allocate(64);
+                for (int i = 0; i < 8; i++) coords.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE, i * 8L, squareCoords[i]);
+                profReq.set(java.lang.foreign.ValueLayout.ADDRESS, 136, coords);
+
+                var profRes = bridge.evaluateFeature(model, profReq);
+                assertTrue(profRes != null && profRes.isValid(), "Sketch profile evaluation succeeded");
+                profRes.close();
+
+                // 2. Evaluate Extrude (25.0 mm along +Z)
+                java.lang.foreign.MemorySegment extReq = arena.allocate(184);
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 0, 184); // struct_size
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 4, 3);   // op_kind = ASTRA_OP_EXTRUDE
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_LONG, 8, 0x33333333L); // feature_id.high
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_LONG, 16, 0x44444444L); // feature_id.low
+
+                // extrude params offset = 48
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 48, 56); // struct_size
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_LONG, 56, 0x11111111L); // profile_feature_id.high
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_LONG, 64, 0x22222222L); // profile_feature_id.low
+                // direction = (0, 0, 1)
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE, 88, 1.0);
+                // distance = 25.0
+                extReq.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE, 96, 25.0);
+
+                var extRes = bridge.evaluateFeature(model, extReq);
+                assertTrue(extRes != null && extRes.isValid(), "Extrude evaluation succeeded");
+
+                // 3. Copy Tessellation Snapshot
+                var snapshot = bridge.copyTessellationSnapshot(extRes);
+                assertTrue(snapshot != null, "Tessellation snapshot copied to Java successfully");
+                assertTrue(snapshot.getVertexCount() == 8, "Snapshot has 8 vertices (4 bottom, 4 top)");
+                assertTrue(snapshot.getTriangleCount() == 12, "Snapshot has 12 triangles (2 start cap + 2 end cap + 8 lateral)");
+
+                // 4. Resolve Entity
+                var latRef = entity_lineage_contract_ui_main.EntityRef.of("feat-ext", 3, 2);
+                // Convert to ext_id
+                var extRef = new entity_lineage_contract_ui_main.EntityRef(
+                    new entity_lineage_contract_ui_main.Id128(0x33333333L, 0x44444444L), 3, 2, 0, new entity_lineage_contract_ui_main.Id128(0, 0));
+                assertTrue(bridge.resolveEntity(extRes, extRef), "Lateral face entity resolved successfully via FFM");
+
+                extRes.close();
+
+                // 5. Fail-closed on unsupported operation (Boolean)
+                java.lang.foreign.MemorySegment boolReq = arena.allocate(184);
+                boolReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 0, 184);
+                boolReq.set(java.lang.foreign.ValueLayout.JAVA_INT, 4, 7); // op_kind = BOOLEAN
+                try {
+                    bridge.evaluateFeature(model, boolReq);
+                    assertTrue(false, "Boolean operation should have failed closed");
+                } catch (UnsupportedOperationException e) {
+                    assertTrue(e.getMessage().contains("unsupported operation kind 7"), "Fail-closed diagnostic confirmed for Boolean: " + e.getMessage());
+                }
             }
             model.close();
             assertTrue(!model.isValid(), "Model close is idempotent and invalidates handle");
         } catch (Throwable t) {
             assertTrue(false, "Unexpected exception in geometry model lifecycle: " + t.getMessage());
+            t.printStackTrace();
         }
     }
 }
