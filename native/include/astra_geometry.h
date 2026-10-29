@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#define ASTRA_GEOMETRY_ABI_VERSION 1u
+#define ASTRA_GEOMETRY_ABI_VERSION 2u
 #define ASTRA_GEOMETRY_ROLE_NAME_CAPACITY 48u
 
 typedef int32_t astra_geom_status;

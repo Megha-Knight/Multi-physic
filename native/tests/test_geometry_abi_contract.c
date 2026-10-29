@@ -9,9 +9,9 @@ int main(void) {
     printf("=== Testing Astra Geometry ABI Contract, Holes & Lineage ===\n");
 
     /* 1. ABI Version */
-    assert(ASTRA_GEOMETRY_ABI_VERSION == 1u);
-    assert(astra_geometry_abi_version() == 1u);
-    printf("  [PASS] ASTRA_GEOMETRY_ABI_VERSION == 1\n");
+    assert(ASTRA_GEOMETRY_ABI_VERSION == 2u);
+    assert(astra_geometry_abi_version() == 2u);
+    printf("  [PASS] ASTRA_GEOMETRY_ABI_VERSION == 2\n");
 
     /* 2. Runtime Model Lifecycle */
     astra_geom_model_handle *model = NULL;
@@ -197,14 +197,69 @@ int main(void) {
     assert(bad_rev_res == NULL);
     printf("  [PASS] Zero-length revolve axis rejected with ASTRA_GEOM_DEGENERATE_INPUT\n");
 
-    /* 10. Clean Cleanup */
+    /* 10. Evaluate Linear Sweep */
+    astra_id128 swp_lin_id = { .high = 0xAAAAAAAULL, .low = 0xBBBBBBBULL };
+    astra_geom_feature_request swp_req;
+    memset(&swp_req, 0, sizeof(swp_req));
+    swp_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    swp_req.operation_kind = ASTRA_OP_SWEEP;
+    swp_req.feature_id = swp_lin_id;
+    swp_req.parameters.sweep.struct_size = (uint32_t)sizeof(astra_geom_sweep_params);
+    swp_req.parameters.sweep.profile_feature_id = prof_id;
+    swp_req.parameters.sweep.twist_rad = 0.25;
+
+    astra_geom_result_handle *swp_res1 = NULL;
+    st = astra_geom_evaluate_feature(model, &swp_req, &swp_res1);
+    assert(st == ASTRA_GEOM_OK);
+    assert(swp_res1 != NULL);
+
+    astra_tessellation_view swp_view1;
+    st = astra_geom_result_tessellation(swp_res1, &swp_view1);
+    assert(st == ASTRA_GEOM_OK);
+    assert(swp_view1.vertex_count > 0);
+    assert(swp_view1.triangle_count > 0);
+    printf("  [PASS] Linear sweep evaluated: %llu vertices, %llu triangles\n",
+           (unsigned long long)swp_view1.vertex_count, (unsigned long long)swp_view1.triangle_count);
+
+    /* Verify sweep side entity resolution */
+    astra_entity_ref swp_side_query;
+    memset(&swp_side_query, 0, sizeof(swp_side_query));
+    swp_side_query.role = ASTRA_ROLE_SWEEP_SIDE;
+    swp_side_query.feature_id = swp_lin_id;
+    swp_side_query.sub_index = 0;
+    st = astra_geom_result_resolve_entity(swp_res1, &swp_side_query, &kind);
+    assert(st == ASTRA_GEOM_OK);
+    printf("  [PASS] Sweep side face entity resolved\n");
+
+    /* 11. Evaluate Helical Sweep (Bishop parallel transport) */
+    astra_id128 swp_hel_id = { .high = 0xCCCCCCCULL, .low = 0xDDDDDDDULL };
+    swp_req.feature_id = swp_hel_id;
+    swp_req.parameters.sweep.orientation_mode = 2; // helical
+    swp_req.parameters.sweep.twist_rad = 0.0;
+
+    astra_geom_result_handle *swp_res2 = NULL;
+    st = astra_geom_evaluate_feature(model, &swp_req, &swp_res2);
+    assert(st == ASTRA_GEOM_OK);
+    assert(swp_res2 != NULL);
+
+    astra_tessellation_view swp_view2;
+    st = astra_geom_result_tessellation(swp_res2, &swp_view2);
+    assert(st == ASTRA_GEOM_OK);
+    assert(swp_view2.vertex_count > 0);
+    assert(swp_view2.triangle_count > 0);
+    printf("  [PASS] Helical sweep evaluated: %llu vertices, %llu triangles\n",
+           (unsigned long long)swp_view2.vertex_count, (unsigned long long)swp_view2.triangle_count);
+
+    /* 12. Clean Cleanup */
     astra_geom_result_release(ext_res1);
     astra_geom_result_release(ext_res2);
     astra_geom_result_release(rev_res1);
     astra_geom_result_release(rev_res2);
+    astra_geom_result_release(swp_res1);
+    astra_geom_result_release(swp_res2);
     astra_geom_model_release(model);
     printf("  [PASS] Cleanup completed cleanly\n");
 
-    printf("=== ALL ASTRA GEOMETRY MILESTONE 5 TESTS PASSED ===\n");
+    printf("=== ALL ASTRA GEOMETRY MILESTONE 6 TESTS PASSED ===\n");
     return 0;
 }

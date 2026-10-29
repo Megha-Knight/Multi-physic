@@ -39,7 +39,7 @@ public final class astra_geometry_native_bridge_ui_main {
             mhLineageSucc = lnk.downcallHandle(l.find("astra_geom_result_lineage_successor_at").orElseThrow(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
             int ver = (int) mhAbiVer.invokeExact();
-            if (ver != 1) { loadError = "ABI version mismatch: " + ver; return; }
+            if (ver < 1 || ver > 2) { loadError = "ABI version mismatch: " + ver; return; }
             available = true;
         } catch (Throwable t) { loadError = t.getMessage(); available = false; }
     }

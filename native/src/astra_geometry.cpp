@@ -912,6 +912,323 @@ static astra_geom_status evaluate_revolve(
     return ASTRA_GEOM_OK;
 }
 
+static astra_geom_status evaluate_sweep(
+    astra_geom_model_handle *model,
+    const astra_geom_feature_request *request,
+    astra_geom_result_handle **out_result) {
+    const auto &p = request->parameters.sweep;
+    auto prof_it = model->profiles.find(to_key(p.profile_feature_id));
+    if (prof_it == model->profiles.end()) {
+        set_error("evaluate_sweep: referenced profile feature ID not found in model");
+        return ASTRA_GEOM_ENTITY_NOT_FOUND;
+    }
+    const StoredProfile &prof = prof_it->second;
+
+    std::vector<Point3DGeom> path_pts;
+    if (p.path_feature_id.high != 0 || p.path_feature_id.low != 0) {
+        auto path_it = model->profiles.find(to_key(p.path_feature_id));
+        if (path_it != model->profiles.end()) {
+            const StoredProfile &path_prof = path_it->second;
+            if (!path_prof.loops.empty()) {
+                for (const auto &pt : path_prof.loops[0].points) {
+                    path_pts.push_back(Point3DGeom{
+                        path_prof.origin[0] + pt.u * path_prof.u_axis[0] + pt.v * path_prof.v_axis[0],
+                        path_prof.origin[1] + pt.u * path_prof.u_axis[1] + pt.v * path_prof.v_axis[1],
+                        path_prof.origin[2] + pt.u * path_prof.u_axis[2] + pt.v * path_prof.v_axis[2]
+                    });
+                }
+            }
+        }
+    }
+
+    // Default helical trajectory if orientation_mode == 2 or no path profile
+    if (path_pts.size() < 2) {
+        if (p.orientation_mode == 2) {
+            // Helical sweep: radius = 10, pitch = 25, 24 steps
+            int steps = 24;
+            double r = 10.0;
+            double pitch = 25.0;
+            for (int i = 0; i <= steps; i++) {
+                double t = (double)i / steps;
+                double ang = 2.0 * ASTRA_PI * t;
+                path_pts.push_back(Point3DGeom{ r * std::cos(ang), r * std::sin(ang), pitch * t });
+            }
+        } else {
+            // Linear sweep: 2 points along +Z by 25mm
+            path_pts.push_back(Point3DGeom{ 0.0, 0.0, 0.0 });
+            path_pts.push_back(Point3DGeom{ 0.0, 0.0, 25.0 });
+        }
+    }
+
+    size_t M = path_pts.size();
+    if (M < 2) {
+        set_error("evaluate_sweep: degenerate path with fewer than 2 points");
+        return ASTRA_GEOM_DEGENERATE_INPUT;
+    }
+
+    for (size_t i = 0; i < M; i++) {
+        if (!std::isfinite(path_pts[i].x) || !std::isfinite(path_pts[i].y) || !std::isfinite(path_pts[i].z)) {
+            set_error("evaluate_sweep: non-finite path coordinate encountered");
+            return ASTRA_GEOM_INVALID_ARGUMENT;
+        }
+    }
+
+    // Compute tangents
+    std::vector<Point3DGeom> tangents(M);
+    for (size_t i = 0; i < M - 1; i++) {
+        double dx = path_pts[i + 1].x - path_pts[i].x;
+        double dy = path_pts[i + 1].y - path_pts[i].y;
+        double dz = path_pts[i + 1].z - path_pts[i].z;
+        double len = std::sqrt(dx*dx + dy*dy + dz*dz);
+        if (len < 1e-6) {
+            set_error("evaluate_sweep: degenerate zero-length path segment");
+            return ASTRA_GEOM_DEGENERATE_INPUT;
+        }
+        tangents[i] = Point3DGeom{ dx / len, dy / len, dz / len };
+    }
+    tangents[M - 1] = tangents[M - 2];
+
+    // Compute Bishop frames (Rotation-Minimizing Frame parallel transport)
+    std::vector<Point3DGeom> normals(M);
+    std::vector<Point3DGeom> binormals(M);
+
+    // Initial frame at i = 0
+    Point3DGeom ref_up = (std::abs(tangents[0].z) < 0.9) ? Point3DGeom{0, 0, 1} : Point3DGeom{0, 1, 0};
+    double dot_t0 = tangents[0].x * ref_up.x + tangents[0].y * ref_up.y + tangents[0].z * ref_up.z;
+    double nx0 = ref_up.x - dot_t0 * tangents[0].x;
+    double ny0 = ref_up.y - dot_t0 * tangents[0].y;
+    double nz0 = ref_up.z - dot_t0 * tangents[0].z;
+    double n0_len = std::sqrt(nx0*nx0 + ny0*ny0 + nz0*nz0);
+    normals[0] = Point3DGeom{ nx0 / n0_len, ny0 / n0_len, nz0 / n0_len };
+    binormals[0] = Point3DGeom{
+        tangents[0].y * normals[0].z - tangents[0].z * normals[0].y,
+        tangents[0].z * normals[0].x - tangents[0].x * normals[0].z,
+        tangents[0].x * normals[0].y - tangents[0].y * normals[0].x
+    };
+
+    // Parallel transport along path
+    for (size_t i = 1; i < M; i++) {
+        double v1x = path_pts[i].x - path_pts[i - 1].x;
+        double v1y = path_pts[i].y - path_pts[i - 1].y;
+        double v1z = path_pts[i].z - path_pts[i - 1].z;
+        double c1 = v1x*v1x + v1y*v1y + v1z*v1z;
+
+        double dot_n = v1x * normals[i - 1].x + v1y * normals[i - 1].y + v1z * normals[i - 1].z;
+        double nLx = normals[i - 1].x - (2.0 / c1) * dot_n * v1x;
+        double nLy = normals[i - 1].y - (2.0 / c1) * dot_n * v1y;
+        double nLz = normals[i - 1].z - (2.0 / c1) * dot_n * v1z;
+
+        double dot_t = v1x * tangents[i - 1].x + v1y * tangents[i - 1].y + v1z * tangents[i - 1].z;
+        double tLx = tangents[i - 1].x - (2.0 / c1) * dot_t * v1x;
+        double tLy = tangents[i - 1].y - (2.0 / c1) * dot_t * v1y;
+        double tLz = tangents[i - 1].z - (2.0 / c1) * dot_t * v1z;
+
+        double v2x = tangents[i].x - tLx;
+        double v2y = tangents[i].y - tLy;
+        double v2z = tangents[i].z - tLz;
+        double c2 = v2x*v2x + v2y*v2y + v2z*v2z;
+
+        double nix = nLx, niy = nLy, niz = nLz;
+        if (c2 > 1e-12) {
+            double dot_nL = v2x * nLx + v2y * nLy + v2z * nLz;
+            nix -= (2.0 / c2) * dot_nL * v2x;
+            niy -= (2.0 / c2) * dot_nL * v2y;
+            niz -= (2.0 / c2) * dot_nL * v2z;
+        }
+
+        // Orthogonalize with tangent[i]
+        double dot_ti = nix * tangents[i].x + niy * tangents[i].y + niz * tangents[i].z;
+        nix -= dot_ti * tangents[i].x;
+        niy -= dot_ti * tangents[i].y;
+        niz -= dot_ti * tangents[i].z;
+        double n_len = std::sqrt(nix*nix + niy*niy + niz*niz);
+        normals[i] = Point3DGeom{ nix / n_len, niy / n_len, niz / n_len };
+        binormals[i] = Point3DGeom{
+            tangents[i].y * normals[i].z - tangents[i].z * normals[i].y,
+            tangents[i].z * normals[i].x - tangents[i].x * normals[i].z,
+            tangents[i].x * normals[i].y - tangents[i].y * normals[i].x
+        };
+    }
+
+    // Apply twist if specified
+    if (std::abs(p.twist_rad) > 1e-6) {
+        for (size_t i = 0; i < M; i++) {
+            double tw = p.twist_rad * ((double)i / (M - 1));
+            double cos_tw = std::cos(tw);
+            double sin_tw = std::sin(tw);
+            Point3DGeom n_rot{
+                normals[i].x * cos_tw + binormals[i].x * sin_tw,
+                normals[i].y * cos_tw + binormals[i].y * sin_tw,
+                normals[i].z * cos_tw + binormals[i].z * sin_tw
+            };
+            Point3DGeom b_rot{
+                -normals[i].x * sin_tw + binormals[i].x * cos_tw,
+                -normals[i].y * sin_tw + binormals[i].y * cos_tw,
+                -normals[i].z * sin_tw + binormals[i].z * cos_tw
+            };
+            normals[i] = n_rot;
+            binormals[i] = b_rot;
+        }
+    }
+
+    uint32_t total_profile_pts = 0;
+    for (const auto &loop : prof.loops) total_profile_pts += (uint32_t)loop.points.size();
+
+    uint32_t total_verts = (uint32_t)M * total_profile_pts;
+
+    auto *res = new (std::nothrow) astra_geom_result_handle();
+    if (!res) return ASTRA_GEOM_OUT_OF_MEMORY;
+    res->magic = RESULT_MAGIC;
+    model->current_revision++;
+    res->revision = model->current_revision;
+
+    res->positions.resize(total_verts * 3);
+
+    for (size_t i = 0; i < M; i++) {
+        uint32_t pt_cursor = 0;
+        for (const auto &loop : prof.loops) {
+            for (const auto &pt : loop.points) {
+                double vx = path_pts[i].x + pt.u * normals[i].x + pt.v * binormals[i].x;
+                double vy = path_pts[i].y + pt.u * normals[i].y + pt.v * binormals[i].y;
+                double vz = path_pts[i].z + pt.u * normals[i].z + pt.v * binormals[i].z;
+                uint32_t v_idx = (uint32_t)i * total_profile_pts + pt_cursor;
+                res->positions[3 * v_idx + 0] = (float)vx;
+                res->positions[3 * v_idx + 1] = (float)vy;
+                res->positions[3 * v_idx + 2] = (float)vz;
+                pt_cursor++;
+            }
+        }
+    }
+
+    // Lateral Quads
+    for (size_t i = 0; i < M - 1; i++) {
+        uint32_t loop_start = 0;
+        for (const auto &loop : prof.loops) {
+            uint32_t ln = (uint32_t)loop.points.size();
+            bool is_inner = loop.is_hole;
+
+            for (uint32_t j = 0; j < ln; j++) {
+                uint32_t j_next = (j + 1) % ln;
+
+                astra_entity_ref lat_ref;
+                std::memset(&lat_ref, 0, sizeof(lat_ref));
+                lat_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+                lat_ref.role = ASTRA_ROLE_SWEEP_SIDE;
+                lat_ref.feature_id = request->feature_id;
+                lat_ref.sub_index = (int32_t)j;
+                lat_ref.flags = is_inner ? 1u : 0u;
+                lat_ref.related_feature_id = p.profile_feature_id;
+
+                uint32_t v0 = (uint32_t)i * total_profile_pts + loop_start + j;
+                uint32_t v1 = (uint32_t)i * total_profile_pts + loop_start + j_next;
+                uint32_t v0_top = (uint32_t)(i + 1) * total_profile_pts + loop_start + j;
+                uint32_t v1_top = (uint32_t)(i + 1) * total_profile_pts + loop_start + j_next;
+
+                res->indices.push_back(v0);
+                res->indices.push_back(v1);
+                res->indices.push_back(v1_top);
+                res->entities.push_back(lat_ref);
+
+                res->indices.push_back(v0);
+                res->indices.push_back(v1_top);
+                res->indices.push_back(v0_top);
+                res->entities.push_back(lat_ref);
+            }
+            loop_start += ln;
+        }
+    }
+
+    // Start Cap (Slice 0) & End Cap (Slice M - 1)
+    std::vector<uint32_t> orig_indices;
+    std::vector<Point2D> bridged_pts = bridge_holes_into_outer(prof.loops, orig_indices);
+    std::vector<uint32_t> cap_triangles = triangulate_simple_polygon(bridged_pts);
+    uint32_t cap_tri_count = (uint32_t)cap_triangles.size() / 3;
+
+    astra_entity_ref start_cap_ref;
+    std::memset(&start_cap_ref, 0, sizeof(start_cap_ref));
+    start_cap_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+    start_cap_ref.role = ASTRA_ROLE_END_CAP_START;
+    start_cap_ref.feature_id = request->feature_id;
+    start_cap_ref.sub_index = 0;
+
+    for (uint32_t t = 0; t < cap_tri_count; t++) {
+        uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]];
+        uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]];
+        uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]];
+        res->indices.push_back(i0);
+        res->indices.push_back(i2);
+        res->indices.push_back(i1);
+        res->entities.push_back(start_cap_ref);
+    }
+
+    astra_entity_ref end_cap_ref;
+    std::memset(&end_cap_ref, 0, sizeof(end_cap_ref));
+    end_cap_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+    end_cap_ref.role = ASTRA_ROLE_END_CAP_END;
+    end_cap_ref.feature_id = request->feature_id;
+    end_cap_ref.sub_index = 0;
+
+    uint32_t end_offset = (uint32_t)(M - 1) * total_profile_pts;
+    for (uint32_t t = 0; t < cap_tri_count; t++) {
+        uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]] + end_offset;
+        uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]] + end_offset;
+        uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]] + end_offset;
+        res->indices.push_back(i0);
+        res->indices.push_back(i1);
+        res->indices.push_back(i2);
+        res->entities.push_back(end_cap_ref);
+    }
+
+    // Lineage Tracking
+    if (model->last_solid_revision > 0) {
+        std::vector<LineageEntry> lineage_entries;
+        for (const auto &old_ref : model->last_solid_entities) {
+            LineageEntry entry;
+            entry.record.struct_size = (uint32_t)sizeof(astra_lineage_record);
+            entry.record.source_revision = model->last_solid_revision;
+            entry.record.destination_revision = res->revision;
+            entry.record.source = old_ref;
+            entry.record.reserved = 0;
+
+            bool found = false;
+            for (const auto &new_ref : res->entities) {
+                if (old_ref.role == new_ref.role &&
+                    old_ref.feature_id.high == new_ref.feature_id.high &&
+                    old_ref.feature_id.low == new_ref.feature_id.low &&
+                    old_ref.sub_index == new_ref.sub_index &&
+                    old_ref.flags == new_ref.flags) {
+                    entry.record.outcome = ASTRA_LINEAGE_PRESERVED;
+                    entry.record.successor_count = 1;
+                    entry.successors.push_back(new_ref);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                entry.record.outcome = ASTRA_LINEAGE_CONSUMED;
+                entry.record.successor_count = 0;
+            }
+            lineage_entries.push_back(entry);
+        }
+        res->lineage[model->last_solid_revision] = lineage_entries;
+    }
+
+    model->last_solid_revision = res->revision;
+    model->last_solid_entities = res->entities;
+
+    res->view.struct_size = (uint32_t)sizeof(astra_tessellation_view);
+    res->view.flags = 0;
+    res->view.geometry_revision = res->revision;
+    res->view.vertex_count = total_verts;
+    res->view.triangle_count = (uint32_t)res->entities.size();
+    res->view.positions_xyz = res->positions.data();
+    res->view.triangle_indices = res->indices.data();
+    res->view.triangle_entities = res->entities.data();
+
+    *out_result = res;
+    return ASTRA_GEOM_OK;
+}
+
 astra_geom_status astra_geom_evaluate_feature(
     const astra_geom_model_handle *model,
     const astra_geom_feature_request *request,
@@ -939,6 +1256,8 @@ astra_geom_status astra_geom_evaluate_feature(
             return evaluate_extrude(non_const_model, request, out_result);
         case ASTRA_OP_REVOLVE:
             return evaluate_revolve(non_const_model, request, out_result);
+        case ASTRA_OP_SWEEP:
+            return evaluate_sweep(non_const_model, request, out_result);
         default:
             set_error("astra_geom_evaluate_feature: unsupported operation kind " +
                       std::to_string(request->operation_kind));

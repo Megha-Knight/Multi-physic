@@ -157,7 +157,7 @@ public class TestMilestone1ContractHarness {
         System.out.println("\n--- 6. Native Geometry ABI Integration & Milestone 3 Sketch -> Extrude ---");
         var bridge = astra_geometry_native_bridge_ui_main.getInstance();
         assertTrue(bridge.isAvailable(), "Geometry ABI successfully loaded and verified available in native DLL");
-        assertTrue(bridge.getAbiVersion() == 1, "Native geometry ABI reports version 1");
+        assertTrue(bridge.getAbiVersion() >= 1 && bridge.getAbiVersion() <= 2, "Native geometry ABI reports supported version");
 
         try (var model = bridge.createModel()) {
             assertTrue(model != null && model.isValid(), "Native model allocation succeeded");
