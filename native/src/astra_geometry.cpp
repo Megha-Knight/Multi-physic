@@ -17,12 +17,17 @@ struct Point2D {
     double u, v;
 };
 
+struct ProfileLoop {
+    std::vector<Point2D> points;
+    bool is_hole;
+};
+
 struct StoredProfile {
     astra_id128 feature_id;
     double origin[3];
     double u_axis[3];
     double v_axis[3];
-    std::vector<Point2D> points;
+    std::vector<ProfileLoop> loops;
 };
 
 struct Id128Key {
@@ -32,16 +37,26 @@ struct Id128Key {
         if (high != o.high) return high < o.high;
         return low < o.low;
     }
+    bool operator==(const Id128Key &o) const {
+        return high == o.high && low == o.low;
+    }
 };
 
 static Id128Key to_key(const astra_id128 &id) {
     return Id128Key{id.high, id.low};
 }
 
+struct LineageEntry {
+    astra_lineage_record record;
+    std::vector<astra_entity_ref> successors;
+};
+
 struct astra_geom_model_handle {
     uint32_t magic;
     uint64_t current_revision;
     std::map<Id128Key, StoredProfile> profiles;
+    uint64_t last_solid_revision;
+    std::vector<astra_entity_ref> last_solid_entities;
 };
 
 struct astra_geom_result_handle {
@@ -51,6 +66,7 @@ struct astra_geom_result_handle {
     std::vector<float> positions;
     std::vector<uint32_t> indices;
     std::vector<astra_entity_ref> entities;
+    std::map<uint64_t, std::vector<LineageEntry>> lineage;
 };
 
 static const uint32_t MODEL_MAGIC = 0x4153474Du;  /* "ASGM" */
@@ -62,15 +78,9 @@ uint32_t astra_geometry_abi_version(void) {
 
 astra_geom_status astra_geometry_last_error(char *buffer, uint32_t capacity, uint32_t *out_required_bytes) {
     uint32_t len = (uint32_t)g_last_error.length() + 1u;
-    if (out_required_bytes) {
-        *out_required_bytes = len;
-    }
-    if (!buffer || capacity == 0) {
-        return ASTRA_GEOM_OK;
-    }
-    if (capacity < len) {
-        return ASTRA_GEOM_BUFFER_TOO_SMALL;
-    }
+    if (out_required_bytes) *out_required_bytes = len;
+    if (!buffer || capacity == 0) return ASTRA_GEOM_OK;
+    if (capacity < len) return ASTRA_GEOM_BUFFER_TOO_SMALL;
     std::memcpy(buffer, g_last_error.c_str(), len);
     return ASTRA_GEOM_OK;
 }
@@ -87,6 +97,7 @@ astra_geom_status astra_geom_model_create(astra_geom_model_handle **out_model) {
     }
     m->magic = MODEL_MAGIC;
     m->current_revision = 1u;
+    m->last_solid_revision = 0;
     *out_model = m;
     return ASTRA_GEOM_OK;
 }
@@ -133,7 +144,8 @@ astra_geom_status astra_geom_result_resolve_entity(
         if (ref.role == reference->role &&
             ref.feature_id.high == reference->feature_id.high &&
             ref.feature_id.low == reference->feature_id.low &&
-            ref.sub_index == reference->sub_index) {
+            ref.sub_index == reference->sub_index &&
+            ref.flags == reference->flags) {
             *out_entity_kind = 1u; /* 1 = Face */
             return ASTRA_GEOM_OK;
         }
@@ -148,8 +160,12 @@ astra_geom_status astra_geom_result_lineage_count(
         set_error("astra_geom_result_lineage_count: invalid argument");
         return ASTRA_GEOM_INVALID_ARGUMENT;
     }
-    (void)source_revision;
-    *out_count = 0;
+    auto it = result->lineage.find(source_revision);
+    if (it == result->lineage.end()) {
+        *out_count = 0;
+    } else {
+        *out_count = (uint64_t)it->second.size();
+    }
     return ASTRA_GEOM_OK;
 }
 
@@ -159,10 +175,13 @@ astra_geom_status astra_geom_result_lineage_at(
         set_error("astra_geom_result_lineage_at: invalid argument");
         return ASTRA_GEOM_INVALID_ARGUMENT;
     }
-    (void)source_revision;
-    (void)index;
-    set_error("astra_geom_result_lineage_at: lineage index out of bounds");
-    return ASTRA_GEOM_INVALID_ARGUMENT;
+    auto it = result->lineage.find(source_revision);
+    if (it == result->lineage.end() || index >= it->second.size()) {
+        set_error("astra_geom_result_lineage_at: lineage index out of bounds");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+    *out_record = it->second[index].record;
+    return ASTRA_GEOM_OK;
 }
 
 astra_geom_status astra_geom_result_lineage_successor_at(
@@ -172,14 +191,21 @@ astra_geom_status astra_geom_result_lineage_successor_at(
         set_error("astra_geom_result_lineage_successor_at: invalid argument");
         return ASTRA_GEOM_INVALID_ARGUMENT;
     }
-    (void)source_revision;
-    (void)record_index;
-    (void)successor_index;
-    set_error("astra_geom_result_lineage_successor_at: successor index out of bounds");
-    return ASTRA_GEOM_INVALID_ARGUMENT;
+    auto it = result->lineage.find(source_revision);
+    if (it == result->lineage.end() || record_index >= it->second.size()) {
+        set_error("astra_geom_result_lineage_successor_at: record index out of bounds");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+    const auto &entry = it->second[record_index];
+    if (successor_index >= entry.successors.size()) {
+        set_error("astra_geom_result_lineage_successor_at: successor index out of bounds");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+    *out_successor = entry.successors[successor_index];
+    return ASTRA_GEOM_OK;
 }
 
-/* --- Geometry Evaluation Helpers --- */
+/* --- Geometry Math & Ear Clipping Helpers --- */
 
 static double cross2d(const Point2D &a, const Point2D &b, const Point2D &c) {
     return (b.u - a.u) * (c.v - a.v) - (b.v - a.v) * (c.u - a.u);
@@ -199,7 +225,6 @@ static bool segments_intersect(const Point2D &p1, const Point2D &p2, const Point
     double d2 = cross2d(p3, p4, p2);
     double d3 = cross2d(p1, p2, p3);
     double d4 = cross2d(p1, p2, p4);
-
     if (((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9)) &&
         ((d3 > 1e-9 && d4 < -1e-9) || (d3 < -1e-9 && d4 > 1e-9))) {
         return true;
@@ -207,7 +232,29 @@ static bool segments_intersect(const Point2D &p1, const Point2D &p2, const Point
     return false;
 }
 
-static std::vector<uint32_t> triangulate_polygon(const std::vector<Point2D> &pts, bool is_ccw) {
+static double polygon_signed_area(const std::vector<Point2D> &pts) {
+    double a = 0.0;
+    size_t n = pts.size();
+    for (size_t i = 0; i < n; i++) {
+        size_t j = (i + 1) % n;
+        a += (pts[i].u * pts[j].v - pts[j].u * pts[i].v);
+    }
+    return 0.5 * a;
+}
+
+static bool point_inside_polygon(const Point2D &p, const std::vector<Point2D> &poly) {
+    bool inside = false;
+    size_t n = poly.size();
+    for (size_t i = 0, j = n - 1; i < n; j = i++) {
+        if (((poly[i].v > p.v) != (poly[j].v > p.v)) &&
+            (p.u < (poly[j].u - poly[i].u) * (p.v - poly[i].v) / (poly[j].v - poly[i].v) + poly[i].u)) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+static std::vector<uint32_t> triangulate_simple_polygon(const std::vector<Point2D> &pts) {
     std::vector<uint32_t> triangles;
     int n = (int)pts.size();
     if (n < 3) return triangles;
@@ -218,21 +265,23 @@ static std::vector<uint32_t> triangulate_polygon(const std::vector<Point2D> &pts
     int count = 2 * n;
     int v = n - 1;
     while (n > 2) {
-        if ((count--) <= 0) break; // safeguard
-        int u = v;
-        if (n <= u) u = 0;
-        v = u + 1;
-        if (n <= v) v = 0;
-        int w = v + 1;
-        if (n <= w) w = 0;
+        if ((count--) <= 0) break;
+        int u = v; if (n <= u) u = 0;
+        v = u + 1; if (n <= v) v = 0;
+        int w = v + 1; if (n <= w) w = 0;
 
         const Point2D &A = pts[V[u]];
         const Point2D &B = pts[V[v]];
         const Point2D &C = pts[V[w]];
 
-        double cp = cross2d(A, B, C);
-        bool convex = is_ccw ? (cp > 1e-9) : (cp < -1e-9);
-        if (!convex) continue;
+        if (std::hypot(A.u - B.u, A.v - B.v) < 1e-8) {
+            V.erase(V.begin() + v);
+            n--;
+            count = 2 * n;
+            continue;
+        }
+
+        if (cross2d(A, B, C) <= 1e-9) continue; // must be convex in CCW
 
         bool has_internal_point = false;
         for (int p = 0; p < n; p++) {
@@ -244,7 +293,6 @@ static std::vector<uint32_t> triangulate_polygon(const std::vector<Point2D> &pts
         }
         if (has_internal_point) continue;
 
-        // Ear found
         triangles.push_back((uint32_t)V[u]);
         triangles.push_back((uint32_t)V[v]);
         triangles.push_back((uint32_t)V[w]);
@@ -256,50 +304,141 @@ static std::vector<uint32_t> triangulate_polygon(const std::vector<Point2D> &pts
     return triangles;
 }
 
+// Bridges inner holes into outer loop to create single polygon for ear clipping
+static std::vector<Point2D> bridge_holes_into_outer(const std::vector<ProfileLoop> &loops, std::vector<uint32_t> &orig_indices) {
+    std::vector<Point2D> combined = loops[0].points;
+    orig_indices.resize(combined.size());
+    for (size_t i = 0; i < combined.size(); i++) orig_indices[i] = (uint32_t)i;
+
+    uint32_t vertex_offset = (uint32_t)loops[0].points.size();
+
+    for (size_t k = 1; k < loops.size(); k++) {
+        const auto &hole = loops[k].points;
+        // Find rightmost point of hole
+        size_t hole_m = 0;
+        for (size_t i = 1; i < hole.size(); i++) {
+            if (hole[i].u > hole[hole_m].u) hole_m = i;
+        }
+        Point2D M = hole[hole_m];
+
+        // Find closest visible vertex on combined outer polygon
+        size_t best_poly_idx = 0;
+        double best_dist = 1e30;
+        for (size_t i = 0; i < combined.size(); i++) {
+            Point2D P = combined[i];
+            if (P.u >= M.u - 1e-6) {
+                double d = std::hypot(P.u - M.u, P.v - M.v);
+                if (d < best_dist) {
+                    best_dist = d;
+                    best_poly_idx = i;
+                }
+            }
+        }
+
+        // Bridge cut insertion: insert hole vertices starting at hole_m around to hole_m, then duplicate bridge
+        std::vector<Point2D> new_combined;
+        std::vector<uint32_t> new_orig;
+        for (size_t i = 0; i <= best_poly_idx; i++) {
+            new_combined.push_back(combined[i]);
+            new_orig.push_back(orig_indices[i]);
+        }
+        for (size_t i = 0; i < hole.size(); i++) {
+            size_t h_idx = (hole_m + i) % hole.size();
+            new_combined.push_back(hole[h_idx]);
+            new_orig.push_back(vertex_offset + (uint32_t)h_idx);
+        }
+        // Duplicate hole_m and poly vertex to seal bridge
+        new_combined.push_back(hole[hole_m]);
+        new_orig.push_back(vertex_offset + (uint32_t)hole_m);
+        new_combined.push_back(combined[best_poly_idx]);
+        new_orig.push_back(orig_indices[best_poly_idx]);
+
+        for (size_t i = best_poly_idx + 1; i < combined.size(); i++) {
+            new_combined.push_back(combined[i]);
+            new_orig.push_back(orig_indices[i]);
+        }
+
+        combined = std::move(new_combined);
+        orig_indices = std::move(new_orig);
+        vertex_offset += (uint32_t)hole.size();
+    }
+    return combined;
+}
+
 static astra_geom_status evaluate_sketch_profile(
     astra_geom_model_handle *model,
     const astra_geom_feature_request *request,
     astra_geom_result_handle **out_result) {
     const auto &p = request->parameters.sketch_profile;
-    if (p.loop_count != 1) {
-        set_error("evaluate_sketch_profile: multiple loops or holes are not supported in this baseline");
-        return ASTRA_GEOM_UNSUPPORTED_OPERATION;
-    }
-    if (p.point_count < 3 || !p.coordinates_uv_mm) {
-        set_error("evaluate_sketch_profile: degenerate profile (fewer than 3 points or null coordinates)");
+    if (p.loop_count == 0 || p.point_count < 3 || !p.coordinates_uv_mm) {
+        set_error("evaluate_sketch_profile: degenerate profile (zero loops, fewer than 3 points, or null coords)");
         return ASTRA_GEOM_DEGENERATE_INPUT;
     }
 
-    std::vector<Point2D> pts(p.point_count);
-    for (uint32_t i = 0; i < p.point_count; i++) {
-        double u = p.coordinates_uv_mm[2 * i];
-        double v = p.coordinates_uv_mm[2 * i + 1];
-        if (!std::isfinite(u) || !std::isfinite(v)) {
-            set_error("evaluate_sketch_profile: non-finite coordinate encountered");
+    // Validate plane basis
+    for (int i = 0; i < 3; i++) {
+        if (!std::isfinite(p.plane_origin_xyz_mm[i]) || !std::isfinite(p.plane_u_axis_xyz[i]) || !std::isfinite(p.plane_v_axis_xyz[i])) {
+            set_error("evaluate_sketch_profile: non-finite plane origin or axis coordinates");
             return ASTRA_GEOM_DEGENERATE_INPUT;
         }
-        pts[i] = Point2D{u, v};
+    }
+    double u_len = std::sqrt(p.plane_u_axis_xyz[0]*p.plane_u_axis_xyz[0] + p.plane_u_axis_xyz[1]*p.plane_u_axis_xyz[1] + p.plane_u_axis_xyz[2]*p.plane_u_axis_xyz[2]);
+    double v_len = std::sqrt(p.plane_v_axis_xyz[0]*p.plane_v_axis_xyz[0] + p.plane_v_axis_xyz[1]*p.plane_v_axis_xyz[1] + p.plane_v_axis_xyz[2]*p.plane_v_axis_xyz[2]);
+    if (std::abs(u_len - 1.0) > 1e-4 || std::abs(v_len - 1.0) > 1e-4) {
+        set_error("evaluate_sketch_profile: plane axes must be unit length");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+    double dot_uv = p.plane_u_axis_xyz[0]*p.plane_v_axis_xyz[0] + p.plane_u_axis_xyz[1]*p.plane_v_axis_xyz[1] + p.plane_u_axis_xyz[2]*p.plane_v_axis_xyz[2];
+    if (std::abs(dot_uv) > 1e-4) {
+        set_error("evaluate_sketch_profile: plane U and V axes must be orthogonal");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
     }
 
-    // Check signed area
-    double area2 = 0;
-    for (uint32_t i = 0; i < p.point_count; i++) {
-        uint32_t j = (i + 1) % p.point_count;
-        area2 += (pts[i].u * pts[j].v - pts[j].u * pts[i].v);
-    }
-    if (std::abs(area2) < 1e-12) {
-        set_error("evaluate_sketch_profile: degenerate zero-area profile");
-        return ASTRA_GEOM_DEGENERATE_INPUT;
+    std::vector<uint32_t> offsets(p.loop_count + 1);
+    if (p.loop_offsets) {
+        for (uint32_t i = 0; i <= p.loop_count; i++) offsets[i] = p.loop_offsets[i];
+    } else {
+        offsets[0] = 0;
+        offsets[1] = p.point_count;
     }
 
-    // Self-intersection check
-    for (uint32_t i = 0; i < p.point_count; i++) {
-        uint32_t i_next = (i + 1) % p.point_count;
-        for (uint32_t j = i + 1; j < p.point_count; j++) {
-            uint32_t j_next = (j + 1) % p.point_count;
-            if (i == j || i == j_next || i_next == j || i_next == j_next) continue;
-            if (segments_intersect(pts[i], pts[i_next], pts[j], pts[j_next])) {
-                set_error("evaluate_sketch_profile: self-intersecting polygon boundary");
+    std::vector<ProfileLoop> loops(p.loop_count);
+    for (uint32_t k = 0; k < p.loop_count; k++) {
+        uint32_t start = offsets[k];
+        uint32_t end = offsets[k + 1];
+        if (end <= start || end - start < 3) {
+            set_error("evaluate_sketch_profile: loop has fewer than 3 vertices");
+            return ASTRA_GEOM_DEGENERATE_INPUT;
+        }
+        std::vector<Point2D> pts(end - start);
+        for (uint32_t i = start; i < end; i++) {
+            double u = p.coordinates_uv_mm[2 * i];
+            double v = p.coordinates_uv_mm[2 * i + 1];
+            if (!std::isfinite(u) || !std::isfinite(v)) {
+                set_error("evaluate_sketch_profile: non-finite coordinate encountered");
+                return ASTRA_GEOM_DEGENERATE_INPUT;
+            }
+            pts[i - start] = Point2D{u, v};
+        }
+        double area = polygon_signed_area(pts);
+        if (std::abs(area) < 1e-12) {
+            set_error("evaluate_sketch_profile: loop has near-zero area");
+            return ASTRA_GEOM_DEGENERATE_INPUT;
+        }
+
+        // Loop 0 must be CCW (positive area), holes CW (negative area)
+        bool is_hole = (k > 0);
+        if (!is_hole && area < 0) std::reverse(pts.begin(), pts.end());
+        else if (is_hole && area > 0) std::reverse(pts.begin(), pts.end());
+
+        loops[k] = ProfileLoop{pts, is_hole};
+    }
+
+    // Verify all holes are contained in outer loop and do not intersect
+    for (uint32_t k = 1; k < p.loop_count; k++) {
+        for (const auto &hp : loops[k].points) {
+            if (!point_inside_polygon(hp, loops[0].points)) {
+                set_error("evaluate_sketch_profile: hole vertex is outside outer boundary");
                 return ASTRA_GEOM_INVALID_TOPOLOGY;
             }
         }
@@ -310,7 +449,7 @@ static astra_geom_status evaluate_sketch_profile(
     std::memcpy(sp.origin, p.plane_origin_xyz_mm, sizeof(double) * 3);
     std::memcpy(sp.u_axis, p.plane_u_axis_xyz, sizeof(double) * 3);
     std::memcpy(sp.v_axis, p.plane_v_axis_xyz, sizeof(double) * 3);
-    sp.points = pts;
+    sp.loops = loops;
 
     model->profiles[to_key(request->feature_id)] = sp;
     model->current_revision++;
@@ -338,14 +477,19 @@ static astra_geom_status evaluate_extrude(
         return ASTRA_GEOM_ENTITY_NOT_FOUND;
     }
     const StoredProfile &prof = it->second;
+
+    for (int i = 0; i < 3; i++) {
+        if (!std::isfinite(p.direction_xyz[i])) {
+            set_error("evaluate_extrude: non-finite extrusion direction component");
+            return ASTRA_GEOM_INVALID_ARGUMENT;
+        }
+    }
     if (p.distance_mm <= 1e-6 || !std::isfinite(p.distance_mm)) {
         set_error("evaluate_extrude: distance must be positive and finite");
         return ASTRA_GEOM_INVALID_ARGUMENT;
     }
 
-    double dir_len = std::sqrt(p.direction_xyz[0]*p.direction_xyz[0] +
-                               p.direction_xyz[1]*p.direction_xyz[1] +
-                               p.direction_xyz[2]*p.direction_xyz[2]);
+    double dir_len = std::sqrt(p.direction_xyz[0]*p.direction_xyz[0] + p.direction_xyz[1]*p.direction_xyz[1] + p.direction_xyz[2]*p.direction_xyz[2]);
     if (dir_len < 1e-6) {
         set_error("evaluate_extrude: direction vector has near-zero length");
         return ASTRA_GEOM_DEGENERATE_INPUT;
@@ -355,8 +499,11 @@ static astra_geom_status evaluate_extrude(
     double norm_dy = (p.direction_xyz[1] / dir_len) * p.distance_mm;
     double norm_dz = (p.direction_xyz[2] / dir_len) * p.distance_mm;
 
-    uint32_t n = (uint32_t)prof.points.size();
-    uint32_t total_verts = 2 * n;
+    // Count total 2D vertices across all loops
+    uint32_t total_profile_pts = 0;
+    for (const auto &loop : prof.loops) total_profile_pts += (uint32_t)loop.points.size();
+
+    uint32_t total_verts = 2 * total_profile_pts;
 
     auto *res = new (std::nothrow) astra_geom_result_handle();
     if (!res) return ASTRA_GEOM_OUT_OF_MEMORY;
@@ -366,33 +513,29 @@ static astra_geom_status evaluate_extrude(
 
     res->positions.resize(total_verts * 3);
 
-    // Compute ring 0 (start) and ring 1 (end) positions
-    for (uint32_t i = 0; i < n; i++) {
-        double u = prof.points[i].u;
-        double v = prof.points[i].v;
-        double px = prof.origin[0] + u * prof.u_axis[0] + v * prof.v_axis[0];
-        double py = prof.origin[1] + u * prof.u_axis[1] + v * prof.v_axis[1];
-        double pz = prof.origin[2] + u * prof.u_axis[2] + v * prof.v_axis[2];
+    // Compute 3D vertices for ring 0 and ring 1 across all loops
+    uint32_t v_cursor = 0;
+    for (const auto &loop : prof.loops) {
+        for (const auto &pt : loop.points) {
+            double px = prof.origin[0] + pt.u * prof.u_axis[0] + pt.v * prof.v_axis[0];
+            double py = prof.origin[1] + pt.u * prof.u_axis[1] + pt.v * prof.v_axis[1];
+            double pz = prof.origin[2] + pt.u * prof.u_axis[2] + pt.v * prof.v_axis[2];
 
-        res->positions[3 * i + 0] = (float)px;
-        res->positions[3 * i + 1] = (float)py;
-        res->positions[3 * i + 2] = (float)pz;
+            res->positions[3 * v_cursor + 0] = (float)px;
+            res->positions[3 * v_cursor + 1] = (float)py;
+            res->positions[3 * v_cursor + 2] = (float)pz;
 
-        res->positions[3 * (i + n) + 0] = (float)(px + norm_dx);
-        res->positions[3 * (i + n) + 1] = (float)(py + norm_dy);
-        res->positions[3 * (i + n) + 2] = (float)(pz + norm_dz);
+            res->positions[3 * (v_cursor + total_profile_pts) + 0] = (float)(px + norm_dx);
+            res->positions[3 * (v_cursor + total_profile_pts) + 1] = (float)(py + norm_dy);
+            res->positions[3 * (v_cursor + total_profile_pts) + 2] = (float)(pz + norm_dz);
+            v_cursor++;
+        }
     }
 
-    // Determine polygon orientation in UV plane
-    double area2 = 0;
-    for (uint32_t i = 0; i < n; i++) {
-        uint32_t j = (i + 1) % n;
-        area2 += (prof.points[i].u * prof.points[j].v - prof.points[j].u * prof.points[i].v);
-    }
-    bool is_ccw = (area2 > 0);
-
-    // 1. Start Cap Triangles (normal pointing -extrusion)
-    std::vector<uint32_t> cap_triangles = triangulate_polygon(prof.points, is_ccw);
+    // Triangulate bridged polygon with holes
+    std::vector<uint32_t> orig_indices;
+    std::vector<Point2D> bridged_pts = bridge_holes_into_outer(prof.loops, orig_indices);
+    std::vector<uint32_t> cap_triangles = triangulate_simple_polygon(bridged_pts);
     uint32_t cap_tri_count = (uint32_t)cap_triangles.size() / 3;
 
     astra_entity_ref start_cap_ref;
@@ -403,17 +546,15 @@ static astra_geom_status evaluate_extrude(
     start_cap_ref.sub_index = 0;
 
     for (uint32_t t = 0; t < cap_tri_count; t++) {
-        uint32_t i0 = cap_triangles[3 * t + 0];
-        uint32_t i1 = cap_triangles[3 * t + 1];
-        uint32_t i2 = cap_triangles[3 * t + 2];
-        // Reverse winding for start cap so normal faces outward
+        uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]];
+        uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]];
+        uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]];
         res->indices.push_back(i0);
         res->indices.push_back(i2);
         res->indices.push_back(i1);
         res->entities.push_back(start_cap_ref);
     }
 
-    // 2. End Cap Triangles (normal pointing +extrusion)
     astra_entity_ref end_cap_ref;
     std::memset(&end_cap_ref, 0, sizeof(end_cap_ref));
     end_cap_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
@@ -422,43 +563,88 @@ static astra_geom_status evaluate_extrude(
     end_cap_ref.sub_index = 0;
 
     for (uint32_t t = 0; t < cap_tri_count; t++) {
-        uint32_t i0 = cap_triangles[3 * t + 0] + n;
-        uint32_t i1 = cap_triangles[3 * t + 1] + n;
-        uint32_t i2 = cap_triangles[3 * t + 2] + n;
+        uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]] + total_profile_pts;
+        uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]] + total_profile_pts;
+        uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]] + total_profile_pts;
         res->indices.push_back(i0);
         res->indices.push_back(i1);
         res->indices.push_back(i2);
         res->entities.push_back(end_cap_ref);
     }
 
-    // 3. Lateral Faces (2 triangles per profile edge)
-    for (uint32_t i = 0; i < n; i++) {
-        uint32_t j = (i + 1) % n;
-        uint32_t v0 = is_ccw ? i : j;
-        uint32_t v1 = is_ccw ? j : i;
-        uint32_t v0_top = v0 + n;
-        uint32_t v1_top = v1 + n;
+    // Lateral Faces for each loop
+    uint32_t loop_start_v = 0;
+    for (size_t k = 0; k < prof.loops.size(); k++) {
+        const auto &loop = prof.loops[k];
+        uint32_t ln = (uint32_t)loop.points.size();
+        bool is_inner = loop.is_hole;
 
-        astra_entity_ref lat_ref;
-        std::memset(&lat_ref, 0, sizeof(lat_ref));
-        lat_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
-        lat_ref.role = ASTRA_ROLE_LATERAL_FACE;
-        lat_ref.feature_id = request->feature_id;
-        lat_ref.sub_index = (int32_t)i;
-        lat_ref.related_feature_id = p.profile_feature_id;
+        for (uint32_t i = 0; i < ln; i++) {
+            uint32_t j = (i + 1) % ln;
+            uint32_t v0 = loop_start_v + (is_inner ? j : i);
+            uint32_t v1 = loop_start_v + (is_inner ? i : j);
+            uint32_t v0_top = v0 + total_profile_pts;
+            uint32_t v1_top = v1 + total_profile_pts;
 
-        // Triangle 1: (v0, v1, v1_top)
-        res->indices.push_back(v0);
-        res->indices.push_back(v1);
-        res->indices.push_back(v1_top);
-        res->entities.push_back(lat_ref);
+            astra_entity_ref lat_ref;
+            std::memset(&lat_ref, 0, sizeof(lat_ref));
+            lat_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+            lat_ref.role = ASTRA_ROLE_LATERAL_FACE;
+            lat_ref.feature_id = request->feature_id;
+            lat_ref.sub_index = (int32_t)i;
+            lat_ref.flags = is_inner ? 1u : 0u; // flag 1 = inner loop wall
+            lat_ref.related_feature_id = p.profile_feature_id;
 
-        // Triangle 2: (v0, v1_top, v0_top)
-        res->indices.push_back(v0);
-        res->indices.push_back(v1_top);
-        res->indices.push_back(v0_top);
-        res->entities.push_back(lat_ref);
+            res->indices.push_back(v0);
+            res->indices.push_back(v1);
+            res->indices.push_back(v1_top);
+            res->entities.push_back(lat_ref);
+
+            res->indices.push_back(v0);
+            res->indices.push_back(v1_top);
+            res->indices.push_back(v0_top);
+            res->entities.push_back(lat_ref);
+        }
+        loop_start_v += ln;
     }
+
+    // Cross-Revision Lineage: compare previous solid revision entities against new solid
+    if (model->last_solid_revision > 0) {
+        std::vector<LineageEntry> lineage_entries;
+        for (const auto &old_ref : model->last_solid_entities) {
+            LineageEntry entry;
+            entry.record.struct_size = (uint32_t)sizeof(astra_lineage_record);
+            entry.record.source_revision = model->last_solid_revision;
+            entry.record.destination_revision = res->revision;
+            entry.record.source = old_ref;
+            entry.record.reserved = 0;
+
+            bool found = false;
+            for (const auto &new_ref : res->entities) {
+                if (old_ref.role == new_ref.role &&
+                    old_ref.feature_id.high == new_ref.feature_id.high &&
+                    old_ref.feature_id.low == new_ref.feature_id.low &&
+                    old_ref.sub_index == new_ref.sub_index &&
+                    old_ref.flags == new_ref.flags) {
+                    entry.record.outcome = ASTRA_LINEAGE_PRESERVED;
+                    entry.record.successor_count = 1;
+                    entry.successors.push_back(new_ref);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                entry.record.outcome = ASTRA_LINEAGE_CONSUMED;
+                entry.record.successor_count = 0;
+            }
+            lineage_entries.push_back(entry);
+        }
+        res->lineage[model->last_solid_revision] = lineage_entries;
+    }
+
+    // Update model latest solid state
+    model->last_solid_revision = res->revision;
+    model->last_solid_entities = res->entities;
 
     res->view.struct_size = (uint32_t)sizeof(astra_tessellation_view);
     res->view.flags = 0;

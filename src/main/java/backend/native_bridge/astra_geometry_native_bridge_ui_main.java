@@ -15,7 +15,6 @@ public final class astra_geometry_native_bridge_ui_main {
     private MethodHandle mhResultRevision, mhResultTessellation, mhResolveEntity, mhLineageCount, mhLineageAt, mhLineageSucc;
 
     private astra_geometry_native_bridge_ui_main() { init(); }
-
     public static astra_geometry_native_bridge_ui_main getInstance() { return INSTANCE; }
     public boolean isAvailable() { return available; }
     public String getLoadError() { return loadError; }
@@ -47,7 +46,6 @@ public final class astra_geometry_native_bridge_ui_main {
 
     private void ensureAvailable() { if (!available) throw new UnsupportedOperationException("Geometry kernel unavailable: " + loadError); }
     public int getAbiVersion() { ensureAvailable(); try { return (int) mhAbiVer.invokeExact(); } catch (Throwable t) { throw new RuntimeException(t); } }
-
     public String getLastError() {
         if (!available) return loadError;
         try (Arena arena = Arena.ofConfined()) {
@@ -138,6 +136,44 @@ public final class astra_geometry_native_bridge_ui_main {
             int rc = (int) mhResolveEntity.invokeExact(res.handle, refSeg, kindPtr);
             return rc == 0;
         } catch (Throwable t) { return false; }
+    }
+
+    public java.util.List<ui.workspace.drafting.features.entity_lineage_contract_ui_main.LineageRecord> getLineage(GeometryResult res, long srcRev) {
+        ensureAvailable();
+        if (res == null || !res.isValid()) return java.util.Collections.emptyList();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment cPtr = arena.allocate(ValueLayout.JAVA_LONG);
+            if ((int) mhLineageCount.invokeExact(res.handle, srcRev, cPtr) != 0) return java.util.Collections.emptyList();
+            long count = cPtr.get(ValueLayout.JAVA_LONG, 0);
+            java.util.List<ui.workspace.drafting.features.entity_lineage_contract_ui_main.LineageRecord> list = new java.util.ArrayList<>();
+            MemorySegment rSeg = arena.allocate(72); MemorySegment sSeg = arena.allocate(48);
+            for (long i = 0; i < count; i++) {
+                mhLineageAt.invokeExact(res.handle, srcRev, i, rSeg);
+                int code = rSeg.get(ValueLayout.JAVA_INT, 4);
+                long dRev = rSeg.get(ValueLayout.JAVA_LONG, 16);
+                int sCnt = rSeg.get(ValueLayout.JAVA_INT, 68);
+                EntityRef src = parseRef(rSeg, 20L);
+                java.util.List<EntityRef> succs = new java.util.ArrayList<>();
+                for (int s = 0; s < sCnt; s++) {
+                    mhLineageSucc.invokeExact(res.handle, srcRev, i, s, sSeg);
+                    succs.add(parseRef(sSeg, 0L));
+                }
+                var outcome = switch (code) {
+                    case 1 -> ui.workspace.drafting.features.entity_lineage_contract_ui_main.Outcome.PRESERVED;
+                    case 2 -> ui.workspace.drafting.features.entity_lineage_contract_ui_main.Outcome.SPLIT;
+                    case 4 -> ui.workspace.drafting.features.entity_lineage_contract_ui_main.Outcome.CONSUMED;
+                    default -> ui.workspace.drafting.features.entity_lineage_contract_ui_main.Outcome.UNRESOLVED;
+                };
+                list.add(new ui.workspace.drafting.features.entity_lineage_contract_ui_main.LineageRecord(outcome, srcRev, dRev, src, succs));
+            }
+            return list;
+        } catch (Throwable t) { return java.util.Collections.emptyList(); }
+    }
+
+    private EntityRef parseRef(MemorySegment s, long o) {
+        return new EntityRef(new Id128(s.get(ValueLayout.JAVA_LONG, o + 8L), s.get(ValueLayout.JAVA_LONG, o + 16L)),
+            s.get(ValueLayout.JAVA_INT, o + 4L), s.get(ValueLayout.JAVA_INT, o + 24L), s.get(ValueLayout.JAVA_INT, o + 28L),
+            new Id128(s.get(ValueLayout.JAVA_LONG, o + 32L), s.get(ValueLayout.JAVA_LONG, o + 40L)));
     }
 
     public static final class GeometryModel implements AutoCloseable {

@@ -50,7 +50,7 @@ foreach ($d in $dirsToBundle) {
         Get-ChildItem -Path $diskDir -Recurse -File | ForEach-Object {
             $rel = $_.FullName.Substring($repoRoot.Length + 1).Replace("\", "/")
             # Strict safety: never include src/main/CPP or build binaries
-            if ($rel -notmatch "^src/main/CPP" -and $rel -notmatch "^native/build" -and $rel -notmatch "^native/\.cache") {
+            if ($rel -notmatch "^src/main/CPP" -and $rel -notmatch "^native/build/" -and $rel -notmatch "^native/build-[^/]+" -and $rel -notmatch "^native/\.cache") {
                 Add-FileToArchive $_.FullName $rel
             }
         }
