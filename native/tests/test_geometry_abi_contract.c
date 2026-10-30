@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 #include <math.h>
@@ -336,6 +337,44 @@ int main(void) {
     loft_req.parameters.loft.operation_mode = 0;
     printf("  [PASS] Loft parameter validation & fail-closed guards verified\n");
 
+    // D. Hole-flag mismatch across sections must fail with ASTRA_GEOM_INVALID_TOPOLOGY
+    // Create Section with outer loop marked as hole
+    astra_id128 prof_bad_hole_id = { .high = 0xAAAA7777ULL, .low = 0xBBBB8888ULL };
+    astra_geom_feature_request prof_bad_hole_req;
+    memset(&prof_bad_hole_req, 0, sizeof(prof_bad_hole_req));
+    prof_bad_hole_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    prof_bad_hole_req.operation_kind = ASTRA_OP_SKETCH_PROFILE;
+    prof_bad_hole_req.feature_id = prof_bad_hole_id;
+    prof_bad_hole_req.parameters.sketch_profile.struct_size = (uint32_t)sizeof(astra_geom_sketch_profile_params);
+    prof_bad_hole_req.parameters.sketch_profile.loop_count = 1;
+    prof_bad_hole_req.parameters.sketch_profile.point_count = 4;
+    // Clockwise order -> is_hole = true
+    double cw_uv[8] = { 0.0, 0.0,  0.0, 10.0,  10.0, 10.0,  10.0, 0.0 };
+    uint32_t cw_offsets[2] = { 0, 4 };
+    prof_bad_hole_req.parameters.sketch_profile.plane_u_axis_xyz[0] = 1.0;
+    prof_bad_hole_req.parameters.sketch_profile.plane_v_axis_xyz[1] = 1.0;
+    prof_bad_hole_req.parameters.sketch_profile.coordinates_uv_mm = cw_uv;
+    prof_bad_hole_req.parameters.sketch_profile.loop_offsets = cw_offsets;
+    astra_geom_result_handle *bad_hole_prof_res = NULL;
+    st = astra_geom_evaluate_feature(model, &prof_bad_hole_req, &bad_hole_prof_res);
+    assert(st == ASTRA_GEOM_OK);
+
+    // Pair Section 0 (CCW, outer) with bad_hole_prof (CW, hole)
+    astra_id128 mismatch_sections[2] = { prof_id, prof_bad_hole_id };
+    astra_geom_feature_request mismatch_req;
+    memset(&mismatch_req, 0, sizeof(mismatch_req));
+    mismatch_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    mismatch_req.operation_kind = ASTRA_OP_LOFT;
+    mismatch_req.feature_id = (astra_id128){ .high = 0x55555555ULL, .low = 0x66666666ULL };
+    mismatch_req.parameters.loft.struct_size = (uint32_t)sizeof(astra_geom_loft_params);
+    mismatch_req.parameters.loft.section_count = 2;
+    mismatch_req.parameters.loft.section_feature_ids = mismatch_sections;
+    astra_geom_result_handle *mismatch_res = NULL;
+    st = astra_geom_evaluate_feature(model, &mismatch_req, &mismatch_res);
+    assert(st == ASTRA_GEOM_INVALID_TOPOLOGY);
+    assert(mismatch_res == NULL);
+    printf("  [PASS] Section hole flag mismatch rejected with ASTRA_GEOM_INVALID_TOPOLOGY\n");
+
     /* 14. Variable-Vertex Resampling & 3-Section Loft with Closed Manifold Verification */
     // Section 1: Triangle (3 outer points) at Z = 0
     astra_id128 prof_tri_id = { .high = 0xAAAA1111ULL, .low = 0xBBBB2222ULL };
@@ -434,7 +473,44 @@ int main(void) {
     for (uint32_t idx = 0; idx < m_view.triangle_count * 3; idx++) {
         assert(m_view.triangle_indices[idx] < m_view.vertex_count);
     }
-    printf("  [PASS] Loft geometric properties & finite bounds verified\n");
+
+    // Verify 2-Manifold Edge Incidence & Opposite Direction Orientation
+    // Every undirected edge in a closed 2-manifold surface must appear exactly twice, with opposite directions
+    typedef struct DirectedEdge {
+        uint32_t v0, v1;
+    } DirectedEdge;
+    uint32_t total_half_edges = m_view.triangle_count * 3;
+    DirectedEdge *edges = (DirectedEdge *)malloc(total_half_edges * sizeof(DirectedEdge));
+    assert(edges != NULL);
+
+    for (uint32_t t = 0; t < m_view.triangle_count; t++) {
+        uint32_t i0 = m_view.triangle_indices[3 * t + 0];
+        uint32_t i1 = m_view.triangle_indices[3 * t + 1];
+        uint32_t i2 = m_view.triangle_indices[3 * t + 2];
+        edges[3 * t + 0] = (DirectedEdge){ i0, i1 };
+        edges[3 * t + 1] = (DirectedEdge){ i1, i2 };
+        edges[3 * t + 2] = (DirectedEdge){ i2, i0 };
+    }
+
+    for (uint32_t e1 = 0; e1 < total_half_edges; e1++) {
+        uint32_t undirected_matches = 0;
+        uint32_t opposite_matches = 0;
+        for (uint32_t e2 = 0; e2 < total_half_edges; e2++) {
+            if ((edges[e1].v0 == edges[e2].v0 && edges[e1].v1 == edges[e2].v1) ||
+                (edges[e1].v0 == edges[e2].v1 && edges[e1].v1 == edges[e2].v0)) {
+                undirected_matches++;
+                if (edges[e1].v0 == edges[e2].v1 && edges[e1].v1 == edges[e2].v0) {
+                    opposite_matches++;
+                }
+            }
+        }
+        // Exactly 2 half-edges per undirected edge (itself + 1 neighbor)
+        assert(undirected_matches == 2);
+        // Exactly 1 neighbor with opposite orientation
+        assert(opposite_matches == 1);
+    }
+    free(edges);
+    printf("  [PASS] 2-Manifold closed surface verified (exact 2-edge incidence & opposite orientation)\n");
 
     /* 15. Clean Cleanup */
     astra_geom_result_release(ext_res1);
@@ -448,6 +524,7 @@ int main(void) {
     astra_geom_result_release(tri_res);
     astra_geom_result_release(hex_res);
     astra_geom_result_release(rect_res);
+    astra_geom_result_release(bad_hole_prof_res);
     astra_geom_result_release(multi_loft_res);
     astra_geom_model_release(model);
     printf("  [PASS] Cleanup completed cleanly\n");
