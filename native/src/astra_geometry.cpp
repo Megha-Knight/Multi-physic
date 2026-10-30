@@ -1234,6 +1234,18 @@ static astra_geom_status evaluate_loft(
     const astra_geom_feature_request *request,
     astra_geom_result_handle **out_result) {
     const auto &p = request->parameters.loft;
+    if (p.struct_size != sizeof(astra_geom_loft_params)) {
+        set_error("evaluate_loft: invalid loft parameters struct_size: " + std::to_string(p.struct_size));
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+    if (p.guide_count != 0) {
+        set_error("evaluate_loft: guide curves not supported (fail-closed)");
+        return ASTRA_GEOM_UNSUPPORTED_OPERATION;
+    }
+    if (p.operation_mode != 0) {
+        set_error("evaluate_loft: unsupported operation_mode " + std::to_string(p.operation_mode));
+        return ASTRA_GEOM_UNSUPPORTED_OPERATION;
+    }
     if (p.section_count < 2) {
         set_error("evaluate_loft: at least two cross sections required for loft");
         return ASTRA_GEOM_INVALID_ARGUMENT;
@@ -1254,18 +1266,23 @@ static astra_geom_status evaluate_loft(
         sections.push_back(&it->second);
     }
 
-    uint32_t target_pts_per_loop = 0;
     size_t num_loops = sections[0]->loops.size();
     if (num_loops == 0) {
         set_error("evaluate_loft: section profile has zero loops");
         return ASTRA_GEOM_DEGENERATE_INPUT;
     }
 
-    // Verify all sections have matching loop structure
+    // Verify all sections have matching loop structure and hole consistency
     for (uint32_t s = 0; s < p.section_count; s++) {
         if (sections[s]->loops.size() != num_loops) {
             set_error("evaluate_loft: mismatch in loop count across sections");
             return ASTRA_GEOM_INVALID_TOPOLOGY;
+        }
+        for (size_t l = 0; l < num_loops; l++) {
+            if (sections[s]->loops[l].is_hole != sections[0]->loops[l].is_hole) {
+                set_error("evaluate_loft: loop hole flag mismatch at loop index " + std::to_string(l) + " for section " + std::to_string(s));
+                return ASTRA_GEOM_INVALID_TOPOLOGY;
+            }
         }
     }
 
@@ -1397,9 +1414,26 @@ static astra_geom_status evaluate_loft(
     }
 
     // Start Cap (Section 0) & End Cap (Section p.section_count - 1)
+    // Triangulate using the resampled loop points to ensure exact vertex index correspondence
     {
+        std::vector<ProfileLoop> resampled_loops_0(num_loops);
+        for (size_t l = 0; l < num_loops; l++) {
+            resampled_loops_0[l].is_hole = sections[0]->loops[l].is_hole;
+            resampled_loops_0[l].points.reserve(loop_resolutions[l]);
+            for (uint32_t i = 0; i < loop_resolutions[l]; i++) {
+                const auto &p3 = sections_3d[0][l][i];
+                // Project into section 0's UV plane
+                double dx = p3.x - sections[0]->origin[0];
+                double dy = p3.y - sections[0]->origin[1];
+                double dz = p3.z - sections[0]->origin[2];
+                double u = dx * sections[0]->u_axis[0] + dy * sections[0]->u_axis[1] + dz * sections[0]->u_axis[2];
+                double v = dx * sections[0]->v_axis[0] + dy * sections[0]->v_axis[1] + dz * sections[0]->v_axis[2];
+                resampled_loops_0[l].points.push_back(Point2D{u, v});
+            }
+        }
+
         std::vector<uint32_t> orig_indices;
-        std::vector<Point2D> bridged_pts = bridge_holes_into_outer(sections[0]->loops, orig_indices);
+        std::vector<Point2D> bridged_pts = bridge_holes_into_outer(resampled_loops_0, orig_indices);
         std::vector<uint32_t> cap_triangles = triangulate_simple_polygon(bridged_pts);
         uint32_t cap_tri_count = (uint32_t)cap_triangles.size() / 3;
 
@@ -1422,8 +1456,23 @@ static astra_geom_status evaluate_loft(
     }
     {
         uint32_t last_s = p.section_count - 1;
+        std::vector<ProfileLoop> resampled_loops_last(num_loops);
+        for (size_t l = 0; l < num_loops; l++) {
+            resampled_loops_last[l].is_hole = sections[last_s]->loops[l].is_hole;
+            resampled_loops_last[l].points.reserve(loop_resolutions[l]);
+            for (uint32_t i = 0; i < loop_resolutions[l]; i++) {
+                const auto &p3 = sections_3d[last_s][l][i];
+                double dx = p3.x - sections[last_s]->origin[0];
+                double dy = p3.y - sections[last_s]->origin[1];
+                double dz = p3.z - sections[last_s]->origin[2];
+                double u = dx * sections[last_s]->u_axis[0] + dy * sections[last_s]->u_axis[1] + dz * sections[last_s]->u_axis[2];
+                double v = dx * sections[last_s]->v_axis[0] + dy * sections[last_s]->v_axis[1] + dz * sections[last_s]->v_axis[2];
+                resampled_loops_last[l].points.push_back(Point2D{u, v});
+            }
+        }
+
         std::vector<uint32_t> orig_indices;
-        std::vector<Point2D> bridged_pts = bridge_holes_into_outer(sections[last_s]->loops, orig_indices);
+        std::vector<Point2D> bridged_pts = bridge_holes_into_outer(resampled_loops_last, orig_indices);
         std::vector<uint32_t> cap_triangles = triangulate_simple_polygon(bridged_pts);
         uint32_t cap_tri_count = (uint32_t)cap_triangles.size() / 3;
 

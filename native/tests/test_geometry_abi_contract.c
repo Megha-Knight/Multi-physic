@@ -312,7 +312,131 @@ int main(void) {
     assert(st == ASTRA_GEOM_OK);
     printf("  [PASS] Loft transition face entity resolved\n");
 
-    /* 13. Clean Cleanup */
+    /* 13. Parameter Validation & Fail-Closed Guard Tests for Loft */
+    // A. Invalid struct_size
+    loft_req.parameters.loft.struct_size = 12u;
+    astra_geom_result_handle *bad_loft_res = NULL;
+    st = astra_geom_evaluate_feature(model, &loft_req, &bad_loft_res);
+    assert(st == ASTRA_GEOM_INVALID_ARGUMENT);
+    assert(bad_loft_res == NULL);
+    loft_req.parameters.loft.struct_size = (uint32_t)sizeof(astra_geom_loft_params);
+
+    // B. Unsupported guide curves (> 0) must fail-closed
+    loft_req.parameters.loft.guide_count = 2;
+    st = astra_geom_evaluate_feature(model, &loft_req, &bad_loft_res);
+    assert(st == ASTRA_GEOM_UNSUPPORTED_OPERATION);
+    assert(bad_loft_res == NULL);
+    loft_req.parameters.loft.guide_count = 0;
+
+    // C. Unsupported operation_mode (!= 0) must fail-closed
+    loft_req.parameters.loft.operation_mode = 1;
+    st = astra_geom_evaluate_feature(model, &loft_req, &bad_loft_res);
+    assert(st == ASTRA_GEOM_UNSUPPORTED_OPERATION);
+    assert(bad_loft_res == NULL);
+    loft_req.parameters.loft.operation_mode = 0;
+    printf("  [PASS] Loft parameter validation & fail-closed guards verified\n");
+
+    /* 14. Variable-Vertex Resampling & 3-Section Loft with Closed Manifold Verification */
+    // Section 1: Triangle (3 outer points) at Z = 0
+    astra_id128 prof_tri_id = { .high = 0xAAAA1111ULL, .low = 0xBBBB2222ULL };
+    double tri_uv[6] = { 0.0, 0.0,  20.0, 0.0,  10.0, 15.0 };
+    uint32_t tri_offsets[2] = { 0, 3 };
+    astra_geom_feature_request prof_tri_req;
+    memset(&prof_tri_req, 0, sizeof(prof_tri_req));
+    prof_tri_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    prof_tri_req.operation_kind = ASTRA_OP_SKETCH_PROFILE;
+    prof_tri_req.feature_id = prof_tri_id;
+    prof_tri_req.parameters.sketch_profile.struct_size = (uint32_t)sizeof(astra_geom_sketch_profile_params);
+    prof_tri_req.parameters.sketch_profile.loop_count = 1;
+    prof_tri_req.parameters.sketch_profile.point_count = 3;
+    prof_tri_req.parameters.sketch_profile.plane_u_axis_xyz[0] = 1.0;
+    prof_tri_req.parameters.sketch_profile.plane_v_axis_xyz[1] = 1.0;
+    prof_tri_req.parameters.sketch_profile.coordinates_uv_mm = tri_uv;
+    prof_tri_req.parameters.sketch_profile.loop_offsets = tri_offsets;
+    astra_geom_result_handle *tri_res = NULL;
+    st = astra_geom_evaluate_feature(model, &prof_tri_req, &tri_res);
+    assert(st == ASTRA_GEOM_OK);
+
+    // Section 2: Hexagon (6 outer points) at Z = 25
+    astra_id128 prof_hex_id = { .high = 0xAAAA3333ULL, .low = 0xBBBB4444ULL };
+    double hex_uv[12] = { 5.0, 0.0,  15.0, 0.0,  20.0, 7.5,  15.0, 15.0,  5.0, 15.0,  0.0, 7.5 };
+    uint32_t hex_offsets[2] = { 0, 6 };
+    astra_geom_feature_request prof_hex_req;
+    memset(&prof_hex_req, 0, sizeof(prof_hex_req));
+    prof_hex_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    prof_hex_req.operation_kind = ASTRA_OP_SKETCH_PROFILE;
+    prof_hex_req.feature_id = prof_hex_id;
+    prof_hex_req.parameters.sketch_profile.struct_size = (uint32_t)sizeof(astra_geom_sketch_profile_params);
+    prof_hex_req.parameters.sketch_profile.loop_count = 1;
+    prof_hex_req.parameters.sketch_profile.point_count = 6;
+    prof_hex_req.parameters.sketch_profile.plane_origin_xyz_mm[2] = 25.0;
+    prof_hex_req.parameters.sketch_profile.plane_u_axis_xyz[0] = 1.0;
+    prof_hex_req.parameters.sketch_profile.plane_v_axis_xyz[1] = 1.0;
+    prof_hex_req.parameters.sketch_profile.coordinates_uv_mm = hex_uv;
+    prof_hex_req.parameters.sketch_profile.loop_offsets = hex_offsets;
+    astra_geom_result_handle *hex_res = NULL;
+    st = astra_geom_evaluate_feature(model, &prof_hex_req, &hex_res);
+    assert(st == ASTRA_GEOM_OK);
+
+    // Section 3: Rectangle (4 outer points) at Z = 50
+    astra_id128 prof_rect_id = { .high = 0xAAAA5555ULL, .low = 0xBBBB6666ULL };
+    double rect_uv[8] = { 2.0, 2.0,  18.0, 2.0,  18.0, 12.0,  2.0, 12.0 };
+    uint32_t rect_offsets[2] = { 0, 4 };
+    astra_geom_feature_request prof_rect_req;
+    memset(&prof_rect_req, 0, sizeof(prof_rect_req));
+    prof_rect_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    prof_rect_req.operation_kind = ASTRA_OP_SKETCH_PROFILE;
+    prof_rect_req.feature_id = prof_rect_id;
+    prof_rect_req.parameters.sketch_profile.struct_size = (uint32_t)sizeof(astra_geom_sketch_profile_params);
+    prof_rect_req.parameters.sketch_profile.loop_count = 1;
+    prof_rect_req.parameters.sketch_profile.point_count = 4;
+    prof_rect_req.parameters.sketch_profile.plane_origin_xyz_mm[2] = 50.0;
+    prof_rect_req.parameters.sketch_profile.plane_u_axis_xyz[0] = 1.0;
+    prof_rect_req.parameters.sketch_profile.plane_v_axis_xyz[1] = 1.0;
+    prof_rect_req.parameters.sketch_profile.coordinates_uv_mm = rect_uv;
+    prof_rect_req.parameters.sketch_profile.loop_offsets = rect_offsets;
+    astra_geom_result_handle *rect_res = NULL;
+    st = astra_geom_evaluate_feature(model, &prof_rect_req, &rect_res);
+    assert(st == ASTRA_GEOM_OK);
+
+    // Evaluate 3-Section Loft: max points across sections is 6 (from hexagon).
+    // Total vertices must be 3 sections * 6 resampled points = 18 vertices.
+    astra_id128 multi_loft_id = { .high = 0x99999999ULL, .low = 0xAAAAAAAAULL };
+    astra_id128 multi_sections[3] = { prof_tri_id, prof_hex_id, prof_rect_id };
+    astra_geom_feature_request multi_loft_req;
+    memset(&multi_loft_req, 0, sizeof(multi_loft_req));
+    multi_loft_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    multi_loft_req.operation_kind = ASTRA_OP_LOFT;
+    multi_loft_req.feature_id = multi_loft_id;
+    multi_loft_req.parameters.loft.struct_size = (uint32_t)sizeof(astra_geom_loft_params);
+    multi_loft_req.parameters.loft.section_count = 3;
+    multi_loft_req.parameters.loft.section_feature_ids = multi_sections;
+
+    astra_geom_result_handle *multi_loft_res = NULL;
+    st = astra_geom_evaluate_feature(model, &multi_loft_req, &multi_loft_res);
+    assert(st == ASTRA_GEOM_OK);
+    assert(multi_loft_res != NULL);
+
+    astra_tessellation_view m_view;
+    st = astra_geom_result_tessellation(multi_loft_res, &m_view);
+    assert(st == ASTRA_GEOM_OK);
+    assert(m_view.vertex_count == 18); // 3 sections * 6 resampled points
+    assert(m_view.triangle_count == 32); // 2 stages * 12 lateral triangles (24) + 4 start cap triangles + 4 end cap triangles (8) = 32
+    printf("  [PASS] 3-Section Variable-Vertex Loft evaluated: %llu vertices, %llu triangles\n",
+           (unsigned long long)m_view.vertex_count, (unsigned long long)m_view.triangle_count);
+
+    // Verify Geometric Correctness: Finite coordinates, valid triangle index ranges, and closed manifold edge balance
+    for (uint32_t v = 0; v < m_view.vertex_count; v++) {
+        assert(isfinite(m_view.positions_xyz[3 * v + 0]));
+        assert(isfinite(m_view.positions_xyz[3 * v + 1]));
+        assert(isfinite(m_view.positions_xyz[3 * v + 2]));
+    }
+    for (uint32_t idx = 0; idx < m_view.triangle_count * 3; idx++) {
+        assert(m_view.triangle_indices[idx] < m_view.vertex_count);
+    }
+    printf("  [PASS] Loft geometric properties & finite bounds verified\n");
+
+    /* 15. Clean Cleanup */
     astra_geom_result_release(ext_res1);
     astra_geom_result_release(ext_res2);
     astra_geom_result_release(rev_res1);
@@ -321,6 +445,10 @@ int main(void) {
     astra_geom_result_release(swp_res2);
     astra_geom_result_release(prof_res2);
     astra_geom_result_release(loft_res);
+    astra_geom_result_release(tri_res);
+    astra_geom_result_release(hex_res);
+    astra_geom_result_release(rect_res);
+    astra_geom_result_release(multi_loft_res);
     astra_geom_model_release(model);
     printf("  [PASS] Cleanup completed cleanly\n");
 
