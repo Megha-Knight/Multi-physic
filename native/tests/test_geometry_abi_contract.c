@@ -250,16 +250,80 @@ int main(void) {
     printf("  [PASS] Helical sweep evaluated: %llu vertices, %llu triangles\n",
            (unsigned long long)swp_view2.vertex_count, (unsigned long long)swp_view2.triangle_count);
 
-    /* 12. Clean Cleanup */
+    /* 12. Evaluate Loft across 2 sections */
+    // Create second profile at Z = 40 mm with scaled dimensions
+    astra_id128 prof_id2 = { .high = 0x12345678ULL, .low = 0x9ABCDEF2ULL };
+    astra_geom_feature_request prof_req2;
+    memset(&prof_req2, 0, sizeof(prof_req2));
+    prof_req2.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    prof_req2.operation_kind = ASTRA_OP_SKETCH_PROFILE;
+    prof_req2.feature_id = prof_id2;
+    prof_req2.parameters.sketch_profile.struct_size = (uint32_t)sizeof(astra_geom_sketch_profile_params);
+    prof_req2.parameters.sketch_profile.loop_count = 2;
+    prof_req2.parameters.sketch_profile.point_count = 8;
+    prof_req2.parameters.sketch_profile.plane_origin_xyz_mm[0] = 0.0;
+    prof_req2.parameters.sketch_profile.plane_origin_xyz_mm[1] = 0.0;
+    prof_req2.parameters.sketch_profile.plane_origin_xyz_mm[2] = 40.0;
+    prof_req2.parameters.sketch_profile.plane_u_axis_xyz[0] = 1.0;
+    prof_req2.parameters.sketch_profile.plane_u_axis_xyz[1] = 0.0;
+    prof_req2.parameters.sketch_profile.plane_u_axis_xyz[2] = 0.0;
+    prof_req2.parameters.sketch_profile.plane_v_axis_xyz[0] = 0.0;
+    prof_req2.parameters.sketch_profile.plane_v_axis_xyz[1] = 1.0;
+    prof_req2.parameters.sketch_profile.plane_v_axis_xyz[2] = 0.0;
+    prof_req2.parameters.sketch_profile.coordinates_uv_mm = multi_uv;
+    prof_req2.parameters.sketch_profile.loop_offsets = loop_offsets;
+
+    astra_geom_result_handle *prof_res2 = NULL;
+    st = astra_geom_evaluate_feature(model, &prof_req2, &prof_res2);
+    assert(st == ASTRA_GEOM_OK);
+    assert(prof_res2 != NULL);
+
+    astra_id128 loft_id = { .high = 0xEEEEEEEEULL, .low = 0xFFFFFFFFULL };
+    astra_id128 loft_sections[2] = { prof_id, prof_id2 };
+    astra_geom_feature_request loft_req;
+    memset(&loft_req, 0, sizeof(loft_req));
+    loft_req.struct_size = (uint32_t)sizeof(astra_geom_feature_request);
+    loft_req.operation_kind = ASTRA_OP_LOFT;
+    loft_req.feature_id = loft_id;
+    loft_req.parameters.loft.struct_size = (uint32_t)sizeof(astra_geom_loft_params);
+    loft_req.parameters.loft.section_count = 2;
+    loft_req.parameters.loft.section_feature_ids = loft_sections;
+
+    astra_geom_result_handle *loft_res = NULL;
+    st = astra_geom_evaluate_feature(model, &loft_req, &loft_res);
+    assert(st == ASTRA_GEOM_OK);
+    assert(loft_res != NULL);
+
+    astra_tessellation_view loft_view;
+    st = astra_geom_result_tessellation(loft_res, &loft_view);
+    assert(st == ASTRA_GEOM_OK);
+    assert(loft_view.vertex_count == 16); // 8 verts in section 0 + 8 in section 1
+    assert(loft_view.triangle_count >= 16);
+    printf("  [PASS] Loft evaluated: %llu vertices, %llu triangles\n",
+           (unsigned long long)loft_view.vertex_count, (unsigned long long)loft_view.triangle_count);
+
+    /* Verify transition face entity resolution */
+    astra_entity_ref loft_face_query;
+    memset(&loft_face_query, 0, sizeof(loft_face_query));
+    loft_face_query.role = ASTRA_ROLE_LOFT_TRANSITION_FACE;
+    loft_face_query.feature_id = loft_id;
+    loft_face_query.sub_index = 0;
+    st = astra_geom_result_resolve_entity(loft_res, &loft_face_query, &kind);
+    assert(st == ASTRA_GEOM_OK);
+    printf("  [PASS] Loft transition face entity resolved\n");
+
+    /* 13. Clean Cleanup */
     astra_geom_result_release(ext_res1);
     astra_geom_result_release(ext_res2);
     astra_geom_result_release(rev_res1);
     astra_geom_result_release(rev_res2);
     astra_geom_result_release(swp_res1);
     astra_geom_result_release(swp_res2);
+    astra_geom_result_release(prof_res2);
+    astra_geom_result_release(loft_res);
     astra_geom_model_release(model);
     printf("  [PASS] Cleanup completed cleanly\n");
 
-    printf("=== ALL ASTRA GEOMETRY MILESTONE 6 TESTS PASSED ===\n");
+    printf("=== ALL ASTRA GEOMETRY MILESTONE 7 TESTS PASSED ===\n");
     return 0;
 }

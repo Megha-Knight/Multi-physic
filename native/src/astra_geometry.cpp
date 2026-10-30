@@ -1229,6 +1229,273 @@ static astra_geom_status evaluate_sweep(
     return ASTRA_GEOM_OK;
 }
 
+static astra_geom_status evaluate_loft(
+    astra_geom_model_handle *model,
+    const astra_geom_feature_request *request,
+    astra_geom_result_handle **out_result) {
+    const auto &p = request->parameters.loft;
+    if (p.section_count < 2) {
+        set_error("evaluate_loft: at least two cross sections required for loft");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+    if (!p.section_feature_ids) {
+        set_error("evaluate_loft: section_feature_ids array pointer is null");
+        return ASTRA_GEOM_INVALID_ARGUMENT;
+    }
+
+    std::vector<const StoredProfile *> sections;
+    sections.reserve(p.section_count);
+    for (uint32_t s = 0; s < p.section_count; s++) {
+        auto it = model->profiles.find(to_key(p.section_feature_ids[s]));
+        if (it == model->profiles.end()) {
+            set_error("evaluate_loft: referenced section profile feature ID not found in model: index " + std::to_string(s));
+            return ASTRA_GEOM_ENTITY_NOT_FOUND;
+        }
+        sections.push_back(&it->second);
+    }
+
+    uint32_t target_pts_per_loop = 0;
+    size_t num_loops = sections[0]->loops.size();
+    if (num_loops == 0) {
+        set_error("evaluate_loft: section profile has zero loops");
+        return ASTRA_GEOM_DEGENERATE_INPUT;
+    }
+
+    // Verify all sections have matching loop structure
+    for (uint32_t s = 0; s < p.section_count; s++) {
+        if (sections[s]->loops.size() != num_loops) {
+            set_error("evaluate_loft: mismatch in loop count across sections");
+            return ASTRA_GEOM_INVALID_TOPOLOGY;
+        }
+    }
+
+    // Determine resampling resolution per loop (max vertex count across sections, minimum 4)
+    std::vector<uint32_t> loop_resolutions(num_loops);
+    for (size_t l = 0; l < num_loops; l++) {
+        uint32_t max_pts = 4;
+        for (uint32_t s = 0; s < p.section_count; s++) {
+            max_pts = std::max(max_pts, (uint32_t)sections[s]->loops[l].points.size());
+        }
+        loop_resolutions[l] = max_pts;
+    }
+
+    // Resample each loop in each section to 3D points
+    // sections_3d[section_index][loop_index][point_index]
+    std::vector<std::vector<std::vector<Point3DGeom>>> sections_3d(p.section_count);
+    for (uint32_t s = 0; s < p.section_count; s++) {
+        sections_3d[s].resize(num_loops);
+        const auto &prof = *sections[s];
+
+        for (size_t l = 0; l < num_loops; l++) {
+            const auto &loop = prof.loops[l];
+            uint32_t target_N = loop_resolutions[l];
+            sections_3d[s][l].resize(target_N);
+
+            size_t orig_N = loop.points.size();
+            if (orig_N == target_N) {
+                for (uint32_t i = 0; i < target_N; i++) {
+                    const auto &pt = loop.points[i];
+                    sections_3d[s][l][i] = Point3DGeom{
+                        prof.origin[0] + pt.u * prof.u_axis[0] + pt.v * prof.v_axis[0],
+                        prof.origin[1] + pt.u * prof.u_axis[1] + pt.v * prof.v_axis[1],
+                        prof.origin[2] + pt.u * prof.u_axis[2] + pt.v * prof.v_axis[2]
+                    };
+                }
+            } else {
+                // Perimeter-based linear resampling
+                std::vector<double> cum_dist(orig_N + 1, 0.0);
+                for (size_t i = 0; i < orig_N; i++) {
+                    size_t next_i = (i + 1) % orig_N;
+                    double du = loop.points[next_i].u - loop.points[i].u;
+                    double dv = loop.points[next_i].v - loop.points[i].v;
+                    cum_dist[i + 1] = cum_dist[i] + std::hypot(du, dv);
+                }
+                double total_perim = cum_dist[orig_N];
+                if (total_perim < 1e-9) total_perim = 1.0;
+
+                for (uint32_t k = 0; k < target_N; k++) {
+                    double target_d = (double)k / target_N * total_perim;
+                    size_t seg = 0;
+                    while (seg < orig_N - 1 && cum_dist[seg + 1] < target_d) seg++;
+                    double seg_len = cum_dist[seg + 1] - cum_dist[seg];
+                    double frac = (seg_len > 1e-9) ? (target_d - cum_dist[seg]) / seg_len : 0.0;
+                    size_t seg_next = (seg + 1) % orig_N;
+                    double u = loop.points[seg].u + frac * (loop.points[seg_next].u - loop.points[seg].u);
+                    double v = loop.points[seg].v + frac * (loop.points[seg_next].v - loop.points[seg].v);
+                    sections_3d[s][l][k] = Point3DGeom{
+                        prof.origin[0] + u * prof.u_axis[0] + v * prof.v_axis[0],
+                        prof.origin[1] + u * prof.u_axis[1] + v * prof.v_axis[1],
+                        prof.origin[2] + u * prof.u_axis[2] + v * prof.v_axis[2]
+                    };
+                }
+            }
+        }
+    }
+
+    uint32_t total_section_pts = 0;
+    for (uint32_t n : loop_resolutions) total_section_pts += n;
+    uint32_t total_verts = p.section_count * total_section_pts;
+
+    auto *res = new (std::nothrow) astra_geom_result_handle();
+    if (!res) return ASTRA_GEOM_OUT_OF_MEMORY;
+    res->magic = RESULT_MAGIC;
+    model->current_revision++;
+    res->revision = model->current_revision;
+
+    res->positions.resize(total_verts * 3);
+
+    for (uint32_t s = 0; s < p.section_count; s++) {
+        uint32_t pt_cursor = 0;
+        for (size_t l = 0; l < num_loops; l++) {
+            for (uint32_t i = 0; i < loop_resolutions[l]; i++) {
+                uint32_t v_idx = s * total_section_pts + pt_cursor;
+                const auto &pt = sections_3d[s][l][i];
+                res->positions[3 * v_idx + 0] = (float)pt.x;
+                res->positions[3 * v_idx + 1] = (float)pt.y;
+                res->positions[3 * v_idx + 2] = (float)pt.z;
+                pt_cursor++;
+            }
+        }
+    }
+
+    // Lateral Triangles between consecutive sections
+    for (uint32_t s = 0; s < p.section_count - 1; s++) {
+        uint32_t loop_start = 0;
+        for (size_t l = 0; l < num_loops; l++) {
+            uint32_t ln = loop_resolutions[l];
+            bool is_inner = sections[s]->loops[l].is_hole;
+
+            for (uint32_t j = 0; j < ln; j++) {
+                uint32_t j_next = (j + 1) % ln;
+
+                astra_entity_ref lat_ref;
+                std::memset(&lat_ref, 0, sizeof(lat_ref));
+                lat_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+                lat_ref.role = ASTRA_ROLE_LOFT_TRANSITION_FACE;
+                lat_ref.feature_id = request->feature_id;
+                lat_ref.sub_index = (int32_t)(s * total_section_pts + loop_start + j);
+                lat_ref.flags = is_inner ? 1u : 0u;
+                lat_ref.related_feature_id = p.section_feature_ids[s];
+
+                uint32_t v0 = s * total_section_pts + loop_start + j;
+                uint32_t v1 = s * total_section_pts + loop_start + j_next;
+                uint32_t v0_top = (s + 1) * total_section_pts + loop_start + j;
+                uint32_t v1_top = (s + 1) * total_section_pts + loop_start + j_next;
+
+                res->indices.push_back(v0);
+                res->indices.push_back(v1);
+                res->indices.push_back(v1_top);
+                res->entities.push_back(lat_ref);
+
+                res->indices.push_back(v0);
+                res->indices.push_back(v1_top);
+                res->indices.push_back(v0_top);
+                res->entities.push_back(lat_ref);
+            }
+            loop_start += ln;
+        }
+    }
+
+    // Start Cap (Section 0) & End Cap (Section p.section_count - 1)
+    {
+        std::vector<uint32_t> orig_indices;
+        std::vector<Point2D> bridged_pts = bridge_holes_into_outer(sections[0]->loops, orig_indices);
+        std::vector<uint32_t> cap_triangles = triangulate_simple_polygon(bridged_pts);
+        uint32_t cap_tri_count = (uint32_t)cap_triangles.size() / 3;
+
+        astra_entity_ref start_cap_ref;
+        std::memset(&start_cap_ref, 0, sizeof(start_cap_ref));
+        start_cap_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+        start_cap_ref.role = ASTRA_ROLE_END_CAP_START;
+        start_cap_ref.feature_id = request->feature_id;
+        start_cap_ref.sub_index = 0;
+
+        for (uint32_t t = 0; t < cap_tri_count; t++) {
+            uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]];
+            uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]];
+            uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]];
+            res->indices.push_back(i0);
+            res->indices.push_back(i2);
+            res->indices.push_back(i1);
+            res->entities.push_back(start_cap_ref);
+        }
+    }
+    {
+        uint32_t last_s = p.section_count - 1;
+        std::vector<uint32_t> orig_indices;
+        std::vector<Point2D> bridged_pts = bridge_holes_into_outer(sections[last_s]->loops, orig_indices);
+        std::vector<uint32_t> cap_triangles = triangulate_simple_polygon(bridged_pts);
+        uint32_t cap_tri_count = (uint32_t)cap_triangles.size() / 3;
+
+        astra_entity_ref end_cap_ref;
+        std::memset(&end_cap_ref, 0, sizeof(end_cap_ref));
+        end_cap_ref.struct_size = (uint32_t)sizeof(astra_entity_ref);
+        end_cap_ref.role = ASTRA_ROLE_END_CAP_END;
+        end_cap_ref.feature_id = request->feature_id;
+        end_cap_ref.sub_index = 0;
+
+        uint32_t end_offset = last_s * total_section_pts;
+        for (uint32_t t = 0; t < cap_tri_count; t++) {
+            uint32_t i0 = orig_indices[cap_triangles[3 * t + 0]] + end_offset;
+            uint32_t i1 = orig_indices[cap_triangles[3 * t + 1]] + end_offset;
+            uint32_t i2 = orig_indices[cap_triangles[3 * t + 2]] + end_offset;
+            res->indices.push_back(i0);
+            res->indices.push_back(i1);
+            res->indices.push_back(i2);
+            res->entities.push_back(end_cap_ref);
+        }
+    }
+
+    // Lineage Tracking
+    if (model->last_solid_revision > 0) {
+        std::vector<LineageEntry> lineage_entries;
+        for (const auto &old_ref : model->last_solid_entities) {
+            LineageEntry entry;
+            entry.record.struct_size = (uint32_t)sizeof(astra_lineage_record);
+            entry.record.source_revision = model->last_solid_revision;
+            entry.record.destination_revision = res->revision;
+            entry.record.source = old_ref;
+            entry.record.reserved = 0;
+
+            bool found = false;
+            for (const auto &new_ref : res->entities) {
+                if (old_ref.role == new_ref.role &&
+                    old_ref.feature_id.high == new_ref.feature_id.high &&
+                    old_ref.feature_id.low == new_ref.feature_id.low &&
+                    old_ref.sub_index == new_ref.sub_index &&
+                    old_ref.flags == new_ref.flags) {
+                    entry.record.outcome = ASTRA_LINEAGE_PRESERVED;
+                    entry.record.successor_count = 1;
+                    entry.successors.push_back(new_ref);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                entry.record.outcome = ASTRA_LINEAGE_CONSUMED;
+                entry.record.successor_count = 0;
+            }
+            lineage_entries.push_back(entry);
+        }
+        res->lineage[model->last_solid_revision] = lineage_entries;
+    }
+
+    model->last_solid_revision = res->revision;
+    model->last_solid_entities = res->entities;
+
+    res->view.struct_size = (uint32_t)sizeof(astra_tessellation_view);
+    res->view.flags = 0;
+    res->view.geometry_revision = res->revision;
+    res->view.vertex_count = total_verts;
+    res->view.triangle_count = (uint32_t)res->entities.size();
+    res->view.positions_xyz = res->positions.data();
+    res->view.triangle_indices = res->indices.data();
+    res->view.triangle_entities = res->entities.data();
+
+    *out_result = res;
+    return ASTRA_GEOM_OK;
+}
+
 astra_geom_status astra_geom_evaluate_feature(
     const astra_geom_model_handle *model,
     const astra_geom_feature_request *request,
@@ -1258,6 +1525,8 @@ astra_geom_status astra_geom_evaluate_feature(
             return evaluate_revolve(non_const_model, request, out_result);
         case ASTRA_OP_SWEEP:
             return evaluate_sweep(non_const_model, request, out_result);
+        case ASTRA_OP_LOFT:
+            return evaluate_loft(non_const_model, request, out_result);
         default:
             set_error("astra_geom_evaluate_feature: unsupported operation kind " +
                       std::to_string(request->operation_kind));

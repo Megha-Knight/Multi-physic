@@ -51,6 +51,7 @@ typedef enum astra_entity_role {
     ASTRA_ROLE_HOLE_ENTRY_RIM = 10,
     ASTRA_ROLE_REVOLVE_CYLINDRICAL_FACE = 11,
     ASTRA_ROLE_REVOLVE_LATERAL_FACE = 12,
+    ASTRA_ROLE_LOFT_TRANSITION_FACE = 13,
     ASTRA_ROLE_UNCLASSIFIED_DERIVED_ENTITY = 255
 } astra_entity_role;
 
@@ -158,6 +159,7 @@ typedef struct astra_geom_loft_params {
     uint32_t section_count;
     uint32_t guide_count;
     uint32_t operation_mode;
+    const astra_id128 *section_feature_ids;
 } astra_geom_loft_params;
 
 typedef struct astra_geom_boolean_params {
